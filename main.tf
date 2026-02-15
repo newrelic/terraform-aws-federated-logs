@@ -1,39 +1,56 @@
-# 1. Physical Storage
-module "base" {
-  source         = "./modules/base_resource"
+# Creates the base resources: S3 bucket and Glue catalog database
+module "federated_logs_setup_resource" {
+  source         = "./modules/federated_logs_setup_resource"
   naming_prefix  = var.naming_prefix
   aws_account_id = var.aws_account_id
 }
 
-# 2. Log Partitions
-module "partitions" {
-  source                = "./modules/iceberg_table"
-  for_each              = var.partitions # e.g. {"default" = 7, "security" = 30}
-  naming_prefix         = var.naming_prefix
-  table_name            = each.key
-  retention_days        = each.value
-  bucket_name           = module.base.bucket_name
-  glue_db_name          = module.base.glue_db_name
-  glue_service_role_arn = module.base.glue_role_arn
+# Creates the necessary permissions for all the components to work together
+module "federated_logs_role" {
+  source               = "./modules/federated_logs_role"
+  s3_bucket_name       = module.federated_logs_setup_resource.s3_bucket_name
+  glue_catalog_db_name = module.federated_logs_setup_resource.glue_catalog_db_name
+  nr_user_key          = "NRAK-1234-****"
+  nr_account_id        = "12345678"
+  clusters             = var.clusters
+}
+
+module "federated_logs_partition" {
+  source = "./modules/federated_logs_partition"
+
+  s3_bucket_name        = module.federated_logs_setup_resource.s3_bucket_name
+  glue_catalog_db_name  = module.federated_logs_setup_resource.glue_catalog_db_name
+  glue_service_role_arn = module.federated_logs_role.glue_service_role_arn
+  aws_connection_entity = module.federated_logs_role.aws_connection_entity
   aws_account_id        = var.aws_account_id
-}
 
-# 3. Writer Role (PCG)
-module "writer" {
-  source             = "./modules/pcg_iam"
-  naming_prefix      = var.naming_prefix
-  oidc_provider_arns = var.eks_oidc_arns
-  oidc_urls          = var.eks_oidc_urls
-  bucket_arn         = module.base.bucket_arn
-  glue_db_name       = module.base.glue_db_name
-  namespace          = var.namespace
-  service_account    = var.service_account
-}
+  nr_user_key          = "NRAK-1234-****"
+  log_retention_policy = "5 DAYS" # this is NR specific log retention policy for a partition 
 
-# 4. Reader Role (New Relic)
-module "reader" {
-  source        = "./modules/nr_query_access"
-  naming_prefix = var.naming_prefix
-  bucket_name   = module.base.bucket_name
-  glue_db_name  = module.base.glue_db_name
+  # The name of default table will be fixed.
+  # Below are optimisation setting for default table
+  default_table_setting = {
+    enable_compaction           = true
+    enable_retention            = true
+    enable_orphan_file_deletion = true
+
+    orphan_file_deletion = {
+      delete_after_days = 3
+    }
+
+    # Snapshot Retention params OPTIONAL
+    snapshot_retention = {
+      days_snapshot_kept      = 5
+      min_snapshots_to_retain = 2
+      delete_associated_files = true
+    }
+
+    # Compaction related params OPTIONAL
+    compaction_config = {
+      min_input_files       = 50
+      delete_file_threshold = 5
+    }
+  }
+
+  non_default_tables = var.non_default_tables
 }

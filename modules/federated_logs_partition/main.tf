@@ -1,12 +1,30 @@
-resource "aws_glue_catalog_table" "this" {
-  name          = "${var.naming_prefix}-${var.table_name}"
-  database_name = var.glue_db_name
+
+
+resource "aws_glue_catalog_table" "iceberg_table" {
+  for_each = local.all_tables
+
+  name          = "${local.iceberg_table_name_prefix}-${lower(each.key)}"
+  database_name = var.glue_catalog_db_name
   table_type    = "EXTERNAL_TABLE"
+
   parameters = {
     "format"                                     = "parquet"
+    "write.compact.min-input-files"  = each.value.compaction_config.min_input_files
+    "write.upsert.enabled"           = "true"
+    "write.delete.threshold"         = each.value.compaction_config.delete_file_threshold
     "write.target-file-size-bytes"               = "26214400" # 25 MB
     "write.metadata.delete-after-commit.enabled" = "true"
     "write.metadata.previous-versions-max"       = "10"
+
+    # --- SNAPSHOT RETENTION PROPERTIES ---
+    # How many snapshots to keep regardless of age
+    "history.expire.min-snapshots-to-keep" = tostring(each.value.snapshot_retention.min_snapshots_to_retain)
+    
+    # How long to keep snapshots (converted from days to milliseconds for Iceberg)
+    "history.expire.max-snapshot-age-ms"   = tostring(each.value.snapshot_retention.days_snapshot_kept * 86400000)
+    
+    # Whether to delete the data files associated with the expired snapshots
+    "write.metadata.delete-after-commit.enabled" = tostring(each.value.snapshot_retention.delete_associated_files)
   }
   open_table_format_input {
     iceberg_input {
@@ -15,7 +33,8 @@ resource "aws_glue_catalog_table" "this" {
   }
 
   storage_descriptor {
-    location      = "s3://${var.bucket_name}/${var.glue_db_name}/${var.naming_prefix}-${var.table_name}"
+    # Partitions data by table name: s3://my-bucket/Log/ or s3://my-bucket/Security/
+    location      = "s3://${var.s3_bucket_name}/${var.glue_catalog_db_name}/${local.iceberg_table_name_prefix}-${lower(each.key)}"
     columns {
       name = "logtype"
       type = "string"
@@ -50,35 +69,6 @@ resource "aws_glue_catalog_table" "this" {
         "iceberg.field.current"  = "true"
         "iceberg.field.id"       = "4"
         "iceberg.field.optional" = "true"
-      }
-    }
-  }
-}
-
-resource "aws_glue_catalog_table_optimizer" "compaction" {
-  catalog_id    = var.aws_account_id
-  database_name = var.glue_db_name
-  table_name    = aws_glue_catalog_table.this.name
-  type          = "compaction"
-  configuration {
-    role_arn = var.glue_service_role_arn
-    enabled  = true
-  }
-}
-
-resource "aws_glue_catalog_table_optimizer" "iceberg_retention" {
-  catalog_id    = var.aws_account_id
-  database_name = var.glue_db_name
-  table_name    = aws_glue_catalog_table.this.name
-  type          = "retention"
-  configuration {
-    role_arn = var.glue_service_role_arn
-    enabled  = true
-    retention_configuration {
-      iceberg_configuration {
-        snapshot_retention_period_in_days = var.retention_days
-        number_of_snapshots_to_retain     = 1
-        clean_expired_files               = true
       }
     }
   }

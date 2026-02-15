@@ -1,32 +1,72 @@
 # Variable values for this configuration
 
 # AWS Configuration
-aws_region     = "us-east-1"
-aws_account_id = "AWS_ACCOUNT_ID" # Replace with your AWS account ID
+aws_region     = "us-east-2"
+aws_account_id = "864899866645" # Replace with your AWS account ID
 
 
+# Naming prefix for S3 bucket and Glue catalog database
 naming_prefix = "fed-logs-testing"
 
-# Log Partitions (table name => retention in days)
-partitions = {
-  default  = 7
-  security = 30
-  audit    = 90
+clusters = {
+  "cluster-1" = {
+    k8s_namespace            = "federated-logs"
+    k8s_service_account_name = "pcg-writer-sa"
+    oidc_provider_arn        = "arn:aws:iam::xxxxxx:oidc-provider/oidc.eks.us-east-2.amazonaws.com/id/xxxxxx"
+  }
 }
 
-# EKS OIDC Configuration for PCG Writer Role (supports multiple K8s clusters)
-eks_oidc_arns = [
-  "arn:aws:iam::YOUR_ACCOUNT_ID:oidc-provider/oidc.eks.REGION.amazonaws.com/id/CLUSTER1_ID",
-  # "arn:aws:iam::YOUR_ACCOUNT_ID:oidc-provider/oidc.eks.REGION.amazonaws.com/id/CLUSTER2_ID",
-]
-eks_oidc_urls = [
-  "oidc.eks.REGION.amazonaws.com/id/CLUSTER1_ID",
-  # "oidc.eks.REGION.amazonaws.com/id/CLUSTER2_ID",
-]
+non_default_tables = {
+  "Log_federated_application_log" = {
+    enable_compaction           = true
+    enable_retention            = true
+    enable_orphan_file_deletion = true
 
-namespace = "newrelic"
+    # Orphan File Deletion params OPTIONAL
+    orphan_file_deletion = {
+      delete_after_days = 3
+    }
 
-service_account = "pcg-service-account"
+    # Snapshot Retention params OPTIONAL
+    snapshot_retention = {
+      days_snapshot_kept      = 5
+      min_snapshots_to_retain = 2
+      delete_associated_files = true
+    }
+
+    # Compaction related params OPTIONAL
+    compaction_config = {
+      min_input_files       = 50
+      delete_file_threshold = 5
+    }
+  },
+  "Log_federated_security_log" = {
+    enable_compaction           = true
+    enable_retention            = true
+    enable_orphan_file_deletion = true
+
+    # Orphan File Deletion params OPTIONAL
+    orphan_file_deletion = {
+      delete_after_days = 3
+    }
+
+    # Snapshot Retention params OPTIONAL
+    snapshot_retention = {
+      days_snapshot_kept      = 5
+      min_snapshots_to_retain = 2
+      delete_associated_files = true
+    }
+
+    # Compaction related params OPTIONAL
+    compaction_config = {
+      min_input_files       = 50
+      delete_file_threshold = 5
+    }
+  }
+
+}
+
+
 
 
 

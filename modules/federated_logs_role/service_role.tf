@@ -1,15 +1,5 @@
-resource "aws_s3_bucket" "this" {
-  bucket = "${var.naming_prefix}-${local.s3_bucket_name}"
-  force_destroy = true
-}
-
-resource "aws_glue_catalog_database" "this" {
-  name = "${var.naming_prefix}-${local.glue_catalog_db_name}"
-  description = "Glue database containing NR resources for federated logs"
-}
-
 resource "aws_iam_role" "glue_service_role" {
-  name = "${var.naming_prefix}-glue-service-role"
+  name = "${local.naming_prefix}-glue-service-role"
   permissions_boundary = "" 
   description = "Role for Glue Service to access S3 and manage its own resources"
 
@@ -28,7 +18,7 @@ resource "aws_iam_role" "glue_service_role" {
 }
 
 resource "aws_iam_policy" "glue_service_policy" {
-  name        = "${var.naming_prefix}-glue-service-policy"
+  name        = "${local.naming_prefix}-glue-service-policy"
   description = "Policy for Glue service to access S3 and manage its own resources"
   policy = jsonencode({
     Version   = "2012-10-17"
@@ -55,8 +45,8 @@ resource "aws_iam_policy" "glue_service_policy" {
         ]
         Resource = [
           "arn:aws:glue:*:*:catalog",
-          "${aws_glue_catalog_database.this.arn}",
-          "arn:aws:glue:*:*:table/${aws_glue_catalog_database.this.name}/*"
+          "arn:aws:glue:*:*:database/${var.glue_catalog_db_name}",
+          "arn:aws:glue:*:*:table/${var.glue_catalog_db_name}/*"
         ]
       },
       {
@@ -69,8 +59,8 @@ resource "aws_iam_policy" "glue_service_policy" {
           "s3:ListBucket"
         ]
         Resource = [
-          "${aws_s3_bucket.this.arn}",
-          "${aws_s3_bucket.this.arn}/*"
+           "arn:aws:s3:::${var.s3_bucket_name}",
+          "arn:aws:s3:::${var.s3_bucket_name}/*"
         ]
       }
     ]
