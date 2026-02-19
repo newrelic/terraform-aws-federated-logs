@@ -1,5 +1,5 @@
 resource "aws_iam_role" "glue_service_role" {
-  name = "${local.naming_prefix}-glue-service-role"
+  name = "${var.resource_naming_prefix}-glue-service-role"
   permissions_boundary = "" 
   description = "Role for Glue Service to access S3 and manage its own resources"
 
@@ -18,7 +18,7 @@ resource "aws_iam_role" "glue_service_role" {
 }
 
 resource "aws_iam_policy" "glue_service_policy" {
-  name        = "${local.naming_prefix}-glue-service-policy"
+  name        = "${var.resource_naming_prefix}-glue-service-policy"
   description = "Policy for Glue service to access S3 and manage its own resources"
   policy = jsonencode({
     Version   = "2012-10-17"
@@ -44,9 +44,9 @@ resource "aws_iam_policy" "glue_service_policy" {
           "glue:BatchGetPartition"
         ]
         Resource = [
-          "arn:aws:glue:*:*:catalog",
-          "arn:aws:glue:*:*:database/${var.glue_catalog_db_name}",
-          "arn:aws:glue:*:*:table/${var.glue_catalog_db_name}/*"
+          "arn:aws:glue:${var.aws_region}:${var.aws_account_id}:catalog",
+          "arn:aws:glue:${var.aws_region}:${var.aws_account_id}:database/${var.glue_catalog_db_name}",
+          "arn:aws:glue:${var.aws_region}:${var.aws_account_id}:table/${var.glue_catalog_db_name}/*"
         ]
       },
       {
@@ -73,7 +73,7 @@ resource "aws_iam_role_policy_attachment" "glue_service_attach" {
 }
 
 resource "aws_iam_role" "reader-role" {
-  name        = "${local.naming_prefix}-nr-query-role"
+  name        = "${var.resource_naming_prefix}-nr-query-role"
   description = "Cross-account role for New Relic Query Engine to read logs"
 
   assume_role_policy = jsonencode({
@@ -95,7 +95,7 @@ resource "aws_iam_role" "reader-role" {
 }
 
 resource "aws_iam_role_policy" "reader_policy" {
-  name = "${local.naming_prefix}-nr-query-policy"
+  name = "${var.resource_naming_prefix}-nr-query-policy"
   role = aws_iam_role.reader-role.id
 
   policy = jsonencode({
@@ -109,8 +109,8 @@ resource "aws_iam_role_policy" "reader_policy" {
             "s3:ListBucket"
         ]
         Resource = [
-          "arn:aws:s3:::${var.s3_bucket_name_prefix}*",
-          "arn:aws:s3:::${var.s3_bucket_name_prefix}*/*"
+          "arn:aws:s3:::${var.s3_bucket_name}",
+          "arn:aws:s3:::${var.s3_bucket_name}/*"
         ]
       },
       {
@@ -126,9 +126,9 @@ resource "aws_iam_role_policy" "reader_policy" {
             "glue:BatchGetPartition"
         ]
         Resource = [
-          "arn:aws:glue:*:*:catalog",
-          "arn:aws:glue:*:*:database/${var.glue_catalog_db_name}",
-          "arn:aws:glue:*:*:table/${var.glue_catalog_db_name}/*"
+          "arn:aws:glue:${var.aws_region}:${var.aws_account_id}:catalog",
+          "arn:aws:glue:${var.aws_region}:${var.aws_account_id}:database/${var.glue_catalog_db_name}",
+          "arn:aws:glue:${var.aws_region}:${var.aws_account_id}:table/${var.glue_catalog_db_name}/*"
         ]
       }
     ]
@@ -136,7 +136,7 @@ resource "aws_iam_role_policy" "reader_policy" {
 }
 
 resource "aws_iam_role" "pcg-writer-role" {
-  name                 = "${local.naming_prefix}-pcg-writer-role"
+  name                 = "${var.resource_naming_prefix}-pcg-writer-role"
   description          = "IAM Role for Iceberg metadata writer with Glue and S3 access"
   permissions_boundary = ""
 
@@ -163,7 +163,7 @@ resource "aws_iam_role" "pcg-writer-role" {
 }
 
 resource "aws_iam_role_policy" "writer_policy" {
-  name = "${local.naming_prefix}-pcg-writer-policy"
+  name = "${var.resource_naming_prefix}-pcg-writer-policy"
   role = aws_iam_role.pcg-writer-role.id
 
   policy = jsonencode({
@@ -178,8 +178,8 @@ resource "aws_iam_role_policy" "writer_policy" {
             "s3:DeleteObject"
         ]
         Resource = [
-          "arn:aws:s3:::${var.s3_bucket_name_prefix}*",
-          "arn:aws:s3:::${var.s3_bucket_name_prefix}*/*"
+          "arn:aws:s3:::${var.s3_bucket_name}",
+          "arn:aws:s3:::${var.s3_bucket_name}/*"
         ]
       },
       {
@@ -191,9 +191,9 @@ resource "aws_iam_role_policy" "writer_policy" {
           "glue:GetTable"
         ]
         Resource = [
-          "arn:aws:glue:*:*:catalog",
-          "arn:aws:glue:*:*:database/${var.glue_catalog_db_name}",
-          "arn:aws:glue:*:*:table/${var.glue_catalog_db_name}/*"
+          "arn:aws:glue:${var.aws_region}:${var.aws_account_id}:catalog",
+          "arn:aws:glue:${var.aws_region}:${var.aws_account_id}:database/${var.glue_catalog_db_name}",
+          "arn:aws:glue:${var.aws_region}:${var.aws_account_id}:table/${var.glue_catalog_db_name}/*"
         ]
       }
     ]

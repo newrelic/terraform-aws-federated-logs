@@ -1,9 +1,13 @@
-
+resource "aws_s3_object" "folder" {
+  for_each = local.all_tables
+  bucket   = var.s3_bucket_name
+  key      = "${var.glue_catalog_db_name}/${each.key}/"
+}
 
 resource "aws_glue_catalog_table" "iceberg_table" {
   for_each = local.all_tables
 
-  name          = "${local.iceberg_table_name_prefix}-${lower(each.key)}"
+  name          = "${each.key}"
   database_name = var.glue_catalog_db_name
   table_type    = "EXTERNAL_TABLE"
 
@@ -34,7 +38,7 @@ resource "aws_glue_catalog_table" "iceberg_table" {
 
   storage_descriptor {
     # Partitions data by table name: s3://my-bucket/Log/ or s3://my-bucket/Security/
-    location      = "s3://${var.s3_bucket_name}/${var.glue_catalog_db_name}/${local.iceberg_table_name_prefix}-${lower(each.key)}"
+    location      = "s3://${var.s3_bucket_name}/${var.glue_catalog_db_name}/${each.key}"
     columns {
       name = "logtype"
       type = "string"

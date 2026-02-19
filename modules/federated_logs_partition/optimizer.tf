@@ -1,9 +1,5 @@
-# ------------------------------------------------------------------
-# 3. OPTIMIZER: COMPACTION
-# ------------------------------------------------------------------
-# Consolidates small files into larger ones to improve query performance.
 resource "aws_glue_catalog_table_optimizer" "compaction" {
-  for_each = { for k, v in local.all_tables : k => v if v.enable_compaction }
+  for_each = local.all_tables
 
   catalog_id    = var.aws_account_id
   database_name = var.glue_catalog_db_name
@@ -16,12 +12,8 @@ resource "aws_glue_catalog_table_optimizer" "compaction" {
   }
 }
 
-# ------------------------------------------------------------------
-# 4. OPTIMIZER: SNAPSHOT RETENTION
-# ------------------------------------------------------------------
-# Cleans up old metadata snapshots to save S3 space and improve performance.
 resource "aws_glue_catalog_table_optimizer" "retention" {
-  for_each = { for k, v in local.all_tables : k => v if v.enable_retention }
+  for_each = local.all_tables
 
   catalog_id    = var.aws_account_id
   database_name = var.glue_catalog_db_name
@@ -41,12 +33,9 @@ resource "aws_glue_catalog_table_optimizer" "retention" {
   }
 }
 
-# ------------------------------------------------------------------
-# 5. OPTIMIZER: ORPHAN FILE DELETION
-# ------------------------------------------------------------------
-# Deletes S3 files that are no longer referenced by any Iceberg metadata.
+
 resource "aws_glue_catalog_table_optimizer" "orphan_deletion" {
-  for_each = { for k, v in local.all_tables : k => v if v.enable_orphan_file_deletion }
+  for_each = local.all_tables
 
   catalog_id    = var.aws_account_id
   database_name = var.glue_catalog_db_name
@@ -63,4 +52,19 @@ resource "aws_glue_catalog_table_optimizer" "orphan_deletion" {
       }
     }
   }
+}
+
+resource "aws_cloudwatch_log_group" "iceberg_compaction_logs" {
+  name              = "/aws-glue/iceberg-compaction/logs"
+  retention_in_days = 7
+}
+
+resource "aws_cloudwatch_log_group" "iceberg_retention_logs" {
+  name              = "/aws-glue/iceberg-retention/logs"
+  retention_in_days = 7
+}
+
+resource "aws_cloudwatch_log_group" "iceberg_orphan_file_deletion_logs" {
+  name              = "/aws-glue/iceberg-orphan-file-deletion/logs"
+  retention_in_days = 7
 }

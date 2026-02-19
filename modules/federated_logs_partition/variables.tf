@@ -3,7 +3,7 @@ variable aws_account_id {
   type        = string
 }
 
-variable nr_user_key {
+variable nr_user_api_key {
   description = "New Relic user API key"
   type        = string
 }
@@ -36,10 +36,7 @@ variable "glue_service_role_arn" {
 variable "default_table_setting" {
   description = "Settings for the primary 'Log' table"
   type = object({
-    enable_compaction           = optional(bool, true)
-    enable_retention            = optional(bool, true)
-    enable_orphan_file_deletion = optional(bool, true)
-    
+
     orphan_file_deletion = optional(object({
       delete_after_days      = optional(number, 3)
     }), { delete_after_days = 3, job_run_interval_hours = 24 })
@@ -57,14 +54,10 @@ variable "default_table_setting" {
   })
 }
 
-variable "non_default_tables" {
+variable "partition_tables" {
   description = "Map of extra tables using the exact same structure as the default"
   # We wrap the same object structure in a map()
   type = map(object({
-    enable_compaction           = optional(bool, true)
-    enable_retention            = optional(bool, true)
-    enable_orphan_file_deletion = optional(bool, true)
-    
     orphan_file_deletion = optional(object({
       delete_after_days      = optional(number, 3)
     }), { delete_after_days = 3, job_run_interval_hours = 24 })
@@ -86,4 +79,16 @@ variable "non_default_tables" {
 variable "aws_region" {
   description = "AWS region to deploy resources"
   type        = string
+}
+
+variable "resource_naming_prefix" {
+  description = "Mandatory lowercase alphanumeric prefix for all resources (e.g., 'acmelogs2026')"
+  type        = string
+  validation {
+    # ^[a-z]       -> Must start with a lowercase letter
+    # [a-z0-9]{2,39} -> Followed by 2 to 39 alphanumeric chars
+    # $            -> End of string
+    condition     = can(regex("^[a-z][a-z0-9]{2,39}$", var.resource_naming_prefix))
+    error_message = "The naming_prefix must start with a lowercase letter (a-z) and contain only lowercase letters and numbers (3-40 characters total)."
+  }
 }
