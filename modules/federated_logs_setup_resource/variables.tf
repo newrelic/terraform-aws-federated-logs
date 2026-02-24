@@ -1,5 +1,6 @@
 variable "resource_naming_prefix" {
-  description = "Mandatory lowercase alphanumeric prefix for all resources (e.g., 'acmelogs2026')"
+  description = "Lowercase alphanumeric prefix for all resources (e.g., 'acmelogs2026')"
+  default = "nr"
   type        = string
   validation {
     # ^[a-z]       -> Must start with a lowercase letter

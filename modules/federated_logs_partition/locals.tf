@@ -5,7 +5,7 @@ locals {
 
   # SANITIZED TABLE MAP
   # We create a new map where the keys are the "clean" names
-  safe_partition_tables = {
+  sanitized_partition_tables = {
     for raw_key, config in var.partition_tables : 
     # 1. Lowercase everything
     # 2. Replace hyphens (or any non-alphanumeric) with underscores
@@ -15,7 +15,7 @@ locals {
 
   all_tables = merge(
     { "${lower(local.default_partition_name)}" = var.default_table_setting },
-    local.safe_partition_tables
+    local.sanitized_partition_tables
   )
 
 }
