@@ -7,28 +7,15 @@ resource "aws_s3_object" "folder" {
 resource "aws_glue_catalog_table" "iceberg_table" {
   for_each = local.all_tables
 
-  name          = "${each.key}"
+  name          = each.key
   database_name = var.glue_catalog_db_name
   table_type    = "EXTERNAL_TABLE"
 
   parameters = {
     "format"                                     = "parquet"
-    "write.compact.min-input-files"  = each.value.compaction_config.min_input_files
-    "write.upsert.enabled"           = "true"
-    "write.delete.threshold"         = each.value.compaction_config.delete_file_threshold
-    "write.target-file-size-bytes"               = "26214400" # 25 MB
-    "write.metadata.delete-after-commit.enabled" = "true"
-    "write.metadata.previous-versions-max"       = "10"
-
-    # --- SNAPSHOT RETENTION PROPERTIES ---
-    # How many snapshots to keep regardless of age
-    "history.expire.min-snapshots-to-keep" = tostring(each.value.snapshot_retention.min_snapshots_to_retain)
-    
-    # How long to keep snapshots (converted from days to milliseconds for Iceberg)
-    "history.expire.max-snapshot-age-ms"   = tostring(each.value.snapshot_retention.days_snapshot_kept * 86400000)
-    
-    # Whether to delete the data files associated with the expired snapshots
-    "write.metadata.delete-after-commit.enabled" = tostring(each.value.snapshot_retention.delete_associated_files)
+    "write.target-file-size-bytes"               = each.value.table_parameters.write_target_file_size_bytes
+    "write.metadata.delete-after-commit.enabled" = tostring(each.value.table_parameters.write_metadata_delete_after_commit_enabled)
+    "write.metadata.previous-versions-max"       = each.value.table_parameters.write_metadata_previous_versions_max
   }
   open_table_format_input {
     iceberg_input {
@@ -38,7 +25,7 @@ resource "aws_glue_catalog_table" "iceberg_table" {
 
   storage_descriptor {
     # Partitions data by table name: s3://my-bucket/Log/ or s3://my-bucket/Security/
-    location      = "s3://${var.s3_bucket_name}/${var.glue_catalog_db_name}/${each.key}"
+    location = "s3://${var.s3_bucket_name}/${var.glue_catalog_db_name}/${each.key}"
     columns {
       name = "logtype"
       type = "string"

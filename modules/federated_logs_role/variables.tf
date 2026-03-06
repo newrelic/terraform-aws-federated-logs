@@ -45,7 +45,7 @@ variable "aws_account_id" {
 
 variable "resource_naming_prefix" {
   description = "Lowercase alphanumeric prefix for all resources (e.g., 'acmelogs2026')"
-  default = "nr"
+  default     = "nr"
   type        = string
   validation {
     # ^[a-z]       -> Must start with a lowercase letter

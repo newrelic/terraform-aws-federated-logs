@@ -1,14 +1,14 @@
 resource "aws_iam_role" "glue_service_role" {
-  name = "${var.resource_naming_prefix}-glue-service-role"
-  permissions_boundary = "" 
-  description = "Role for Glue Service to access S3 and manage its own resources"
+  name                 = "${var.resource_naming_prefix}-glue-service-role"
+  permissions_boundary = ""
+  description          = "Role for Glue Service to access S3 and manage its own resources"
 
   assume_role_policy = jsonencode({
-    Version   = "2012-10-17"
+    Version = "2012-10-17"
     Statement = [
       {
-        Action    = "sts:AssumeRole"
-        Effect    = "Allow"
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
         Principal = {
           Service = "glue.amazonaws.com"
         }
@@ -21,12 +21,12 @@ resource "aws_iam_policy" "glue_service_policy" {
   name        = "${var.resource_naming_prefix}-glue-service-policy"
   description = "Policy for Glue service to access S3 and manage its own resources"
   policy = jsonencode({
-    Version   = "2012-10-17"
+    Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "GlueServiceAccess"
-        Effect   = "Allow"
-        Action   = [
+        Sid    = "GlueServiceAccess"
+        Effect = "Allow"
+        Action = [
           "glue:GetDatabase",
           "glue:GetDatabases",
           "glue:CreateTable",
@@ -59,7 +59,7 @@ resource "aws_iam_policy" "glue_service_policy" {
           "s3:ListBucket"
         ]
         Resource = [
-           "arn:aws:s3:::${var.s3_bucket_name}",
+          "arn:aws:s3:::${var.s3_bucket_name}",
           "arn:aws:s3:::${var.s3_bucket_name}/*"
         ]
       }
@@ -105,8 +105,8 @@ resource "aws_iam_role_policy" "reader_policy" {
         Sid    = "S3DataReadAccess"
         Effect = "Allow"
         Action = [
-            "s3:GetObject",
-            "s3:ListBucket"
+          "s3:GetObject",
+          "s3:ListBucket"
         ]
         Resource = [
           "arn:aws:s3:::${var.s3_bucket_name}",
@@ -117,13 +117,13 @@ resource "aws_iam_role_policy" "reader_policy" {
         Sid    = "GlueCatalogReadAccess"
         Effect = "Allow"
         Action = [
-            "glue:GetDatabase",
-            "glue:GetDatabases",
-            "glue:GetTable", 
-            "glue:GetTables",
-            "glue:GetPartition",
-            "glue:GetPartitions",
-            "glue:BatchGetPartition"
+          "glue:GetDatabase",
+          "glue:GetDatabases",
+          "glue:GetTable",
+          "glue:GetTables",
+          "glue:GetPartition",
+          "glue:GetPartitions",
+          "glue:BatchGetPartition"
         ]
         Resource = [
           "arn:aws:glue:${var.aws_region}:${var.aws_account_id}:catalog",
@@ -173,9 +173,9 @@ resource "aws_iam_role_policy" "writer_policy" {
         Sid    = "S3ObjectAccess"
         Effect = "Allow"
         Action = [
-            "s3:GetObject",
-            "s3:PutObject",
-            "s3:DeleteObject"
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject"
         ]
         Resource = [
           "arn:aws:s3:::${var.s3_bucket_name}",

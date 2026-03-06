@@ -25,9 +25,10 @@ resource "aws_glue_catalog_table_optimizer" "retention" {
     enabled  = true
     retention_configuration {
       iceberg_configuration {
-        snapshot_retention_period_in_days = each.value.snapshot_retention.days_snapshot_kept
-        number_of_snapshots_to_retain     = each.value.snapshot_retention.min_snapshots_to_retain
-        clean_expired_files               = each.value.snapshot_retention.delete_associated_files
+        snapshot_retention_period_in_days = each.value.optimizer_configuration.snapshot_retention.snapshot_retention_period_in_days
+        number_of_snapshots_to_retain     = each.value.optimizer_configuration.snapshot_retention.number_of_snapshots_to_retain
+        clean_expired_files               = each.value.optimizer_configuration.snapshot_retention.clean_expired_files
+        run_rate_in_hours                 = each.value.optimizer_configuration.snapshot_retention.run_rate_in_hours
       }
     }
   }
@@ -48,7 +49,8 @@ resource "aws_glue_catalog_table_optimizer" "orphan_deletion" {
 
     orphan_file_deletion_configuration {
       iceberg_configuration {
-        orphan_file_retention_period_in_days = each.value.orphan_file_deletion.delete_after_days
+        orphan_file_retention_period_in_days = each.value.optimizer_configuration.orphan_file_deletion.orphan_file_retention_period_in_days
+        run_rate_in_hours                    = each.value.optimizer_configuration.orphan_file_deletion.run_rate_in_hours
       }
     }
   }
