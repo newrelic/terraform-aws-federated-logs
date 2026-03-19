@@ -1,9 +1,3 @@
-variable "aws_region" {
-  description = "The AWS region to deploy resources in."
-  type        = string
-  default = null
-}
-
 variable "setup_name" {
   description = "A name for this federated logs setup, also used in resource naming."
   type        = string

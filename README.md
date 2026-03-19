@@ -40,12 +40,10 @@ terraform init -upgrade
 module "federated_logs_setup_resource" {
   source     = "./modules/federated_logs_setup_resource"
   setup_name = ""
-  aws_region = "" #Set this if you want to deploy to a region other than the one in aws provider configuration
 }
 
 module "federated_logs_role" {
   source               = "./modules/federated_logs_role"
-  aws_region           = module.federated_logs_setup_resource.aws_region
   setup_name           = module.federated_logs_setup_resource.setup_name
   s3_bucket_name       = module.federated_logs_setup_resource.s3_bucket_name
   glue_catalog_db_name = module.federated_logs_setup_resource.glue_catalog_db_name
@@ -61,7 +59,6 @@ module "federated_logs_role" {
 module "federated_logs_partition" {
   source                = "./modules/federated_logs_partition"
   setup_name            = module.federated_logs_setup_resource.setup_name
-  aws_region            = module.federated_logs_setup_resource.aws_region
   s3_bucket_name        = module.federated_logs_setup_resource.s3_bucket_name
   glue_catalog_db_name  = module.federated_logs_setup_resource.glue_catalog_db_name
   glue_service_role_arn = module.federated_logs_role.glue_service_role_arn

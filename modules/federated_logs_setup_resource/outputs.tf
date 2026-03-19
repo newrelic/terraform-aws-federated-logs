@@ -1,5 +1,3 @@
-data "aws_region" "current" {}
-
 output "s3_bucket_name" {
   description = "Name of the S3 bucket"
   value       = aws_s3_bucket.this.id
@@ -18,11 +16,6 @@ output "glue_catalog_db_name" {
 output "glue_catalog_db_arn" {
   description = "ARN of the Glue catalog database"
   value       = aws_glue_catalog_database.this.arn
-}
-
-output "aws_region" {
-  description = "AWS region where resources are deployed"
-  value       = coalesce(var.aws_region, data.aws_region.current.name)
 }
 
 output "setup_name" {

@@ -2,12 +2,10 @@ resource "aws_s3_object" "folder" {
   for_each = local.all_tables
   bucket   = var.s3_bucket_name
   key      = "${var.glue_catalog_db_name}/${each.key}/"
-  region   = var.aws_region
 }
 
 resource "aws_glue_catalog_table" "iceberg_table" {
   for_each = local.all_tables
-  region   = var.aws_region
 
   name          = each.key
   database_name = var.glue_catalog_db_name

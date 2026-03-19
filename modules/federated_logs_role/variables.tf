@@ -23,11 +23,6 @@ variable "clusters" {
   }
 }
 
-variable "aws_region" {
-  description = "AWS region to deploy resources"
-  type        = string
-}
-
 variable "setup_name" {
   description = "A name for this federated logs setup, also used in resource naming."
   type        = string
