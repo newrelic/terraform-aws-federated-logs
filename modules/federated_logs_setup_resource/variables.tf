@@ -1,6 +1,7 @@
 variable "aws_region" {
   description = "The AWS region to deploy resources in."
   type        = string
+  default = null
 }
 
 variable "setup_name" {

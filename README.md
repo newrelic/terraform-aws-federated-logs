@@ -16,6 +16,10 @@ terraform {
     }
   }
 }
+
+provider "aws" {
+  region = "us-east-1" # Region which is used to deploy all AWS resources
+}
 ```
 
 ### 2. Initialize Terraform
@@ -36,7 +40,7 @@ terraform init -upgrade
 module "federated_logs_setup_resource" {
   source     = "./modules/federated_logs_setup_resource"
   setup_name = ""
-  aws_region = ""
+  aws_region = "" #Set this if you want to deploy to a region other than the one in aws provider configuration
 }
 
 module "federated_logs_role" {
