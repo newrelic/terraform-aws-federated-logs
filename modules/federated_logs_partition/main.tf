@@ -31,11 +31,8 @@ resource "null_resource" "create_iceberg_table" {
       PARTITIONED BY (hour(timestamp))
       LOCATION 's3://${var.s3_bucket_name}/${var.glue_catalog_db_name}/${each.key}/'
       TBLPROPERTIES (
-        'table_type'                                  = 'ICEBERG',
-        'write_compression'                           = 'zstd',
-        'write.target-file-size-bytes'                = '${each.value.table_parameters.write_target_file_size_bytes}',
-        'write.metadata.delete-after-commit.enabled'  = '${each.value.table_parameters.write_metadata_delete_after_commit_enabled}',
-        'write.metadata.previous-versions-max'        = '${each.value.table_parameters.write_metadata_previous_versions_max}'
+        'table_type'        = 'ICEBERG',
+        'write_compression' = 'zstd'
       )"
 
       QUERY_ID=$(aws athena start-query-execution \
