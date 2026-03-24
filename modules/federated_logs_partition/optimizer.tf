@@ -3,15 +3,13 @@ resource "aws_glue_catalog_table_optimizer" "compaction" {
 
   catalog_id    = var.aws_account_id
   database_name = var.glue_catalog_db_name
-  table_name    = each.key
+  table_name    = aws_glue_catalog_table.iceberg_table[each.key].name
   type          = "compaction"
 
   configuration {
     role_arn = var.glue_service_role_arn
     enabled  = true
   }
-
-  depends_on = [null_resource.create_iceberg_table]
 }
 
 resource "aws_glue_catalog_table_optimizer" "retention" {
@@ -19,10 +17,8 @@ resource "aws_glue_catalog_table_optimizer" "retention" {
 
   catalog_id    = var.aws_account_id
   database_name = var.glue_catalog_db_name
-  table_name    = each.key
+  table_name    = aws_glue_catalog_table.iceberg_table[each.key].name
   type          = "retention"
-
-  depends_on = [null_resource.create_iceberg_table]
 
   configuration {
     role_arn = var.glue_service_role_arn
@@ -44,7 +40,7 @@ resource "aws_glue_catalog_table_optimizer" "orphan_deletion" {
 
   catalog_id    = var.aws_account_id
   database_name = var.glue_catalog_db_name
-  table_name    = each.key
+  table_name    = aws_glue_catalog_table.iceberg_table[each.key].name
   type          = "orphan_file_deletion"
 
   configuration {
@@ -58,8 +54,6 @@ resource "aws_glue_catalog_table_optimizer" "orphan_deletion" {
       }
     }
   }
-
-  depends_on = [null_resource.create_iceberg_table]
 }
 
 resource "aws_cloudwatch_log_group" "iceberg_compaction_logs" {

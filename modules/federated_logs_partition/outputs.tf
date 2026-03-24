@@ -1,10 +1,9 @@
 output "all_tables" {
-  description = "Map of all tables with their names and ARNs"
+  description = "Map of all tables with their details"
   value = {
-    for k in keys(local.all_tables) : k => {
-      name = k
-      arn  = "arn:aws:glue:${var.aws_region}:${var.aws_account_id}:table/${var.glue_catalog_db_name}/${k}"
+    for k, v in aws_glue_catalog_table.iceberg_table : k => {
+      name = v.name
+      arn  = v.arn
     }
   }
-  depends_on = [null_resource.create_iceberg_table]
 }

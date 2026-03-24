@@ -4,119 +4,74 @@ resource "aws_s3_object" "folder" {
   key      = "${var.glue_catalog_db_name}/${each.key}/"
 }
 
-resource "null_resource" "create_iceberg_table" {
+resource "aws_glue_catalog_table" "iceberg_table" {
   for_each = local.all_tables
 
-  # Triggers on structural identity. Parameter-only changes do not recreate the
-  # table (which would cause data loss); update TBLPROPERTIES via ALTER TABLE manually.
-  triggers = {
-    table_key  = each.key
-    db_name    = var.glue_catalog_db_name
-    s3_bucket  = var.s3_bucket_name
-    aws_region = var.aws_region
+  name          = each.key
+  database_name = var.glue_catalog_db_name
+  table_type    = "EXTERNAL_TABLE"
+
+  parameters = {
+    "format"                                     = "parquet"
+    "write.target-file-size-bytes"               = each.value.table_parameters.write_target_file_size_bytes
+    "write.metadata.delete-after-commit.enabled" = tostring(each.value.table_parameters.write_metadata_delete_after_commit_enabled)
+    "write.metadata.previous-versions-max"       = each.value.table_parameters.write_metadata_previous_versions_max
   }
+  open_table_format_input {
+    iceberg_input {
+      metadata_operation = "CREATE"
+      version            = 2
 
-  depends_on = [aws_s3_object.folder]
+      iceberg_table_input {
+        location = "s3://${var.s3_bucket_name}/${var.glue_catalog_db_name}/${each.key}/"
 
-  provisioner "local-exec" {
-    command = <<-EOT
-      set -e
+        schema {
+          schema_id = 0
+          type      = "struct"
 
-      QUERY="CREATE TABLE IF NOT EXISTS ${var.glue_catalog_db_name}.${each.key} (
-        logtype   string,
-        message   string,
-        timestamp timestamp,
-        guid      string
-      )
-      PARTITIONED BY (hour(timestamp))
-      LOCATION 's3://${var.s3_bucket_name}/${var.glue_catalog_db_name}/${each.key}/'
-      TBLPROPERTIES (
-        'table_type'        = 'ICEBERG',
-        'write_compression' = 'zstd'
-      )"
+          fields {
+            id       = 1
+            name     = "logtype"
+            required = false
+            type     = <<EOF
+"string"
+EOF
+          }
+          fields {
+            id       = 2
+            name     = "message"
+            required = false
+            type     = <<EOF
+"string"
+EOF
+          }
+          fields {
+            id       = 3
+            name     = "timestamp"
+            required = true
+            type     = <<EOF
+"timestamp"
+EOF
+          }
+          fields {
+            id       = 4
+            name     = "guid"
+            required = false
+            type     = <<EOF
+"string"
+EOF
+          }
+        }
 
-      QUERY_ID=$(aws athena start-query-execution \
-        --query-string "$QUERY" \
-        --query-execution-context Database=${var.glue_catalog_db_name} \
-        --result-configuration OutputLocation=s3://${var.s3_bucket_name}/athena-query-results/ \
-        --region ${var.aws_region} \
-        --output text \
-        --query QueryExecutionId)
-
-      echo "Creating table ${each.key} — Athena query: $QUERY_ID"
-
-      while true; do
-        STATE=$(aws athena get-query-execution \
-          --query-execution-id "$QUERY_ID" \
-          --region ${var.aws_region} \
-          --output text \
-          --query 'QueryExecution.Status.State')
-        echo "  state: $STATE"
-        case "$STATE" in
-          SUCCEEDED)
-            echo "Table ${each.key} created."
-            break
-            ;;
-          FAILED|CANCELLED)
-            REASON=$(aws athena get-query-execution \
-              --query-execution-id "$QUERY_ID" \
-              --region ${var.aws_region} \
-              --output text \
-              --query 'QueryExecution.Status.StateChangeReason')
-            echo "Query $STATE: $REASON"
-            exit 1
-            ;;
-          *)
-            sleep 3
-            ;;
-        esac
-      done
-    EOT
-  }
-
-  provisioner "local-exec" {
-    when = destroy
-    command = <<-EOT
-      set -e
-
-      QUERY="DROP TABLE IF EXISTS ${self.triggers.db_name}.${self.triggers.table_key}"
-
-      QUERY_ID=$(aws athena start-query-execution \
-        --query-string "$QUERY" \
-        --query-execution-context Database=${self.triggers.db_name} \
-        --result-configuration OutputLocation=s3://${self.triggers.s3_bucket}/athena-query-results/ \
-        --region ${self.triggers.aws_region} \
-        --output text \
-        --query QueryExecutionId)
-
-      echo "Dropping table ${self.triggers.table_key} — Athena query: $QUERY_ID"
-
-      while true; do
-        STATE=$(aws athena get-query-execution \
-          --query-execution-id "$QUERY_ID" \
-          --region ${self.triggers.aws_region} \
-          --output text \
-          --query 'QueryExecution.Status.State')
-        echo "  state: $STATE"
-        case "$STATE" in
-          SUCCEEDED)
-            echo "Table ${self.triggers.table_key} dropped."
-            break
-            ;;
-          FAILED|CANCELLED)
-            REASON=$(aws athena get-query-execution \
-              --query-execution-id "$QUERY_ID" \
-              --region ${self.triggers.aws_region} \
-              --output text \
-              --query 'QueryExecution.Status.StateChangeReason')
-            echo "Query $STATE: $REASON"
-            exit 1
-            ;;
-          *)
-            sleep 3
-            ;;
-        esac
-      done
-    EOT
+        partition_spec {
+          fields {
+            name      = "timestamp_hour"
+            source_id = 3
+            transform = "hour"
+          }
+          spec_id = 0
+        }
+      }
+    }
   }
 }
