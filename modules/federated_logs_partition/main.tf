@@ -11,16 +11,24 @@ resource "aws_glue_catalog_table" "iceberg_table" {
   database_name = var.glue_catalog_db_name
   table_type    = "EXTERNAL_TABLE"
 
-  parameters = {
-    "format"                                     = "parquet"
-    "write.target-file-size-bytes"               = each.value.table_parameters.write_target_file_size_bytes
-    "write.metadata.delete-after-commit.enabled" = tostring(each.value.table_parameters.write_metadata_delete_after_commit_enabled)
-    "write.metadata.previous-versions-max"       = each.value.table_parameters.write_metadata_previous_versions_max
-  }
+  parameters = local.resolved_table_params[each.key]
+
   open_table_format_input {
     iceberg_input {
       metadata_operation = "CREATE"
     }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      # Prevent TF from fighting with Athena/Iceberg over these dynamic keys
+      parameters["previous_metadata_location"],
+      parameters["metadata_location"],
+      parameters["current-snapshot-id"],
+      parameters["current-snapshot-timestamp-ms"],
+      parameters["current-snapshot-summary"],
+      parameters["snapshot-count"]
+    ]
   }
 
   storage_descriptor {

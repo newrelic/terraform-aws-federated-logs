@@ -1,7 +1,8 @@
-resource "aws_glue_catalog_table_optimizer" "compaction" {
-  for_each = local.all_tables
+data "aws_caller_identity" "current" {}
 
-  catalog_id    = var.aws_account_id
+resource "aws_glue_catalog_table_optimizer" "compaction" {
+  for_each      = local.all_tables
+  catalog_id    = data.aws_caller_identity.current.account_id
   database_name = var.glue_catalog_db_name
   table_name    = aws_glue_catalog_table.iceberg_table[each.key].name
   type          = "compaction"
@@ -13,9 +14,8 @@ resource "aws_glue_catalog_table_optimizer" "compaction" {
 }
 
 resource "aws_glue_catalog_table_optimizer" "retention" {
-  for_each = local.all_tables
-
-  catalog_id    = var.aws_account_id
+  for_each      = local.all_tables
+  catalog_id    = data.aws_caller_identity.current.account_id
   database_name = var.glue_catalog_db_name
   table_name    = aws_glue_catalog_table.iceberg_table[each.key].name
   type          = "retention"
@@ -36,9 +36,8 @@ resource "aws_glue_catalog_table_optimizer" "retention" {
 
 
 resource "aws_glue_catalog_table_optimizer" "orphan_deletion" {
-  for_each = local.all_tables
-
-  catalog_id    = var.aws_account_id
+  for_each      = local.all_tables
+  catalog_id    = data.aws_caller_identity.current.account_id
   database_name = var.glue_catalog_db_name
   table_name    = aws_glue_catalog_table.iceberg_table[each.key].name
   type          = "orphan_file_deletion"

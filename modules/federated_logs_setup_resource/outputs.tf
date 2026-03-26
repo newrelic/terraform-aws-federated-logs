@@ -17,3 +17,8 @@ output "glue_catalog_db_arn" {
   description = "ARN of the Glue catalog database"
   value       = aws_glue_catalog_database.this.arn
 }
+
+output "setup_name" {
+  description = "Name of the federated logs setup, used in resource naming"
+  value       = var.setup_name
+}
