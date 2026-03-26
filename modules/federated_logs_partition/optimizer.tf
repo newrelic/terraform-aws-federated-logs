@@ -55,6 +55,54 @@ resource "aws_glue_catalog_table_optimizer" "orphan_deletion" {
   }
 }
 
+# null_resource is used here because aws_glue_catalog_table_optimizer does not yet support
+# compaction_configuration in the Terraform AWS provider. This calls update-table-optimizer
+# via the AWS CLI to set strategy/min_input_files/delete_file_threshold.
+# Once https://github.com/hashicorp/terraform-provider-aws/pull/44044 is merged,
+# this null_resource should be removed and compaction_configuration added to the
+# aws_glue_catalog_table_optimizer.compaction resource above.
+resource "null_resource" "compaction_configuration" {
+  for_each = local.all_tables
+
+  triggers = {
+    table_key             = each.key
+    strategy              = each.value.optimizer_configuration.compaction.strategy
+    min_input_files       = each.value.optimizer_configuration.compaction.min_input_files != null ? tostring(each.value.optimizer_configuration.compaction.min_input_files) : ""
+    delete_file_threshold = each.value.optimizer_configuration.compaction.delete_file_threshold != null ? tostring(each.value.optimizer_configuration.compaction.delete_file_threshold) : ""
+    role_arn              = var.glue_service_role_arn
+  }
+
+  depends_on = [aws_glue_catalog_table_optimizer.compaction]
+
+  provisioner "local-exec" {
+    environment = {
+      CONFIG = jsonencode({
+        roleArn = var.glue_service_role_arn
+        enabled = true
+        compactionConfiguration = {
+          icebergConfiguration = merge(
+            { strategy = each.value.optimizer_configuration.compaction.strategy },
+            each.value.optimizer_configuration.compaction.min_input_files != null ? { minInputFiles = each.value.optimizer_configuration.compaction.min_input_files } : {},
+            each.value.optimizer_configuration.compaction.delete_file_threshold != null ? { deleteFileThreshold = each.value.optimizer_configuration.compaction.delete_file_threshold } : {}
+          )
+        }
+      })
+    }
+    command = <<-EOT
+      set -e
+      echo "Configuring compaction for table ${each.key} (strategy: ${each.value.optimizer_configuration.compaction.strategy})..."
+      aws glue update-table-optimizer \
+        --catalog-id ${var.aws_account_id} \
+        --database-name ${var.glue_catalog_db_name} \
+        --table-name ${each.key} \
+        --table-optimizer-configuration "$CONFIG" \
+        --type compaction \
+        --region ${var.aws_region}
+      echo "Compaction configured for ${each.key}."
+    EOT
+  }
+}
+
 resource "aws_cloudwatch_log_group" "iceberg_compaction_logs" {
   name              = "/aws-glue/iceberg-compaction/logs"
   retention_in_days = 7
