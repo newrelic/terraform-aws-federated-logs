@@ -224,5 +224,3 @@ resource "aws_iam_role_policy_attachment" "writer_attach" {
   role       = aws_iam_role.pcg-writer-role.name
   policy_arn = aws_iam_policy.writer_policy.arn
 }
-
-//Test workflow changes test
