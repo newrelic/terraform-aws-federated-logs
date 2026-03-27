@@ -21,7 +21,7 @@ resource "aws_glue_catalog_table" "iceberg_table" {
       parameters["snapshot-count"]
     ]
   }
-  
+
   open_table_format_input {
     iceberg_input {
       metadata_operation = "CREATE"
@@ -89,6 +89,4 @@ EOF
       }
     }
   }
-
-  depends_on = [aws_s3_object.folder]
 }
