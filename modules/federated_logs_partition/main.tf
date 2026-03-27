@@ -10,6 +10,18 @@ resource "aws_glue_catalog_table" "iceberg_table" {
   name          = each.key
   database_name = var.glue_catalog_db_name
 
+  lifecycle {
+    ignore_changes = [
+      # Prevent TF from fighting with Athena/Iceberg over these dynamic keys
+      parameters["previous_metadata_location"],
+      parameters["metadata_location"],
+      parameters["current-snapshot-id"],
+      parameters["current-snapshot-timestamp-ms"],
+      parameters["current-snapshot-summary"],
+      parameters["snapshot-count"]
+    ]
+  }
+  
   open_table_format_input {
     iceberg_input {
       metadata_operation = "CREATE"
