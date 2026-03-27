@@ -6,13 +6,27 @@ on:
 
 jobs:
   # ──────────────────────────────────────────────────────────────
+  # Setup — single source of truth for the module list
+  # All matrix jobs read from here; add/rename modules in one place
+  # ──────────────────────────────────────────────────────────────
+  setup:
+    name: Setup matrix
+    runs-on: ubuntu-latest
+    outputs:
+      modules: ${{ steps.set-matrix.outputs.modules }}
+    steps:
+      - id: set-matrix
+        run: |
+          echo 'modules=["federated_logs_partition","federated_logs_role","federated_logs_setup_resource"]' >> $GITHUB_OUTPUT
+
+  # ──────────────────────────────────────────────────────────────
   # Job 1 — PR Title Lint
   # ──────────────────────────────────────────────────────────────
   lint-pr-title:
     name: Lint PR Title
     runs-on: ubuntu-latest
     steps:
-      - uses: amannn/action-semantic-pull-request@v5
+      - uses: amannn/action-semantic-pull-request@0723387faaf9b38adef4775cd42cfd5155ed6017 # v5.5.3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -28,25 +42,23 @@ jobs:
   # ──────────────────────────────────────────────────────────────
   terraform-validate:
     name: Terraform Validate — ${{ matrix.module }}
+    needs: setup
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        module:
-          - federated_logs_partition
-          - federated_logs_role
-          - federated_logs_setup_resource
+        module: ${{ fromJson(needs.setup.outputs.modules) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
           terraform_version: "~> 1.6"
 
       - name: Terraform Format Check
-        run: terraform fmt -check -recursive
+        run: terraform fmt -check
         working-directory: modules/${{ matrix.module }}
 
       - name: Terraform Init
@@ -62,22 +74,20 @@ jobs:
   # ──────────────────────────────────────────────────────────────
   tflint:
     name: TFLint — ${{ matrix.module }}
+    needs: setup
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        module:
-          - federated_logs_partition
-          - federated_logs_role
-          - federated_logs_setup_resource
+        module: ${{ fromJson(needs.setup.outputs.modules) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Setup TFLint
-        uses: terraform-linters/setup-tflint@v4
+        uses: terraform-linters/setup-tflint@90f302c255ef959cbfb4bd10581afecdb7ece3e6 # v4.1.1
         with:
-          tflint_version: latest
+          tflint_version: v0.54.0
 
       - name: Init TFLint (with AWS ruleset)
         run: tflint --init
@@ -96,20 +106,18 @@ jobs:
   # ──────────────────────────────────────────────────────────────
   terraform-test:
     name: Terraform Test — ${{ matrix.module }}
+    needs: setup
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        module:
-          - federated_logs_partition
-          - federated_logs_role
-          - federated_logs_setup_resource
+        module: ${{ fromJson(needs.setup.outputs.modules) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
           terraform_version: "~> 1.6"
 
@@ -129,10 +137,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Run Checkov
-        uses: bridgecrewio/checkov-action@v12
+        uses: bridgecrewio/checkov-action@99bb2caf247dfd9f03cf984373bc6043d4e32ebf # v12.1347.0
         with:
           directory: modules/
           framework: terraform
@@ -140,66 +148,41 @@ jobs:
 
   # ──────────────────────────────────────────────────────────────
   # Job 6 — Validate Commit Messages (conventional commits)
-  # Comments on the PR listing any non-conforming commits
+  # Fails the job and prints offending commits to the run log
   # ──────────────────────────────────────────────────────────────
   validate-commits:
     name: Validate Commit Messages
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
 
-      - name: Get commits
-        id: get-commits
+      - name: Check commit messages
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          base_sha=$(git merge-base ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }})
-          head_sha=${{ github.event.pull_request.head.sha }}
-
+          base_sha=$(git merge-base "$BASE_SHA" "$HEAD_SHA")
           invalid_commits=""
 
           while read -r commit; do
             commit_msg=$(git log -1 --format=%B "$commit")
             if ! echo "$commit_msg" | grep -qP '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z0-9-]+\))?: .+$'; then
-              commit_info="$(git log -1 --format='%H - %s' $commit)"
+              commit_info="$(git log -1 --format='%H - %s' "$commit")"
               invalid_commits="$invalid_commits\n- $commit_info"
             fi
-          done < <(git rev-list $base_sha..$head_sha)
+          done < <(git rev-list "$base_sha".."$HEAD_SHA")
 
-          if [ ! -z "$invalid_commits" ]; then
-            echo "invalid_commits<<EOF" >> $GITHUB_OUTPUT
-            echo -e "$invalid_commits" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-            echo "has_invalid=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_invalid=false" >> $GITHUB_OUTPUT
+          if [ -n "$invalid_commits" ]; then
+            echo "The following commits do not follow the Conventional Commits format:"
+            echo -e "$invalid_commits"
+            echo ""
+            echo "Required format: <type>[optional scope]: <description>"
+            echo "Valid types: build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test"
+            exit 1
           fi
-
-      - name: Comment on PR
-        if: steps.get-commits.outputs.has_invalid == 'true'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const invalidCommits = `${{ steps.get-commits.outputs.invalid_commits }}`;
-            const message = `### ❌ Invalid Conventional Commits Detected
-
-            The following commits do not follow the [Conventional Commits](https://www.conventionalcommits.org/) format:
-
-            ${invalidCommits}
-
-            Please update these commit messages to follow the format:
-            \`<type>[optional scope]: <description>\`
-
-            Valid types: \`build\`, \`chore\`, \`ci\`, \`docs\`, \`feat\`, \`fix\`, \`perf\`, \`refactor\`, \`revert\`, \`style\`, \`test\``;
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: message
-            });
-            core.setFailed('Some commits do not follow conventional commit format');
 
   # ──────────────────────────────────────────────────────────────
   # Job 7 — Spell Check
@@ -209,9 +192,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - uses: codespell-project/actions-codespell@master
+      - uses: codespell-project/actions-codespell@8f01853be192eb0f849a5c7d721450e7a467c579 # v2.2
         with:
           check_filenames: true
           check_hidden: true
