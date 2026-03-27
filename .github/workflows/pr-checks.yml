@@ -1,0 +1,220 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  # ──────────────────────────────────────────────────────────────
+  # Job 1 — PR Title Lint
+  # ──────────────────────────────────────────────────────────────
+  lint-pr-title:
+    name: Lint PR Title
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            chore
+            docs
+            refactor
+
+  # ──────────────────────────────────────────────────────────────
+  # Job 2 — Terraform Validate (matrix: one runner per module)
+  # ──────────────────────────────────────────────────────────────
+  terraform-validate:
+    name: Terraform Validate — ${{ matrix.module }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - federated_logs_partition
+          - federated_logs_role
+          - federated_logs_setup_resource
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.6"
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: modules/${{ matrix.module }}
+
+      - name: Terraform Init
+        run: terraform init -backend=false
+        working-directory: modules/${{ matrix.module }}
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: modules/${{ matrix.module }}
+
+  # ──────────────────────────────────────────────────────────────
+  # Job 3 — TFLint (matrix: one runner per module)
+  # ──────────────────────────────────────────────────────────────
+  tflint:
+    name: TFLint — ${{ matrix.module }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - federated_logs_partition
+          - federated_logs_role
+          - federated_logs_setup_resource
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      - name: Init TFLint (with AWS ruleset)
+        run: tflint --init
+        working-directory: modules/${{ matrix.module }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run TFLint
+        run: tflint --format compact
+        working-directory: modules/${{ matrix.module }}
+
+  # ──────────────────────────────────────────────────────────────
+  # Job 4 — Terraform Tests (matrix: one runner per module)
+  # Requires Terraform >= 1.6.0 for `terraform test`
+  # No AWS credentials needed — tests use mock_provider "aws"
+  # ──────────────────────────────────────────────────────────────
+  terraform-test:
+    name: Terraform Test — ${{ matrix.module }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - federated_logs_partition
+          - federated_logs_role
+          - federated_logs_setup_resource
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.6"
+
+      - name: Terraform Init
+        run: terraform init -backend=false
+        working-directory: modules/${{ matrix.module }}
+
+      - name: Terraform Test
+        run: terraform test
+        working-directory: modules/${{ matrix.module }}
+
+  # ──────────────────────────────────────────────────────────────
+  # Job 5 — Security Scan (single runner, entire repo)
+  # ──────────────────────────────────────────────────────────────
+
+  security-scan:
+  name: Security Scan (Checkov)
+  runs-on: ubuntu-latest
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Run Checkov
+      uses: bridgecrewio/checkov-action@v12
+      with:
+        directory: modules/
+        framework: terraform
+        soft_fail: false
+
+  # ──────────────────────────────────────────────────────────────
+  # Job 6 — Validate Commit Messages (conventional commits)
+  # Comments on the PR listing any non-conforming commits
+  # ──────────────────────────────────────────────────────────────
+  validate-commits:
+    name: Validate Commit Messages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get commits
+        id: get-commits
+        run: |
+          base_sha=$(git merge-base ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }})
+          head_sha=${{ github.event.pull_request.head.sha }}
+
+          invalid_commits=""
+
+          while read -r commit; do
+            commit_msg=$(git log -1 --format=%B "$commit")
+            if ! echo "$commit_msg" | grep -qP '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z0-9-]+\))?: .+$'; then
+              commit_info="$(git log -1 --format='%H - %s' $commit)"
+              invalid_commits="$invalid_commits\n- $commit_info"
+            fi
+          done < <(git rev-list $base_sha..$head_sha)
+
+          if [ ! -z "$invalid_commits" ]; then
+            echo "invalid_commits<<EOF" >> $GITHUB_OUTPUT
+            echo -e "$invalid_commits" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "has_invalid=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_invalid=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment on PR
+        if: steps.get-commits.outputs.has_invalid == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const invalidCommits = `${{ steps.get-commits.outputs.invalid_commits }}`;
+            const message = `### ❌ Invalid Conventional Commits Detected
+
+            The following commits do not follow the [Conventional Commits](https://www.conventionalcommits.org/) format:
+
+            ${invalidCommits}
+
+            Please update these commit messages to follow the format:
+            \`<type>[optional scope]: <description>\`
+
+            Valid types: \`build\`, \`chore\`, \`ci\`, \`docs\`, \`feat\`, \`fix\`, \`perf\`, \`refactor\`, \`revert\`, \`style\`, \`test\``;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
+            core.setFailed('Some commits do not follow conventional commit format');
+
+
+  # ──────────────────────────────────────────────────────────────
+  # Job 7 — Spell Check
+  # ──────────────────────────────────────────────────────────────
+  codespell:
+    name: Check spelling
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: codespell-project/actions-codespell@master
+        with:
+          check_filenames: true
+          check_hidden: true
+          skip: ./.git
+          ignore_words_list: enver,NotIn,aks,commitish
