@@ -95,7 +95,7 @@ resource "null_resource" "compaction_configuration" {
         --table-name ${each.key} \
         --table-optimizer-configuration "$CONFIG" \
         --type compaction \
-        --region ${data.aws_region.current.name}
+        --region ${data.aws_region.current.id}
       echo "Compaction configured for ${each.key}."
     EOT
   }
