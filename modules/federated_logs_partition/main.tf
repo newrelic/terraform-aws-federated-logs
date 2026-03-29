@@ -9,15 +9,6 @@ resource "aws_glue_catalog_table" "iceberg_table" {
 
   name          = each.key
   database_name = var.glue_catalog_db_name
-  table_type    = "EXTERNAL_TABLE"
-
-  parameters = local.resolved_table_params[each.key]
-
-  open_table_format_input {
-    iceberg_input {
-      metadata_operation = "CREATE"
-    }
-  }
 
   lifecycle {
     ignore_changes = [
@@ -31,43 +22,70 @@ resource "aws_glue_catalog_table" "iceberg_table" {
     ]
   }
 
-  storage_descriptor {
-    # Partitions data by table name: s3://my-bucket/Log/ or s3://my-bucket/Security/
-    location = "s3://${var.s3_bucket_name}/${var.glue_catalog_db_name}/${each.key}"
-    columns {
-      name = "logtype"
-      type = "string"
-      parameters = {
-        "iceberg.field.current"  = "true"
-        "iceberg.field.id"       = "1"
-        "iceberg.field.optional" = "true"
-      }
-    }
-    columns {
-      name = "message"
-      type = "string"
-      parameters = {
-        "iceberg.field.current"  = "true"
-        "iceberg.field.id"       = "2"
-        "iceberg.field.optional" = "true"
-      }
-    }
-    columns {
-      name = "timestamp"
-      type = "timestamp"
-      parameters = {
-        "iceberg.field.current"  = "true"
-        "iceberg.field.id"       = "3"
-        "iceberg.field.optional" = "false"
-      }
-    }
-    columns {
-      name = "guid"
-      type = "string"
-      parameters = {
-        "iceberg.field.current"  = "true"
-        "iceberg.field.id"       = "4"
-        "iceberg.field.optional" = "true"
+  open_table_format_input {
+    iceberg_input {
+      metadata_operation = "CREATE"
+      version            = 2
+
+      iceberg_table_input {
+        location = "s3://${var.s3_bucket_name}/${var.glue_catalog_db_name}/${each.key}/"
+
+        properties = local.resolved_table_params[each.key]
+
+        schema {
+          schema_id = 0
+          type      = "struct"
+
+          fields {
+            id       = 1
+            name     = "logtype"
+            required = false
+            type     = <<EOF
+"string"
+EOF
+          }
+          fields {
+            id       = 2
+            name     = "message"
+            required = false
+            type     = <<EOF
+"string"
+EOF
+          }
+          fields {
+            id       = 3
+            name     = "timestamp"
+            required = true
+            type     = <<EOF
+"timestamp"
+EOF
+          }
+          fields {
+            id       = 4
+            name     = "guid"
+            required = false
+            type     = <<EOF
+"string"
+EOF
+          }
+          fields {
+            id       = 5
+            name     = "messageId"
+            required = true
+            type     = <<EOF
+"string"
+EOF
+          }
+        }
+
+        partition_spec {
+          fields {
+            name      = "timestamp_hour"
+            source_id = 3
+            transform = "hour"
+          }
+          spec_id = 0
+        }
       }
     }
   }
