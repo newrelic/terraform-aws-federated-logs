@@ -54,18 +54,3 @@ resource "aws_glue_catalog_table_optimizer" "orphan_deletion" {
     }
   }
 }
-
-resource "aws_cloudwatch_log_group" "iceberg_compaction_logs" {
-  name              = "/aws-glue/iceberg-compaction/logs"
-  retention_in_days = 7
-}
-
-resource "aws_cloudwatch_log_group" "iceberg_retention_logs" {
-  name              = "/aws-glue/iceberg-retention/logs"
-  retention_in_days = 7
-}
-
-resource "aws_cloudwatch_log_group" "iceberg_orphan_file_deletion_logs" {
-  name              = "/aws-glue/iceberg-orphan-file-deletion/logs"
-  retention_in_days = 7
-}
