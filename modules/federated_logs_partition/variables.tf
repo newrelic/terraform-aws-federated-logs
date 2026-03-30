@@ -82,3 +82,8 @@ variable "setup_name" {
     error_message = "The setup_name must be all lowercase and alphanumeric, can contain hyphens but not as the first or last character, and must be between 3 and 35 characters long."
   }
 }
+
+variable "nr_account_id" {
+  description = "New Relic account ID"
+  type        = string
+}

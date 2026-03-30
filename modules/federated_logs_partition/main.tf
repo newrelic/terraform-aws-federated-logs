@@ -10,7 +10,7 @@ resource "newrelic_federated_logs_partition" "this" {
   partition_database = var.glue_catalog_db_name
   partition_table    = each.key
   data_location_uri  = "s3://${var.s3_bucket_name}/${var.glue_catalog_db_name}/${each.key}"
-  nr_account_id      = "12210474"
+  nr_account_id      = var.nr_account_id
   status             = "CREATING"
 
   depends_on = [aws_glue_catalog_table.iceberg_table, aws_s3_object.folder]

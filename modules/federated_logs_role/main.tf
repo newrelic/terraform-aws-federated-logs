@@ -257,7 +257,7 @@ resource "newrelic_federated_logs_setup" "this" {
   data_location_bucket          = var.s3_bucket_name
   data_processing_connection_id = newrelic_aws_connection.writer.id
   query_connection_id           = newrelic_aws_connection.query.id
-  nr_account_id                 = "12210474"
+  nr_account_id                 = var.nr_account_id
   nr_region                     = "US_STAGING"
   status                        = "CREATING"
   description                   = "Federated logs setup for ${var.setup_name}"
