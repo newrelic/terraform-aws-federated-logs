@@ -1,3 +1,21 @@
+// Hardcoded scope for now , as the entities are moved to account scope. PR is yet to be merged
+resource "newrelic_federated_logs_partition" "this" {
+  for_each = local.all_tables
+
+  scope_id           = "7d17d19f-637d-4bcb-8c94-8473c334b3ec"
+  scope_type         = "ORGANIZATION"
+  setup_id           = var.federated_logs_setup_id
+  name               = "Log_Partition-${each.key}"
+  is_default         = is_default = each.key == substr(replace(lower("${local.setup_naming_prefix}_${local.default_partition_name}"), "/[^a-z0-9_]/", "_"), 0, local.max_table_name_length)
+  partition_database = var.glue_catalog_db_name
+  partition_table    = each.key
+  data_location_uri  = "s3://${var.s3_bucket_name}/${var.glue_catalog_db_name}/${each.key}"
+  nr_account_id      = var.nr_account_id
+  status             = "CREATING"
+
+  depends_on = [aws_glue_catalog_table.iceberg_table, aws_s3_object.folder]
+}
+
 resource "aws_s3_object" "folder" {
   for_each = local.all_tables
   bucket   = var.s3_bucket_name

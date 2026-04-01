@@ -225,3 +225,41 @@ resource "aws_iam_role_policy_attachment" "writer_attach" {
   policy_arn = aws_iam_policy.writer_policy.arn
 }
 
+
+// Hardcoded the org scope as the entites are moved to account scope . PR is yet to be merded
+resource "newrelic_aws_connection" "query" {
+  name        = "${local.setup_naming_prefix}-query"
+  description = "AWS connection for New Relic query engine to read federated logs for ${var.setup_name}"
+  role_arn    = aws_iam_role.reader-role.arn
+  enabled     = true
+  external_id = random_uuid.external_id.result
+  scope_id    = "7d17d19f-637d-4bcb-8c94-8473c334b3ec"
+  scope_type  = "ORGANIZATION"
+}
+
+resource "newrelic_aws_connection" "writer" {
+  name        = "${local.setup_naming_prefix}-processing"
+  description = "AWS connection for PCG data processing to write federated logs for ${var.setup_name}"
+  role_arn    = aws_iam_role.pcg-writer-role.arn
+  enabled     = true
+  external_id = random_uuid.external_id.result
+  scope_id    = "7d17d19f-637d-4bcb-8c94-8473c334b3ec"
+  scope_type  = "ORGANIZATION"
+}
+
+
+resource "newrelic_federated_logs_setup" "this" {
+  scope_id                      = "7d17d19f-637d-4bcb-8c94-8473c334b3ec"
+  scope_type                    = "ORGANIZATION"
+  name                          = local.setup_naming_prefix
+  cloud_provider                = "AWS"
+  cloud_provider_region         = data.aws_region.current.name
+  data_location_bucket          = var.s3_bucket_name
+  data_processing_connection_id = newrelic_aws_connection.writer.id
+  query_connection_id           = newrelic_aws_connection.query.id
+  nr_account_id                 = var.nr_account_id
+  nr_region                     = "US_STAGING"
+  status                        = "CREATING"
+  description                   = "Federated logs setup for ${var.setup_name}"
+  # data_processing_component_id = "optional-component-id"
+}

@@ -9,6 +9,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.0"
     }
+    newrelic = {
+      source  = "newrelic/newrelic"
+      version = "3.82.0"
+    }
   }
 }
 

@@ -22,7 +22,26 @@ provider "aws" {
 }
 ```
 
-### 2. Initialize Terraform
+### 2. Configure the New Relic provider
+
+Add the New Relic provider to your `providers.tf`:
+
+```hcl
+terraform {
+  required_providers {
+    newrelic = {
+      source  = "newrelic/newrelic"
+      version = "3.82.0"
+    }
+  }
+}
+
+provider "newrelic" {
+  # Configuration options
+}
+```
+
+### 3. Initialize Terraform
 
 ```sh
 terraform init
@@ -47,6 +66,7 @@ module "federated_logs_role" {
   setup_name           = module.federated_logs_setup_resource.setup_name
   s3_bucket_name       = module.federated_logs_setup_resource.s3_bucket_name
   glue_catalog_db_name = module.federated_logs_setup_resource.glue_catalog_db_name
+  nr_account_id        = "YOUR_NEW_RELIC_ACCOUNT_ID"
   clusters             = {
     "cluster-1" = {
             k8s_namespace            = "federated-logs"
@@ -57,11 +77,13 @@ module "federated_logs_role" {
 }
 
 module "federated_logs_partition" {
-  source                = "./modules/federated_logs_partition"
-  setup_name            = module.federated_logs_setup_resource.setup_name
-  s3_bucket_name        = module.federated_logs_setup_resource.s3_bucket_name
-  glue_catalog_db_name  = module.federated_logs_setup_resource.glue_catalog_db_name
-  glue_service_role_arn = module.federated_logs_role.glue_service_role_arn
+  source                  = "./modules/federated_logs_partition"
+  setup_name              = module.federated_logs_setup_resource.setup_name
+  s3_bucket_name          = module.federated_logs_setup_resource.s3_bucket_name
+  glue_catalog_db_name    = module.federated_logs_setup_resource.glue_catalog_db_name
+  glue_service_role_arn   = module.federated_logs_role.glue_service_role_arn
+  federated_logs_setup_id = module.federated_logs_role.federated_logs_setup_id
+  nr_account_id           = "YOUR_NEW_RELIC_ACCOUNT_ID"
 
   # Optional: override default Iceberg table parameters
   default_table_setting = {
@@ -100,7 +122,7 @@ module "federated_logs_partition" {
 }
 ```
 
-### 3. Plan and apply
+### 4. Plan and apply
 
 ```sh
 terraform plan

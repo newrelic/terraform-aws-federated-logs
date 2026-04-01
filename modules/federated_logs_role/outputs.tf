@@ -12,3 +12,8 @@ output "nr_reader_role_arn" {
   description = "ARN of the IAM role for New Relic to query federated logs"
   value       = aws_iam_role.reader-role.arn
 }
+
+output "federated_logs_setup_id" {
+  description = "ID of the New Relic federated logs setup"
+  value       = newrelic_federated_logs_setup.this.id
+}

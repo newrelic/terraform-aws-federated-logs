@@ -32,3 +32,8 @@ variable "setup_name" {
   }
 }
 
+variable "nr_account_id" {
+  description = "New Relic account ID"
+  type        = string
+}
+
