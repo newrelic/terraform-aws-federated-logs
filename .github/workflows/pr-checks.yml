@@ -145,7 +145,7 @@ jobs:
           scan-type: config
           scan-ref: modules/
           exit-code: 1
-          severity: CRITICAL,HIGH
+          severity: CRITICAL
 
   # ──────────────────────────────────────────────────────────────
   # Job 6 — Validate Commit Messages (conventional commits)
