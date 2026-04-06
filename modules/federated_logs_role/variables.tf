@@ -13,8 +13,8 @@ variable "base_role_arn" {
   type        = string
 }
 
-variable "base_role_name" {
-  description = "Name of the base IAM role from the data_processing module. Used to attach an inline assume-role policy."
+variable "pcg_instance_id" {
+  description = "PCG instance identifier from the data_processing module. Used as the ABAC tag value on the pcg-writer-role."
   type        = string
 }
 

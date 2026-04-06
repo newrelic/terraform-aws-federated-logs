@@ -5,14 +5,18 @@
 # injects an OIDC web-identity token; the AWS SDK exchanges it for temporary
 # credentials tied to this role.
 #
-# This role has no inline permissions.  Each setup module (federated_logs_role)
-# attaches an inline policy granting sts:AssumeRole on its own target role.
+# Tagged with PCG_Instance = var.name.  An ABAC wildcard policy allows this
+# role to assume any target setup role whose PCG_Instance tag matches.
 # =============================================================================
 
 resource "aws_iam_role" "base_role" {
   name                 = "${local.naming_prefix}-base"
   description          = "Base IRSA role for PCG data processing — can only assume target setup roles."
   permissions_boundary = ""
+
+  tags = {
+    PCG_Instance = var.name
+  }
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -27,6 +31,30 @@ resource "aws_iam_role" "base_role" {
           StringEquals = {
             "${replace(config.oidc_provider_arn, "/^arn:aws:iam::.*:oidc-provider//", "")}:sub" = "system:serviceaccount:${config.k8s_namespace}:${config.k8s_service_account_name}"
             "${replace(config.oidc_provider_arn, "/^arn:aws:iam::.*:oidc-provider//", "")}:aud" = "sts.amazonaws.com"
+          }
+        }
+      }
+    ]
+  })
+}
+
+# ABAC policy — one wildcard rule covers all current and future setup roles.
+# Only roles tagged with a matching PCG_Instance value can be assumed.
+resource "aws_iam_role_policy" "abac_assume_setup_roles" {
+  name = "${local.naming_prefix}-assume-setup-roles"
+  role = aws_iam_role.base_role.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "AssumeMatchingSetupRoles"
+        Effect   = "Allow"
+        Action   = "sts:AssumeRole"
+        Resource = "arn:aws:iam::*:role/newrelic-fed-logs-*-pcg-writer"
+        Condition = {
+          StringEquals = {
+            "aws:ResourceTag/PCG_Instance" = "$${aws:PrincipalTag/PCG_Instance}"
           }
         }
       }

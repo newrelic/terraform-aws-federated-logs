@@ -155,7 +155,9 @@ resource "aws_iam_policy" "reader_policy" {
 # =============================================================================
 # PCG Writer Role (Target Setup Role)
 #
-# Trust: only the base role (fetched from NerdGraph) can assume this role.
+# Trust: only the base role can assume this role, verified by:
+#   1. Principal ARN — only the specific base role can call AssumeRole
+#   2. ABAC tag — the caller's PCG_Instance tag must match this role's tag
 # Policy: scoped to this setup's specific S3 bucket + Glue database.
 # =============================================================================
 
@@ -163,6 +165,10 @@ resource "aws_iam_role" "pcg-writer-role" {
   name                 = "${local.setup_naming_prefix}-pcg-writer"
   description          = "Target setup role for PCG — scoped to this setup's S3 bucket and Glue DB. Trusted by the base role only."
   permissions_boundary = ""
+
+  tags = {
+    PCG_Instance = var.pcg_instance_id
+  }
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -172,6 +178,11 @@ resource "aws_iam_role" "pcg-writer-role" {
         Action = "sts:AssumeRole"
         Principal = {
           AWS = var.base_role_arn
+        }
+        Condition = {
+          StringEquals = {
+            "aws:PrincipalTag/PCG_Instance" = var.pcg_instance_id
+          }
         }
       }
     ]
@@ -233,30 +244,5 @@ resource "aws_iam_role_policy_attachment" "reader_attach" {
 resource "aws_iam_role_policy_attachment" "writer_attach" {
   role       = aws_iam_role.pcg-writer-role.name
   policy_arn = aws_iam_policy.writer_policy.arn
-}
-
-# =============================================================================
-# Self-Attach: grant the base role permission to assume this setup's writer role
-#
-# Each setup module adds its own inline policy to the base role, avoiding any
-# circular dependency.  The policy name is scoped to this setup_name so
-# multiple setups can coexist on the same base role.
-# =============================================================================
-
-resource "aws_iam_role_policy" "base_role_assume_writer" {
-  name = "${local.setup_naming_prefix}-assume-writer"
-  role = var.base_role_name
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid      = "AssumeTargetSetupRole"
-        Effect   = "Allow"
-        Action   = "sts:AssumeRole"
-        Resource = aws_iam_role.pcg-writer-role.arn
-      }
-    ]
-  })
 }
 

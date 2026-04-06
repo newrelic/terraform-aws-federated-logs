@@ -22,6 +22,7 @@ data "http" "data_processing_entity" {
           entity(guid: "${var.data_processing_entity_id}") {
             ... on FederatedLogsDataProcessingEntity {
               baseRoleArn
+              name
             }
           }
         }
@@ -40,7 +41,7 @@ data "http" "data_processing_entity" {
 locals {
   entity_response = jsondecode(data.http.data_processing_entity.response_body)
   base_role_arn   = local.entity_response.data.actor.entity.baseRoleArn
-  base_role_name  = element(split("/", local.base_role_arn), length(split("/", local.base_role_arn)) - 1)
+  pcg_instance_id = local.entity_response.data.actor.entity.name
 }
 
 # =============================================================================
@@ -62,7 +63,7 @@ module "role" {
   s3_bucket_name       = module.setup.s3_bucket_name
   glue_catalog_db_name = module.setup.glue_catalog_db_name
   base_role_arn        = local.base_role_arn
-  base_role_name       = local.base_role_name
+  pcg_instance_id      = local.pcg_instance_id
 }
 
 module "partition" {
