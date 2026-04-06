@@ -103,3 +103,47 @@ provider "aws" {
 ```
 
 All resources will be created in the region configured in your provider.
+
+### 4. Validate the pipeline (optional)
+
+Add the validation module to verify that AWS resources are accessible and (optionally) that logs flow end-to-end through New Relic.
+
+```hcl
+module "federated_logs_validation" {
+  source               = "./modules/federated_logs_validation"
+  s3_bucket_name       = module.federated_logs_setup_resource.s3_bucket_name
+  glue_catalog_db_name = module.federated_logs_setup_resource.glue_catalog_db_name
+  newrelic_account_id  = 12345
+  newrelic_user_api_key = var.newrelic_user_api_key
+
+  # Layer 1 (AWS resource checks) runs automatically on every plan/apply.
+  # Layer 2 (end-to-end ingest + query) runs only when you opt in:
+  run_validation    = var.run_validation      # default false
+  validation_run_id = var.validation_run_id   # change to force re-run
+}
+```
+
+**Layer 1 — AWS checks** run automatically on every `terraform plan/apply`. No extra connectivity needed.
+
+**Layer 2 — End-to-end validation** (ingest a test log to S3 → poll New Relic) runs only when triggered:
+
+```sh
+terraform apply \
+  -var="run_validation=true" \
+  -var="validation_run_id=$(date +%s)" \
+  -var="newrelic_user_api_key=$NR_USER_API_KEY"
+```
+
+> **Prerequisites for Layer 2:** The environment where Terraform runs must have
+> network access to both AWS S3 and the New Relic NerdGraph API, plus `aws`,
+> `curl`, and `jq` in `$PATH`.
+
+The script can also be run standalone without Terraform:
+
+```sh
+S3_BUCKET="newrelic-fed-logs-mysetup" \
+GLUE_DB_NAME="newrelic_fed_logs_mysetup" \
+NR_ACCOUNT_ID="12345" \
+NR_USER_API_KEY="NRAK-xxx" \
+  ./modules/federated_logs_validation/scripts/validate_e2e.sh
+```
