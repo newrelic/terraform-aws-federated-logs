@@ -26,6 +26,10 @@ variable "clusters" {
 #     number_of_snapshots_to_retain        = 2
 #     clean_expired_files                  = false
 #     run_rate_in_hours                    = 24
+#   compaction:
+#     strategy                             = "binpack"
+#     min_input_files                      = 5
+#     delete_file_threshold                = 1
 #──────────────────────────────────────────────────────────────
 
 variable "default_table_setting" {
@@ -42,6 +46,11 @@ variable "default_table_setting" {
         number_of_snapshots_to_retain    = optional(number, 2)
         clean_expired_files              = optional(bool, false)
         run_rate_in_hours                = optional(number, 24)
+      }), {})
+      compaction = optional(object({
+        strategy              = optional(string, "binpack")
+        min_input_files       = optional(number, 5)
+        delete_file_threshold = optional(number, 1)
       }), {})
     }), {})
   })
@@ -62,6 +71,11 @@ variable "partition_tables" {
         number_of_snapshots_to_retain    = optional(number, 2)
         clean_expired_files              = optional(bool, false)
         run_rate_in_hours                = optional(number, 24)
+      }), {})
+      compaction = optional(object({
+        strategy              = optional(string, "binpack")
+        min_input_files       = optional(number, 5)
+        delete_file_threshold = optional(number, 1)
       }), {})
     }), {})
   }))

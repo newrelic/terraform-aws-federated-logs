@@ -23,6 +23,10 @@ variable "glue_service_role_arn" {
 #     number_of_snapshots_to_retain        = 2
 #     clean_expired_files                  = false
 #     run_rate_in_hours                    = 24
+#   compaction:
+#     strategy                             = "binpack"
+#     min_input_files                      = 5
+#     delete_file_threshold                = 1
 #──────────────────────────────────────────────────────────────
 
 variable "default_table_setting" {
@@ -36,16 +40,18 @@ variable "default_table_setting" {
       }), {})
       snapshot_retention = optional(object({
         snapshot_retention_period_in_days = optional(number, 5)
-        number_of_snapshots_to_retain    = optional(number, 2)
-        clean_expired_files              = optional(bool, false)
-        run_rate_in_hours                = optional(number, 24)
+        number_of_snapshots_to_retain     = optional(number, 2)
+        clean_expired_files               = optional(bool, false)
+        run_rate_in_hours                 = optional(number, 24)
       }), {})
+
       compaction = optional(object({
         strategy              = optional(string, "binpack")
         min_input_files       = optional(number, 5)
         delete_file_threshold = optional(number, 1)
       }), {})
-    }), {})
+
+      }), {})
   })
   default = {}
 }
@@ -61,9 +67,9 @@ variable "partition_tables" {
       }), {})
       snapshot_retention = optional(object({
         snapshot_retention_period_in_days = optional(number, 5)
-        number_of_snapshots_to_retain    = optional(number, 2)
-        clean_expired_files              = optional(bool, false)
-        run_rate_in_hours                = optional(number, 24)
+        number_of_snapshots_to_retain     = optional(number, 2)
+        clean_expired_files               = optional(bool, false)
+        run_rate_in_hours                 = optional(number, 24)
       }), {})
       compaction = optional(object({
         strategy              = optional(string, "binpack")

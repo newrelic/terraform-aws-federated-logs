@@ -28,6 +28,11 @@ module "federated_logs" {
         clean_expired_files               = true
         run_rate_in_hours                 = 3
       }
+      compaction = {
+        strategy              = "binpack"
+        min_input_files       = 5
+        delete_file_threshold = 1
+      }
     }
   }
 
@@ -44,6 +49,11 @@ module "federated_logs" {
           number_of_snapshots_to_retain     = 2
           clean_expired_files               = false
           run_rate_in_hours                 = 24
+        }
+        compaction = {
+          strategy              = "binpack"
+          min_input_files       = 10
+          delete_file_threshold = 2
         }
       }
     },
