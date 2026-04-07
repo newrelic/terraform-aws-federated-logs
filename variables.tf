@@ -1,16 +1,19 @@
-variable "s3_bucket_name" {
-  description = "Name of the S3 bucket for table data"
+variable "setup_name" {
+  description = "A name for this federated logs setup, also used in resource naming."
   type        = string
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9-]{1,24}[a-z0-9]$", var.setup_name))
+    error_message = "The setup_name must be all lowercase and alphanumeric, can contain hyphens but not as the first or last character, and must be between 3 and 26 characters long."
+  }
 }
 
-variable "glue_catalog_db_name" {
-  description = "Name of the Glue catalog database"
-  type        = string
-}
-
-variable "glue_service_role_arn" {
-  description = "ARN of the Glue service role for table maintenance"
-  type        = string
+variable "clusters" {
+  description = "Map of cluster configurations for PCG writer role authentication"
+  type = map(object({
+    k8s_namespace            = string
+    k8s_service_account_name = string
+    oidc_provider_arn        = string
+  }))
 }
 
 #──────────────────────────────────────────────────────────────
@@ -30,7 +33,7 @@ variable "glue_service_role_arn" {
 #──────────────────────────────────────────────────────────────
 
 variable "default_table_setting" {
-  description = "Settings for the primary 'Log' table"
+  description = "Settings for the primary federated log table, including Iceberg table parameters and optimizer configuration"
   type = object({
     table_parameters = optional(map(string), {})
     optimizer_configuration = optional(object({
@@ -40,24 +43,22 @@ variable "default_table_setting" {
       }), {})
       snapshot_retention = optional(object({
         snapshot_retention_period_in_days = optional(number, 5)
-        number_of_snapshots_to_retain     = optional(number, 2)
-        clean_expired_files               = optional(bool, false)
-        run_rate_in_hours                 = optional(number, 24)
+        number_of_snapshots_to_retain    = optional(number, 2)
+        clean_expired_files              = optional(bool, false)
+        run_rate_in_hours                = optional(number, 24)
       }), {})
-
       compaction = optional(object({
         strategy              = optional(string, "binpack")
         min_input_files       = optional(number, 5)
         delete_file_threshold = optional(number, 1)
       }), {})
-
-      }), {})
+    }), {})
   })
   default = {}
 }
 
 variable "partition_tables" {
-  description = "Map of extra tables using the exact same structure as the default"
+  description = "Map of additional partition tables. Each entry can override table_parameters and/or optimizer_configuration, or use {} for all defaults."
   type = map(object({
     table_parameters = optional(map(string), {})
     optimizer_configuration = optional(object({
@@ -67,30 +68,16 @@ variable "partition_tables" {
       }), {})
       snapshot_retention = optional(object({
         snapshot_retention_period_in_days = optional(number, 5)
-        number_of_snapshots_to_retain     = optional(number, 2)
-        clean_expired_files               = optional(bool, false)
-        run_rate_in_hours                 = optional(number, 24)
+        number_of_snapshots_to_retain    = optional(number, 2)
+        clean_expired_files              = optional(bool, false)
+        run_rate_in_hours                = optional(number, 24)
       }), {})
       compaction = optional(object({
         strategy              = optional(string, "binpack")
         min_input_files       = optional(number, 5)
         delete_file_threshold = optional(number, 1)
       }), {})
-      }), {})
+    }), {})
   }))
   default = {}
-
-  validation {
-    condition     = !contains([for k in keys(var.partition_tables) : lower(k)], "log_federated")
-    error_message = "The table name 'Log_Federated' (case-insensitive) is reserved for the default table. Use default_table_setting to configure it."
-  }
-}
-
-variable "setup_name" {
-  description = "A name for this federated logs setup, also used in resource naming."
-  type        = string
-  validation {
-    condition     = can(regex("^[a-z0-9][a-z0-9-]{1,24}[a-z0-9]$", var.setup_name))
-    error_message = "The setup_name must be all lowercase and alphanumeric, can contain hyphens but not as the first or last character, and must be between 3 and 26 characters long."
-  }
 }

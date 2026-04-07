@@ -1,0 +1,18 @@
+# Terraform state
+*.tfstate
+*.tfstate.backup
+*.tfstate.*.backup
+
+# Terraform working directory
+.terraform/
+.terraform.lock.hcl
+
+# Variable values (may contain secrets)
+terraform.tfvars
+
+# Plan outputs
+tfplan.txt
+*.tfplan
+
+# OS files
+.DS_Store

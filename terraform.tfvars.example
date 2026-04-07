@@ -1,0 +1,22 @@
+setup_name = "my-app-logs"
+
+clusters = {
+  "prod-cluster" = {
+    k8s_namespace            = "federated-logs"
+    k8s_service_account_name = "pcg-writer-sa"
+    oidc_provider_arn        = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/EXAMPLE"
+  }
+}
+
+# Optional: override default table settings
+# default_table_setting = {
+#   table_parameters = {
+#     "write.target-file-size-bytes" = "26214400"
+#   }
+# }
+
+# Optional: additional partition tables
+# partition_tables = {
+#   "application_log" = {}
+#   "security_log"    = {}
+# }
