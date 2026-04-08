@@ -9,17 +9,38 @@ variable "glue_catalog_db_name" {
 }
 
 variable "clusters" {
-  description = "A map of cluster configurations for federated logging"
+  description = "A map of cluster configurations for federated logging. Set auth_mode to 'irsa' (default) or 'pod_identity'. NOTE: 'pod_identity' requires the 'eks-pod-identity-agent' addon to be installed on each cluster — manage that in your EKS cluster module."
   type = map(object({
+    auth_mode                = optional(string, "irsa") # "irsa" or "pod_identity"
     k8s_namespace            = string
     k8s_service_account_name = string
-    oidc_provider_arn        = string
+    oidc_provider_arn        = optional(string) # Required when auth_mode = "irsa"
+    cluster_name             = optional(string) # Required when auth_mode = "pod_identity"
   }))
 
-  # Validation: Ensure names aren't empty
   validation {
-    condition     = alltrue([for c in var.clusters : length(c.k8s_namespace) > 0 && length(c.k8s_service_account_name) > 0 && length(c.oidc_provider_arn) > 0])
-    error_message = "All fields (k8s_namespace, k8s_service_account_name, oidc_provider_arn) must be non-empty for each cluster."
+    condition     = alltrue([for c in var.clusters : length(c.k8s_namespace) > 0 && length(c.k8s_service_account_name) > 0])
+    error_message = "k8s_namespace and k8s_service_account_name must be non-empty for each cluster."
+  }
+
+  validation {
+    condition     = alltrue([for c in var.clusters : contains(["irsa", "pod_identity"], c.auth_mode)])
+    error_message = "auth_mode must be either 'irsa' or 'pod_identity'."
+  }
+
+  validation {
+    condition     = length(distinct([for c in var.clusters : c.auth_mode])) <= 1
+    error_message = "All clusters must use the same auth_mode. Mixing 'irsa' and 'pod_identity' is not supported."
+  }
+
+  validation {
+    condition     = alltrue([for c in var.clusters : c.auth_mode != "irsa" || (c.oidc_provider_arn != null && length(c.oidc_provider_arn) > 0)])
+    error_message = "oidc_provider_arn must be set for clusters using auth_mode = 'irsa'."
+  }
+
+  validation {
+    condition     = alltrue([for c in var.clusters : c.auth_mode != "pod_identity" || (c.cluster_name != null && length(c.cluster_name) > 0)])
+    error_message = "cluster_name must be set for clusters using auth_mode = 'pod_identity'."
   }
 }
 
