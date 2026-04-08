@@ -11,9 +11,8 @@ resource "random_uuid" "external_id" {
 }
 
 resource "aws_iam_role" "glue_service_role" {
-  name                 = "${local.setup_naming_prefix}-glue-service"
-  permissions_boundary = ""
-  description          = "Role for Glue Service to access S3 and manage its own resources"
+  name        = "${local.setup_naming_prefix}-glue-service"
+  description = "Role for Glue Service to access S3 and manage its own resources"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -146,9 +145,8 @@ resource "aws_iam_policy" "reader_policy" {
 }
 
 resource "aws_iam_role" "pcg-writer-role" {
-  name                 = "${local.setup_naming_prefix}-pcg-writer"
-  description          = "IAM Role for Iceberg metadata writer with Glue and S3 access"
-  permissions_boundary = ""
+  name        = "${local.setup_naming_prefix}-pcg-writer"
+  description = "IAM Role for Iceberg metadata writer with Glue and S3 access"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

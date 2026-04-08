@@ -6,21 +6,22 @@ on:
 
 jobs:
   # ──────────────────────────────────────────────────────────────
-  # Setup — single source of truth for the module list
-  # All matrix jobs read from here; add/rename modules in one place
+  # Setup
   # ──────────────────────────────────────────────────────────────
   setup:
     name: Setup matrix
     runs-on: ubuntu-latest
     outputs:
       modules: ${{ steps.set-matrix.outputs.modules }}
+      paths: ${{ steps.set-matrix.outputs.paths }}
     steps:
       - id: set-matrix
         run: |
           echo 'modules=["federated_logs_partition","federated_logs_role","federated_logs_setup_resource"]' >> $GITHUB_OUTPUT
+          echo 'paths=[{"name":"root","path":"."},{"name":"examples-complete","path":"examples/complete"},{"name":"federated_logs_partition","path":"modules/federated_logs_partition"},{"name":"federated_logs_role","path":"modules/federated_logs_role"},{"name":"federated_logs_setup_resource","path":"modules/federated_logs_setup_resource"}]' >> $GITHUB_OUTPUT
 
   # ──────────────────────────────────────────────────────────────
-  # Job 1 — PR Title Lint
+  # PR Title Lint
   # ──────────────────────────────────────────────────────────────
   lint-pr-title:
     name: Lint PR Title
@@ -38,16 +39,16 @@ jobs:
             refactor
 
   # ──────────────────────────────────────────────────────────────
-  # Job 2 — Terraform Validate (matrix: one runner per module)
+  # Terraform Validate
   # ──────────────────────────────────────────────────────────────
   terraform-validate:
-    name: Terraform Validate — ${{ matrix.module }}
+    name: Terraform Validate — ${{ matrix.path.name }}
     needs: setup
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        module: ${{ fromJson(needs.setup.outputs.modules) }}
+        path: ${{ fromJson(needs.setup.outputs.paths) }}
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -59,27 +60,27 @@ jobs:
 
       - name: Terraform Format Check
         run: terraform fmt -check
-        working-directory: modules/${{ matrix.module }}
+        working-directory: ${{ matrix.path.path }}
 
       - name: Terraform Init
         run: terraform init -backend=false
-        working-directory: modules/${{ matrix.module }}
+        working-directory: ${{ matrix.path.path }}
 
       - name: Terraform Validate
         run: terraform validate
-        working-directory: modules/${{ matrix.module }}
+        working-directory: ${{ matrix.path.path }}
 
   # ──────────────────────────────────────────────────────────────
-  # Job 3 — TFLint (matrix: one runner per module)
+  # TFLint
   # ──────────────────────────────────────────────────────────────
   tflint:
-    name: TFLint — ${{ matrix.module }}
+    name: TFLint — ${{ matrix.path.name }}
     needs: setup
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        module: ${{ fromJson(needs.setup.outputs.modules) }}
+        path: ${{ fromJson(needs.setup.outputs.paths) }}
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -89,20 +90,25 @@ jobs:
         with:
           tflint_version: v0.54.0
 
+      - name: Copy TFLint config
+        if: matrix.path.path != '.'
+        run: |
+          if [ -f ".tflint.hcl" ] && [ ! -f "${{ matrix.path.path }}/.tflint.hcl" ]; then
+            cp .tflint.hcl "${{ matrix.path.path }}/.tflint.hcl"
+          fi
+
       - name: Init TFLint (with AWS ruleset)
         run: tflint --init
-        working-directory: modules/${{ matrix.module }}
+        working-directory: ${{ matrix.path.path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run TFLint
         run: tflint --format compact
-        working-directory: modules/${{ matrix.module }}
+        working-directory: ${{ matrix.path.path }}
 
   # ──────────────────────────────────────────────────────────────
-  # Job 4 — Terraform Tests (matrix: one runner per module)
-  # Requires Terraform >= 1.6.0 for `terraform test`
-  # No AWS credentials needed — tests use mock_provider "aws"
+  # Terraform Tests
   # ──────────────────────────────────────────────────────────────
   terraform-test:
     name: Terraform Test — ${{ matrix.module }}
@@ -130,7 +136,7 @@ jobs:
         working-directory: modules/${{ matrix.module }}
 
   # ──────────────────────────────────────────────────────────────
-  # Job 5 — Security Scan (single runner, entire repo)
+  # Security Scan
   # ──────────────────────────────────────────────────────────────
   security-scan:
     name: Security Scan (Trivy)
@@ -143,13 +149,12 @@ jobs:
         uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8 # v0.30.0
         with:
           scan-type: config
-          scan-ref: modules/
+          scan-ref: .
           exit-code: 1
           severity: CRITICAL
 
   # ──────────────────────────────────────────────────────────────
-  # Job 6 — Validate Commit Messages (conventional commits)
-  # Fails the job and prints offending commits to the run log
+  # Validate Commit Messages
   # ──────────────────────────────────────────────────────────────
   validate-commits:
     name: Validate Commit Messages
@@ -186,7 +191,7 @@ jobs:
           fi
 
   # ──────────────────────────────────────────────────────────────
-  # Job 7 — Spell Check
+  # Spell Check
   # ──────────────────────────────────────────────────────────────
   codespell:
     name: Check spelling
