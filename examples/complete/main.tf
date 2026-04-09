@@ -83,4 +83,17 @@ module "federated_logs" {
       }
     }
   }
+
+  # Data Processing (Flink Commit Worker) Configuration
+  flink_jar_bucket = "my-flink-deployments"
+  flink_jar_key    = "jars/flink-iceberg-commit-worker-1.0.0.jar"
+
+  # Optional overrides (all have sensible defaults)
+  # flink_runtime              = "FLINK-1_18"
+  # parallelism                = 1
+  # checkpoint_interval_ms     = 60000
+  # sqs_batch_size             = 10
+  # newrelic_license_key_secret = "pcg/flink-iceberg-commit-worker/license-key"
+  # newrelic_metrics_endpoint  = "https://metric-api.newrelic.com/metric/v1"
+  # permissions_boundary_arn   = "arn:aws:iam::123456789012:policy/my-boundary"
 }
