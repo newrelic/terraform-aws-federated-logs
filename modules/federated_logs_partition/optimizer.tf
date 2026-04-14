@@ -98,21 +98,3 @@ resource "null_resource" "compaction_configuration" {
     EOT
   }
 }
-
-resource "aws_cloudwatch_log_group" "iceberg_compaction_logs" {
-  name              = "/aws-glue/iceberg-compaction/logs"
-  retention_in_days = 7
-  region            = data.aws_region.current.id
-}
-
-resource "aws_cloudwatch_log_group" "iceberg_retention_logs" {
-  name              = "/aws-glue/iceberg-retention/logs"
-  retention_in_days = 7
-  region            = data.aws_region.current.id
-}
-
-resource "aws_cloudwatch_log_group" "iceberg_orphan_file_deletion_logs" {
-  name              = "/aws-glue/iceberg-orphan-file-deletion/logs"
-  retention_in_days = 7
-  region            = data.aws_region.current.id
-}
