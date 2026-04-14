@@ -6,7 +6,7 @@ data "aws_region" "current" {}
 
 # Dead Letter Queue (DLQ) - must be created first
 resource "aws_sqs_queue" "iceberg_file_events_dlq" {
-  name = "${local.setup_naming_prefix}-file-events-dlq"
+  name = "${local.setup_naming_prefix}-flink-sqs-dlq"
 
   # Message settings
   visibility_timeout_seconds = 30
@@ -19,13 +19,13 @@ resource "aws_sqs_queue" "iceberg_file_events_dlq" {
   sqs_managed_sse_enabled = true
 
   tags = merge(var.tags, {
-    Name = "${local.setup_naming_prefix}-file-events-dlq"
+    Name = "${local.setup_naming_prefix}-flink-sqs-dlq"
   })
 }
 
 # Main queue for Iceberg file events
 resource "aws_sqs_queue" "iceberg_file_events" {
-  name = "${local.setup_naming_prefix}-file-events"
+  name = "${local.setup_naming_prefix}-flink-sqs-queue"
 
   # Message settings
   visibility_timeout_seconds = var.sqs_visibility_timeout
@@ -44,7 +44,7 @@ resource "aws_sqs_queue" "iceberg_file_events" {
   })
 
   tags = merge(var.tags, {
-    Name = "${local.setup_naming_prefix}-file-events"
+    Name = "${local.setup_naming_prefix}-flink-sqs-queue"
   })
 }
 
@@ -110,16 +110,16 @@ resource "aws_s3_bucket_notification" "iceberg_file_events" {
 # =============================================================================
 
 resource "aws_cloudwatch_log_group" "flink_log_group" {
-  name              = "/aws/kinesis-analytics/${local.setup_naming_prefix}-flink-commit-worker"
+  name              = "/aws/kinesis-analytics/${local.setup_naming_prefix}-flink-application"
   retention_in_days = var.log_retention_days
 
   tags = merge(var.tags, {
-    Name = "${local.setup_naming_prefix}-flink-commit-worker-logs"
+    Name = "${local.setup_naming_prefix}-flink-application-logs"
   })
 }
 
 resource "aws_cloudwatch_log_stream" "flink_log_stream" {
-  name           = "kinesis-analytics-log-stream"
+  name           = "${local.setup_naming_prefix}-flink-log-stream"
   log_group_name = aws_cloudwatch_log_group.flink_log_group.name
 }
 
@@ -128,7 +128,7 @@ resource "aws_cloudwatch_log_stream" "flink_log_stream" {
 # =============================================================================
 
 resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
-  name                   = "${local.setup_naming_prefix}-flink-commit-worker"
+  name                   = "${local.setup_naming_prefix}-flink-application"
   description            = "Flink job for Iceberg metadata commits - handles multiple tables with single-writer pattern"
   runtime_environment    = var.flink_runtime
   service_execution_role = var.flink_role_arn
@@ -230,7 +230,7 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
   }
 
   tags = merge(var.tags, {
-    Name = "${local.setup_naming_prefix}-flink-commit-worker"
+    Name = "${local.setup_naming_prefix}-flink-application"
   })
 
   # Ensure CloudWatch resources are created first

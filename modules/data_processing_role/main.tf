@@ -7,7 +7,7 @@ data "aws_region" "current" {}
 # =============================================================================
 
 resource "aws_iam_role" "flink_commit_worker" {
-  name                 = "${local.setup_naming_prefix}-flink-commit-worker"
+  name                 = "${local.setup_naming_prefix}-flink-iam-role"
   description          = "Role for Flink commit worker to process Iceberg file events"
   permissions_boundary = var.permissions_boundary_arn
 
@@ -25,7 +25,7 @@ resource "aws_iam_role" "flink_commit_worker" {
   })
 
   tags = merge(var.tags, {
-    Name = "${local.setup_naming_prefix}-flink-commit-worker"
+    Name = "${local.setup_naming_prefix}-flink-iam-role"
   })
 }
 
@@ -34,7 +34,7 @@ resource "aws_iam_role" "flink_commit_worker" {
 # =============================================================================
 
 resource "aws_iam_policy" "flink_commit_worker" {
-  name        = "${local.setup_naming_prefix}-flink-commit-worker"
+  name        = "${local.setup_naming_prefix}-flink-iam-policy"
   description = "Policy for Flink commit worker with S3, SQS, Glue, CloudWatch, and Secrets Manager access"
 
   policy = jsonencode({
