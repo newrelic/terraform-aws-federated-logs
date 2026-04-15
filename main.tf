@@ -12,6 +12,7 @@ module "role" {
   glue_catalog_db_name = module.setup.glue_catalog_db_name
   clusters             = var.clusters
   region               = var.region
+  newrelic_api_key      = var.newrelic_api_key
 }
 
 module "partition" {

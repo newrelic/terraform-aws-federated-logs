@@ -16,7 +16,3 @@ tfplan.txt
 
 # OS files
 .DS_Store
-
-# Feature planning documents
-new_feature.txt
-RETENTION_FEATURE_PLAN.md

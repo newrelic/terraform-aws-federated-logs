@@ -15,10 +15,10 @@ module "federated_logs" {
     }
   }
 
-  # New Relic API key for NGEP authentication (mandatory)
+  # New Relic API key for NGEP authentication 
   newrelic_api_key = "your-newrelic-api-key-here"
 
-  # Optional: Data retention period for all tables (null = disabled)
+  # Optional: Data retention period for all tables 
   retention_period = "7 DAYS"
 
   default_table_setting = {
