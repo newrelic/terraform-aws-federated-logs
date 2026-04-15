@@ -55,38 +55,6 @@ jobs:
             echo "::warning::Artifactory URL may not be reachable from this runner (continuing for diagnostics)."
           fi
 
-      - name: Verify JFrog API authentication
-        env:
-          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
-          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
-        run: |
-          AUTH_URL="https://artifacts.datanerd.us/api/npm/newrelic-js-local/auth/shared-package"
-          echo "Checking authenticated endpoint: $AUTH_URL"
-
-          set +e
-          AUTH_HTTP_CODE=$(curl -sS -u "$ARTIFACTORY_USERNAME:$ARTIFACTORY_PASSWORD" -L \
-            -o /tmp/artifactory_auth_body.txt \
-            -D /tmp/artifactory_auth_headers.txt \
-            -w "%{http_code}" \
-            "$AUTH_URL")
-          AUTH_CURL_EXIT=$?
-          set -e
-
-          echo "JFrog auth endpoint HTTP status: $AUTH_HTTP_CODE"
-          echo "curl exit code: $AUTH_CURL_EXIT"
-          echo "Auth response headers:"
-          cat /tmp/artifactory_auth_headers.txt || true
-          echo "Auth response body (first 20 lines):"
-          head -n 20 /tmp/artifactory_auth_body.txt || true
-
-          if [[ "$AUTH_HTTP_CODE" == "403" ]]; then
-            echo "::warning::Received 403 from JFrog API. Network is likely fine; credentials or repo permissions are likely missing."
-          elif [[ "$AUTH_HTTP_CODE" == "401" ]]; then
-            echo "::warning::Received 401 from JFrog API. Credentials are likely invalid."
-          elif [[ "$AUTH_HTTP_CODE" == "000" || "$AUTH_HTTP_CODE" -ge 500 || "$AUTH_CURL_EXIT" -ne 0 ]]; then
-            echo "::warning::JFrog API connectivity issue detected (continuing for diagnostics)."
-          fi
-
       - name: Configure Artifactory authentication
         env:
           ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
@@ -97,10 +65,9 @@ jobs:
             exit 1
           fi
 
-          export ARTIFACTORY_AUTH=$(printf '%s' "$ARTIFACTORY_USERNAME:$ARTIFACTORY_PASSWORD" | base64)
+          curl -sSf -u "$ARTIFACTORY_USERNAME:$ARTIFACTORY_PASSWORD" \
+            https://artifacts.datanerd.us/api/npm/newrelic-js-local/auth/datanerd > .npmrc
           npm config set @shared-package:registry "https://artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/"
-          npm config set "//artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/:_auth" "${ARTIFACTORY_AUTH}"
-          npm config set "//artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/:always-auth" true
 
       - name: Generate template from main.tf
         run: npm run generate
