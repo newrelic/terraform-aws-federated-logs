@@ -26,6 +26,13 @@ resource "aws_iam_role" "glue_service_role" {
           Service = "glue.amazonaws.com"
         }
       },
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "events.amazonaws.com"
+        }
+      },
     ]
   })
 }
@@ -55,6 +62,9 @@ resource "aws_iam_policy" "glue_service_policy" {
           "glue:BatchCreatePartition",
           "glue:BatchDeletePartition",
           "glue:BatchGetPartition",
+          "glue:StartJobRun",
+          "glue:GetJobRun",
+          "glue:GetJobRuns",
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
           "logs:PutLogEvents"
@@ -63,6 +73,7 @@ resource "aws_iam_policy" "glue_service_policy" {
           "arn:aws:glue:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:catalog",
           "arn:aws:glue:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:database/${var.glue_catalog_db_name}",
           "arn:aws:glue:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:table/${var.glue_catalog_db_name}/*",
+          "arn:aws:glue:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:job/*",
           "arn:aws:logs:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:log-group:/aws-glue/*"
         ]
       },
@@ -78,6 +89,40 @@ resource "aws_iam_policy" "glue_service_policy" {
         Resource = [
           "arn:aws:s3:::${var.s3_bucket_name}",
           "arn:aws:s3:::${var.s3_bucket_name}/*"
+        ]
+      },
+      {
+        Sid    = "SecretsManagerAccess"
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = [
+          "arn:aws:secretsmanager:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:secret:${local.setup_naming_prefix}-newrelic-api-*"
+        ]
+      },
+      {
+        Sid    = "AthenaQueryExecution"
+        Effect = "Allow"
+        Action = [
+          "athena:StartQueryExecution",
+          "athena:GetQueryExecution",
+          "athena:GetQueryResults",
+          "athena:StopQueryExecution"
+        ]
+        Resource = [
+          "arn:aws:athena:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:workgroup/*"
+        ]
+      },
+      {
+        Sid    = "AthenaResultsBucket"
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject"
+        ]
+        Resource = [
+          "arn:aws:s3:::${var.s3_bucket_name}/athena-results/*"
         ]
       }
     ]

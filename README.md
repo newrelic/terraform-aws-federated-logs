@@ -80,6 +80,51 @@ module "federated_logs" {
 | `default_table_setting` | Settings for the primary federated log table (table parameters + optimizer config) | `object` | no |
 | `partition_tables` | Map of additional partition tables, each can override table parameters and optimizer config | `map(object)` | no |
 
+## Data Retention (Optional)
+
+Automatically delete old log data from **all tables** to manage storage costs and compliance:
+
+```hcl
+module "federated_logs" {
+  source = "git::https://github.com/newrelic/terraform-aws-federated-logs.git?ref=v1.0.0"
+
+  setup_name = "my-app-logs"
+  
+  # New Relic API key (mandatory - stored in AWS Secrets Manager)
+  newrelic_api_key = var.newrelic_api_key
+  
+  # Optional: Data retention period applied to ALL tables
+  retention_period = "7 DAYS"  # Set to enable retention, null to disable
+  
+  clusters = {
+    # ... cluster configuration ...
+  }
+  
+  default_table_setting = {
+    # ... other settings ...
+  }
+  
+  partition_tables = {
+    # All tables inherit the same retention_period
+    "application_log" = {}
+    "security_log"    = {}
+  }
+}
+```
+
+**Retention Period Format:** `<number> DAYS` or `<number> DAY` (e.g., "7 DAYS", "90 DAYS", "1 DAY")
+
+**How It Works:**
+- Set `retention_period` at the module level to enable automatic deletion for **all tables**
+- EventBridge triggers a Glue Spark job daily at midnight UTC (00:00)
+- Job deletes data older than the retention period from all tables using Iceberg DELETE
+- Deletion aligned to midnight for efficient whole-partition drops (metadata-only, no CoW rewrites)
+- Existing Glue optimizers clean up physical S3 files
+- Job continues processing even if individual tables fail
+- New Relic API key stored securely in AWS Secrets Manager
+
+**Cost:** ~$2.65/month per setup (Secrets Manager + Glue Spark ETL execution)
+
 ## Outputs
 
 | Name | Description |

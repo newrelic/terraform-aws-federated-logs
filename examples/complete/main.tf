@@ -15,6 +15,12 @@ module "federated_logs" {
     }
   }
 
+  # New Relic API key for NGEP authentication (mandatory)
+  newrelic_api_key = "your-newrelic-api-key-here"
+
+  # Optional: Data retention period for all tables (null = disabled)
+  retention_period = "7 DAYS"
+
   default_table_setting = {
     table_parameters = {
       "write.target-file-size-bytes"               = "26214400" # 25 MB

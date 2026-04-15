@@ -48,4 +48,7 @@ locals {
     )
   }
 
+  # Data retention configuration - enabled when retention_period is set at setup level
+  has_retention_enabled = var.retention_period != null
+
 }

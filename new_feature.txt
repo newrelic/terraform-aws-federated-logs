@@ -1,0 +1,65 @@
+This doc is to use for understanding a new feature we are building.
+Till now master branch has code which provisions AWS infrastructure for storing and querying logs using Apache Iceberg tables.
+
+Here is the description of new feature we are going to build:
+We want to take 2 params as input in the federated_logs_partition module.
+1. Retention:  some thing like 3 hours, or 3 day, or 3 weeks, 3 months. 
+    basically it takes a space separate string with first word being an integer, second can be one of HOURS, DAYS, WEEKS and months
+    I think aws takes this type of param for some of their service
+2. API Key: New relic API Key
+
+Our task is to built a data retention mechanism as per these input params
+
+Goal : Establish an automated mechanism to enforce New Relic data retention policies on federated log data. 
+This ensures compliance with user-defined lifecycles and optimizes S3 storage costs by physically reclaiming space.
+
+Design:
+This High-Level Design (HLD) outlines the automated lifecycle management for Federated Logs. The architecture operates in two distinct 
+stages. It uses a centralized policy managed via the NGEP API and an automated Glue ETL workflow triggered by Amazon EventBridge. Since
+retention is usually measured in days, running this job once every 24 hours would be a good pattern.
+
+Provisioning (The Setup): Terraform acts as the orchestrator, registering the retention policy in the NGEP API, securing credentials in 
+AWS Secrets Manager, and deploying the Glue ETL job and its EventBridge trigger. Glue ETL job will correspond to each federated logs setup.
+
+Execution (The Cleanup): Every 24 hours, EventBridge triggers the Glue job. The job fetches the latest policy from the NGEP API, 
+identifies expired records in the Glue Catalog, and marks the corresponding data from Amazon S3 as deleted.
+
+The changes related to NGEP API are not part of current scope, we can just leave a comment on those places
+like TODO.
+NGEP is an graph ql API where we store the retention detail and fetch it for using. 
+For now, we can just mark it as TODO in the code and hardcode to use and test.
+
+Phase 1:
+ Terraform registers the specific retention policy (e.g., "delete after 90 days")
+  with the NGEP API and stores the required API authentication keys in AWS Secrets Manager.
+  Terraform provisions the Glue ETL Job—the engine responsible for the deletion logic—and configures an Amazon
+   EventBridge rule to trigger the process on a 24-hour recurring schedule.
+
+Phase 2:
+Execution Workflow (Customer AWS Account)
+Once deployed, the retention cycle runs autonomously every 24 hours to maintain the data environment.
+Trigger: EventBridge initiates the Glue ETL Job.
+Identity & Auth: The Glue job retrieves the API Key from Secrets Manager to securely communicate with the external NGEP API.
+Policy Retrieval: The job queries the NGEP API to fetch all active partitions for a given federated logs setup and their corresponding 
+retention configurations for the organization.
+Data Purge: Based on the retrieved policy, the Glue job identifies data in the AWS Glue Partition Table that has exceeded its timestamp-based retention window.
+Storage Cleanup: The job executes the deletion command, which prunes the metadata in the Glue Catalog and mark the data as deleted. 
+Fallback Logic: If the NGEP API is unreachable, the job must fail-safe and abort the deletion to prevent accidental data loss.
+Errors/Success Monitoring: We can make call to NGEP API to update partition table with the RetentionJob Success and failure update.
+Physical cleanup: Removing the actual files from S3—is a maintenance task that the Glue Optimizer
+is specifically designed to perform. We will rely on Glue optimizers which are already configured for the Glue Partition Table.
+
+
+How Deletion Marking Works and Edge Cases
+If you run DELETE FROM table WHERE ts < '2023-10-01 04:30:00' but your partitions are hourly:
+Whole Hours: For 00:00, 01:00, 02:00, and 03:00, Iceberg performs a Metadata-only Delete. It simply drops the entire partition. This is fast and costs nothing.
+
+The Partial Hour (04:00): This is the edge case. The files in the 04:00 partition contain some rows from before 04:30 (should be deleted) and some after 04:30 (must be kept).
+ For a standard AWS Glue Iceberg table (v2), the default write strategy is Copy-on-Write (CoW).
+
+In Copy-on-Write (CoW): Spark will read the 04:00 files, filter out the first 30 minutes of data, and write a new, smaller Parquet file for the remaining 30 minutes.
+
+In Merge-on-Read (MoR): Spark will just write a small "Delete File" telling the reader to ignore the first 30 minutes.
+
+
+We will have script logic to always perform deletion from a fixed 00:00 hours to have efficient deletion.

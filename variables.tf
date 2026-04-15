@@ -87,3 +87,20 @@ variable "partition_tables" {
   }))
   default = {}
 }
+
+variable "newrelic_api_key" {
+  description = "New Relic API key for NGEP API authentication (stored in AWS Secrets Manager)"
+  type        = string
+  sensitive   = true
+}
+
+variable "retention_period" {
+  description = "Data retention period for all tables. If set, enables automatic deletion of old data. Format: '<number> DAYS' (e.g., '7 DAYS', '90 DAYS'). If null, retention is disabled."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.retention_period == null || can(regex("^[0-9]+ DAYS?$", var.retention_period))
+    error_message = "retention_period must be in format '<number> DAYS' or '<number> DAY' (e.g., '7 DAYS', '1 DAY') or null to disable retention"
+  }
+}
