@@ -13,8 +13,6 @@ jobs:
   release:
     name: Semantic Release
     runs-on: ubuntu-latest
-    # Skip release commits pushed by semantic-release itself
-    if: "!contains(github.event.head_commit.message, 'chore(release):')"
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -28,7 +26,7 @@ jobs:
           node-version: 22
 
       - name: Install semantic-release plugins
-        run: npm install --no-save semantic-release@24 @semantic-release/changelog@6 @semantic-release/git@10 conventional-changelog-conventionalcommits@8
+        run: npm install --no-save semantic-release@24 conventional-changelog-conventionalcommits@8
 
       - name: Run semantic-release
         env:
