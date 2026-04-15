@@ -35,7 +35,7 @@ jobs:
 
       - name: Verify Artifactory URL accessibility
         run: |
-          REGISTRY_URL="https://artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/"
+          REGISTRY_URL="https://artifacts.datanerd.us/ui/packages"
           echo "Checking URL from GitHub runner: $REGISTRY_URL"
           set +e
           HTTP_CODE=$(curl -sS -L \
