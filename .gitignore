@@ -16,3 +16,6 @@ tfplan.txt
 
 # OS files
 .DS_Store
+
+# Generated npm package artifacts (generated during CI/CD)
+npm/federated-logs-terraform-template/index.js

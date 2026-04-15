@@ -1,0 +1,47 @@
+name: Publish Terraform Template
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'main.tf'
+      - 'npm/federated-logs-terraform-template/**'
+
+  # Manual trigger - allows running workflow on any branch
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: Publish @shared-package/federated-logs-terraform-template
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    defaults:
+      run:
+        working-directory: npm/federated-logs-terraform-template
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Configure Artifactory authentication
+        env:
+          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+        run: |
+          curl -sSf -u "$ARTIFACTORY_USERNAME:$ARTIFACTORY_PASSWORD" \
+            https://artifacts.datanerd.us/api/npm/newrelic-js-local/auth/datanerd > .npmrc
+          npm config set @shared-package:registry "https://artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/"
+
+      - name: Generate template from main.tf
+        run: npm run generate
+
+      - name: Publish release package
+        run: npm publish
