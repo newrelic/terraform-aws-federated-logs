@@ -51,7 +51,9 @@ jobs:
           echo "Response headers:"
           cat /tmp/artifactory_response_headers.txt || true
 
-          if [[ "$HTTP_CODE" == "000" || "$HTTP_CODE" -ge 500 || "$CURL_EXIT" -ne 0 ]]; then
+          if [[ "$HTTP_CODE" == "403" ]]; then
+            echo "::notice::Received 403 from ping endpoint. This is common for unauthenticated requests and does not block npm auth/publish."
+          elif [[ "$HTTP_CODE" == "000" || "$HTTP_CODE" -ge 500 || "$CURL_EXIT" -ne 0 ]]; then
             echo "::warning::Artifactory URL may not be reachable from this runner (continuing for diagnostics)."
           fi
 
@@ -65,9 +67,16 @@ jobs:
             exit 1
           fi
 
-          curl -sSf -u "$ARTIFACTORY_USERNAME:$ARTIFACTORY_PASSWORD" \
-            https://artifacts.datanerd.us/api/npm/newrelic-js-local/auth/datanerd > .npmrc
-          npm config set @shared-package:registry "https://artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/"
+          ARTIFACTORY_AUTH=$(printf '%s' "$ARTIFACTORY_USERNAME:$ARTIFACTORY_PASSWORD" | base64 | tr -d '\n')
+
+          cat > .npmrc <<EOF
+          @shared-package:registry=https://artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/
+          //artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/:_auth=${ARTIFACTORY_AUTH}
+          //artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/:username=${ARTIFACTORY_USERNAME}
+          EOF
+
+          # Diagnostic only: verifies whether npm can use configured credentials.
+          npm whoami --registry "https://artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/" || true
 
       - name: Generate template from main.tf
         run: npm run generate
