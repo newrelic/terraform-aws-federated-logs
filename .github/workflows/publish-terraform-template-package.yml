@@ -35,7 +35,7 @@ jobs:
 
       - name: Verify Artifactory URL accessibility
         run: |
-          REGISTRY_URL="https://artifacts.datanerd.us/ui/packages"
+          REGISTRY_URL="https://artifacts.datanerd.us/artifactory/api/system/ping"
           echo "Checking URL from GitHub runner: $REGISTRY_URL"
           set +e
           HTTP_CODE=$(curl -sS -L \
@@ -53,6 +53,38 @@ jobs:
 
           if [[ "$HTTP_CODE" == "000" || "$HTTP_CODE" -ge 500 || "$CURL_EXIT" -ne 0 ]]; then
             echo "::warning::Artifactory URL may not be reachable from this runner (continuing for diagnostics)."
+          fi
+
+      - name: Verify JFrog API authentication
+        env:
+          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+        run: |
+          AUTH_URL="https://artifacts.datanerd.us/api/npm/newrelic-js-local/auth/shared-package"
+          echo "Checking authenticated endpoint: $AUTH_URL"
+
+          set +e
+          AUTH_HTTP_CODE=$(curl -sS -u "$ARTIFACTORY_USERNAME:$ARTIFACTORY_PASSWORD" -L \
+            -o /tmp/artifactory_auth_body.txt \
+            -D /tmp/artifactory_auth_headers.txt \
+            -w "%{http_code}" \
+            "$AUTH_URL")
+          AUTH_CURL_EXIT=$?
+          set -e
+
+          echo "JFrog auth endpoint HTTP status: $AUTH_HTTP_CODE"
+          echo "curl exit code: $AUTH_CURL_EXIT"
+          echo "Auth response headers:"
+          cat /tmp/artifactory_auth_headers.txt || true
+          echo "Auth response body (first 20 lines):"
+          head -n 20 /tmp/artifactory_auth_body.txt || true
+
+          if [[ "$AUTH_HTTP_CODE" == "403" ]]; then
+            echo "::warning::Received 403 from JFrog API. Network is likely fine; credentials or repo permissions are likely missing."
+          elif [[ "$AUTH_HTTP_CODE" == "401" ]]; then
+            echo "::warning::Received 401 from JFrog API. Credentials are likely invalid."
+          elif [[ "$AUTH_HTTP_CODE" == "000" || "$AUTH_HTTP_CODE" -ge 500 || "$AUTH_CURL_EXIT" -ne 0 ]]; then
+            echo "::warning::JFrog API connectivity issue detected (continuing for diagnostics)."
           fi
 
       - name: Configure Artifactory authentication
