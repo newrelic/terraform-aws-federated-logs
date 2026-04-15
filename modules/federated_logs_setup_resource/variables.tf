@@ -12,3 +12,9 @@ variable "region" {
   type        = string
   default     = null
 }
+
+variable "newrelic_api_key" {
+  description = "New Relic API key for NGEP API authentication (stored in AWS Secrets Manager)"
+  type        = string
+  sensitive   = true
+}

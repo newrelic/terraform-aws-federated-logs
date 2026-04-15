@@ -1,16 +1,3 @@
-# AWS Secrets Manager secret to store New Relic API key (always created)
-resource "aws_secretsmanager_secret" "newrelic_api_key" {
-  name        = "${local.setup_naming_prefix}-newrelic-api-key"
-  description = "New Relic API key for NGEP API authentication"
-}
-
-resource "aws_secretsmanager_secret_version" "newrelic_api_key" {
-  secret_id = aws_secretsmanager_secret.newrelic_api_key.id
-  secret_string = jsonencode({
-    api_key = var.newrelic_api_key
-  })
-}
-
 # S3 object to store the Glue Spark ETL script
 resource "aws_s3_object" "retention_script" {
   count = local.has_retention_enabled ? 1 : 0

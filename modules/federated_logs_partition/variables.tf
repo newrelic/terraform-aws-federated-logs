@@ -101,14 +101,8 @@ variable "setup_name" {
   }
 }
 
-variable "newrelic_api_key" {
-  description = "New Relic API key for NGEP API authentication (stored in AWS Secrets Manager)"
-  type        = string
-  sensitive   = true
-}
-
 variable "retention_period" {
-  description = "Data retention period applied to all tables. If null, retention cleanup is disabled. Format: '<number> DAYS' (e.g., '7 DAYS', '90 DAYS')"
+  description = "Data retention period for all tables. If null, retention is disabled."
   type        = string
   default     = null
 }
