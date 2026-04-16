@@ -12,6 +12,12 @@ on:
 
   # Manual trigger - allows running workflow on any branch
   workflow_dispatch:
+    inputs:
+      debug:
+        description: Enable verbose Artifactory and npm debug logs
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   publish:
@@ -33,173 +39,59 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Verify Artifactory URL accessibility
-        run: |
-          REGISTRY_URL="https://artifacts.datanerd.us/artifactory/api/system/ping"
-          echo "Checking URL from GitHub runner: $REGISTRY_URL"
-          set +e
-          HTTP_CODE=$(curl -sS -L \
-            -o /tmp/artifactory_response_body.txt \
-            -D /tmp/artifactory_response_headers.txt \
-            -w "%{http_code}" \
-            "$REGISTRY_URL")
-          CURL_EXIT=$?
-          set -e
-
-          echo "Artifactory registry HTTP status: $HTTP_CODE"
-          echo "curl exit code: $CURL_EXIT"
-          echo "Response headers:"
-          cat /tmp/artifactory_response_headers.txt || true
-
-          if [[ "$HTTP_CODE" == "403" ]]; then
-            echo "::notice::Received 403 from ping endpoint. This is common for unauthenticated requests and does not block npm auth/publish."
-          elif [[ "$HTTP_CODE" == "000" || "$HTTP_CODE" -ge 500 || "$CURL_EXIT" -ne 0 ]]; then
-            echo "::warning::Artifactory URL may not be reachable from this runner (continuing for diagnostics)."
-          fi
-
       - name: Configure Artifactory authentication
         env:
           ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
           ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+          DEBUG_MODE: ${{ github.event.inputs.debug }}
         run: |
           if [[ -z "$ARTIFACTORY_USERNAME" || -z "$ARTIFACTORY_PASSWORD" ]]; then
             echo "ARTIFACTORY_USERNAME/ARTIFACTORY_PASSWORD secrets are required"
             exit 1
           fi
 
-          ARTIFACTORY_AUTH=$(printf '%s' "$ARTIFACTORY_USERNAME:$ARTIFACTORY_PASSWORD" | base64 | tr -d '\n')
+          if [[ "$DEBUG_MODE" == "true" ]]; then
+            echo "Debug mode enabled for Artifactory auth"
+            echo "Node: $(node -v)"
+            echo "npm: $(npm -v)"
+            echo "Working directory: $PWD"
+            set +e
+            curl -v -u "$ARTIFACTORY_USERNAME:$ARTIFACTORY_PASSWORD" \
+              https://artifacts.datanerd.us/api/npm/newrelic-js-local/auth/datanerd \
+              -o /tmp/artifactory-auth-response.txt
+            set -e
+            echo "Auth response preview:"
+            head -n 20 /tmp/artifactory-auth-response.txt || true
+          fi
 
-          printf '%s\n' \
-            "@shared-package:registry=https://artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/" \
-            "//artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/:_auth=${ARTIFACTORY_AUTH}" \
-            "//artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/:username=${ARTIFACTORY_USERNAME}" \
-            > .npmrc
-
-          # Diagnostic only: verifies whether npm can use configured credentials.
-          npm whoami --registry "https://artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/" || true
-
-      - name: Collect Artifactory root-cause diagnostics
-        env:
-          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
-          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
-        run: |
-          set +e
-          echo "=== Runner diagnostics ==="
-          echo "Date (UTC): $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-          echo "Runner OS: $(uname -a)"
-          echo "Node: $(node -v)"
-          echo "NPM: $(npm -v)"
-          EGRESS_IP=$(curl -sS https://api64.ipify.org || echo "unavailable")
-          echo "Runner egress IP: $EGRESS_IP"
-
-          check_endpoint() {
-            local name="$1"
-            local url="$2"
-            local auth_mode="$3"
-            local body_file="/tmp/${name}_body.txt"
-            local header_file="/tmp/${name}_headers.txt"
-            local http_code
-            local curl_exit
-
-            echo "=== Endpoint: $name ==="
-            echo "URL: $url"
-
-            if [[ "$auth_mode" == "with-auth" ]]; then
-              http_code=$(curl -sS -u "$ARTIFACTORY_USERNAME:$ARTIFACTORY_PASSWORD" -L -o "$body_file" -D "$header_file" -w "%{http_code}" "$url")
-            else
-              http_code=$(curl -sS -L -o "$body_file" -D "$header_file" -w "%{http_code}" "$url")
-            fi
-
-            curl_exit=$?
-            echo "HTTP status: $http_code"
-            echo "curl exit: $curl_exit"
-            echo "Response headers:"
-            cat "$header_file" || true
-            echo "Response body (first 20 lines):"
-            head -n 20 "$body_file" || true
-          }
-
-          check_endpoint "ping_no_auth" "https://artifacts.datanerd.us/artifactory/api/system/ping" "no-auth"
-          check_endpoint "npm_auth_datanerd" "https://artifacts.datanerd.us/api/npm/newrelic-js-local/auth/datanerd" "with-auth"
-          check_endpoint "npm_auth_shared_package" "https://artifacts.datanerd.us/api/npm/newrelic-js-local/auth/shared-package" "with-auth"
-          check_endpoint "npm_repo_root" "https://artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/" "with-auth"
-
-          REGISTRY_URL="https://artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/"
-          echo "=== npm diagnostics ==="
-          npm whoami --registry "$REGISTRY_URL" || true
-          npm ping --registry "$REGISTRY_URL" || true
-          npm view @shared-package/federated-logs-terraform-template version --registry "$REGISTRY_URL" || true
-          set -e
+          curl -sSf -u "$ARTIFACTORY_USERNAME:$ARTIFACTORY_PASSWORD" \
+            https://artifacts.datanerd.us/api/npm/newrelic-js-local/auth/datanerd > .npmrc
+          npm config set @shared-package:registry "https://artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/"
 
       - name: Generate template from main.tf
         run: npm run generate
 
-      - name: Resolve package metadata
-        run: |
-          PACKAGE_NAME=$(node -p "require('./package.json').name")
-          PACKAGE_VERSION=$(node -p "require('./package.json').version")
-          echo "PACKAGE_NAME=$PACKAGE_NAME" >> "$GITHUB_ENV"
-          echo "PACKAGE_VERSION=$PACKAGE_VERSION" >> "$GITHUB_ENV"
-          echo "Package: $PACKAGE_NAME"
-          echo "Version: $PACKAGE_VERSION"
-
-      - name: Check package version availability
-        run: |
-          REGISTRY_URL="https://artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/"
-          set +e
-          npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --registry "$REGISTRY_URL" > /tmp/npm_view_out.txt 2> /tmp/npm_view_err.txt
-          VIEW_EXIT=$?
-          set -e
-
-          if [[ "$VIEW_EXIT" -eq 0 ]]; then
-            echo "VERSION_EXISTS=true" >> "$GITHUB_ENV"
-            echo "::notice::${PACKAGE_NAME}@${PACKAGE_VERSION} already exists in registry. Skipping publish."
-            cat /tmp/npm_view_out.txt || true
-          elif grep -q "E404" /tmp/npm_view_err.txt; then
-            echo "VERSION_EXISTS=false" >> "$GITHUB_ENV"
-            echo "Version does not exist in registry yet."
-          elif grep -q "E403" /tmp/npm_view_err.txt; then
-            echo "npm view failed with E403. Continuing to publish step for deeper diagnostics."
-            cat /tmp/npm_view_err.txt || true
-            echo "VERSION_EXISTS=unknown" >> "$GITHUB_ENV"
-          else
-            echo "Unexpected npm view failure while checking package availability."
-            cat /tmp/npm_view_err.txt || true
-            exit 1
-          fi
-
       - name: Publish release package
-        if: env.VERSION_EXISTS != 'true'
+        env:
+          DEBUG_MODE: ${{ github.event.inputs.debug }}
         run: |
-          REGISTRY_URL="https://artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/"
-          set +e
-          npm publish --registry "$REGISTRY_URL" > /tmp/npm_publish_out.txt 2> /tmp/npm_publish_err.txt
-          PUBLISH_EXIT=$?
-          set -e
-
-          cat /tmp/npm_publish_out.txt || true
-          cat /tmp/npm_publish_err.txt || true
-
-          if [[ "$PUBLISH_EXIT" -eq 0 ]]; then
-            echo "Publish succeeded."
-            exit 0
-          fi
-
-          if grep -q "E403" /tmp/npm_publish_err.txt; then
+          if [[ "$DEBUG_MODE" == "true" ]]; then
+            echo "Debug mode enabled for npm publish"
+            npm config get @shared-package:registry || true
             set +e
-            npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --registry "$REGISTRY_URL" > /tmp/npm_view_after_out.txt 2> /tmp/npm_view_after_err.txt
-            VIEW_AFTER_EXIT=$?
+            npm publish --loglevel verbose
+            PUBLISH_EXIT=$?
             set -e
 
-            if [[ "$VIEW_AFTER_EXIT" -eq 0 ]]; then
-              echo "::notice::${PACKAGE_NAME}@${PACKAGE_VERSION} already exists in Artifactory. Skipping as non-fatal per publish policy."
-              exit 0
+            if [[ "$PUBLISH_EXIT" -ne 0 ]]; then
+              echo "Latest npm debug log:"
+              LATEST_NPM_LOG=$(ls -t ~/.npm/_logs/*-debug-0.log 2>/dev/null | head -n 1)
+              if [[ -n "$LATEST_NPM_LOG" ]]; then
+                cat "$LATEST_NPM_LOG"
+              fi
             fi
 
-            echo "::error::Publish returned E403 and package version does not appear to exist."
-            echo "::error::This likely indicates missing deploy/delete permission for this repository or scope."
-            echo "::error::If deletion is required, contact #help-tdp as per internal guidance."
-            exit 1
+            exit "$PUBLISH_EXIT"
           fi
 
-          exit "$PUBLISH_EXIT"
+          npm publish
