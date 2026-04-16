@@ -12,12 +12,6 @@ on:
 
   # Manual trigger - allows running workflow on any branch
   workflow_dispatch:
-    inputs:
-      debug:
-        description: Enable verbose Artifactory and npm debug logs
-        required: false
-        type: boolean
-        default: true
 
 jobs:
   publish:
@@ -43,26 +37,23 @@ jobs:
         env:
           ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
           ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
-          DEBUG_MODE: ${{ github.event.inputs.debug }}
         run: |
           if [[ -z "$ARTIFACTORY_USERNAME" || -z "$ARTIFACTORY_PASSWORD" ]]; then
             echo "ARTIFACTORY_USERNAME/ARTIFACTORY_PASSWORD secrets are required"
             exit 1
           fi
 
-          if [[ "$DEBUG_MODE" == "true" ]]; then
-            echo "Debug mode enabled for Artifactory auth"
-            echo "Node: $(node -v)"
-            echo "npm: $(npm -v)"
-            echo "Working directory: $PWD"
-            set +e
-            curl -v -u "$ARTIFACTORY_USERNAME:$ARTIFACTORY_PASSWORD" \
-              https://artifacts.datanerd.us/api/npm/newrelic-js-local/auth/datanerd \
-              -o /tmp/artifactory-auth-response.txt
-            set -e
-            echo "Auth response preview:"
-            head -n 20 /tmp/artifactory-auth-response.txt || true
-          fi
+          echo "Debug mode enabled for Artifactory auth"
+          echo "Node: $(node -v)"
+          echo "npm: $(npm -v)"
+          echo "Working directory: $PWD"
+          set +e
+          curl -v -u "$ARTIFACTORY_USERNAME:$ARTIFACTORY_PASSWORD" \
+            https://artifacts.datanerd.us/api/npm/newrelic-js-local/auth/datanerd \
+            -o /tmp/artifactory-auth-response.txt
+          set -e
+          echo "Auth response preview:"
+          head -n 20 /tmp/artifactory-auth-response.txt || true
 
           curl -sSf -u "$ARTIFACTORY_USERNAME:$ARTIFACTORY_PASSWORD" \
             https://artifacts.datanerd.us/api/npm/newrelic-js-local/auth/datanerd > .npmrc
@@ -72,26 +63,20 @@ jobs:
         run: npm run generate
 
       - name: Publish release package
-        env:
-          DEBUG_MODE: ${{ github.event.inputs.debug }}
         run: |
-          if [[ "$DEBUG_MODE" == "true" ]]; then
-            echo "Debug mode enabled for npm publish"
-            npm config get @shared-package:registry || true
-            set +e
-            npm publish --loglevel verbose
-            PUBLISH_EXIT=$?
-            set -e
+          echo "Debug mode enabled for npm publish"
+          npm config get @shared-package:registry || true
+          set +e
+          npm publish --loglevel verbose
+          PUBLISH_EXIT=$?
+          set -e
 
-            if [[ "$PUBLISH_EXIT" -ne 0 ]]; then
-              echo "Latest npm debug log:"
-              LATEST_NPM_LOG=$(ls -t ~/.npm/_logs/*-debug-0.log 2>/dev/null | head -n 1)
-              if [[ -n "$LATEST_NPM_LOG" ]]; then
-                cat "$LATEST_NPM_LOG"
-              fi
+          if [[ "$PUBLISH_EXIT" -ne 0 ]]; then
+            echo "Latest npm debug log:"
+            LATEST_NPM_LOG=$(ls -t ~/.npm/_logs/*-debug-0.log 2>/dev/null | head -n 1)
+            if [[ -n "$LATEST_NPM_LOG" ]]; then
+              cat "$LATEST_NPM_LOG"
             fi
-
-            exit "$PUBLISH_EXIT"
           fi
 
-          npm publish
+          exit "$PUBLISH_EXIT"
