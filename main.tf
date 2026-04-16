@@ -1,7 +1,7 @@
 module "setup" {
-  source     = "./modules/federated_logs_setup_resource"
-  setup_name = var.setup_name
-  region     = var.region
+  source           = "./modules/federated_logs_setup_resource"
+  setup_name       = var.setup_name
+  region           = var.region
   newrelic_api_key = var.newrelic_api_key
 }
 
