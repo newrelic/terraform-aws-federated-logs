@@ -57,7 +57,12 @@ jobs:
 
           curl -sSf -u "$ARTIFACTORY_USERNAME:$ARTIFACTORY_PASSWORD" \
             https://artifacts.datanerd.us/api/npm/newrelic-js-local/auth/datanerd > .npmrc
-          npm config set @shared-package:registry "https://artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/"
+
+          # Add @shared-package scope to the same .npmrc file
+          echo "@shared-package:registry=https://artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/" >> .npmrc
+
+          echo "Final .npmrc configuration:"
+          cat .npmrc
 
       - name: Generate template from main.tf
         run: npm run generate
