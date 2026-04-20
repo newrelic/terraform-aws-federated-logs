@@ -17,19 +17,15 @@ terraform apply
 
 ## Post-Deploy Validation
 
-Enable validation by adding `validation_config` to the module:
+Enable validation on demand via a variable:
 
-```hcl
-module "federated_logs" {
-  # ...
-
-  validation_config = {
-    enabled = true
-  }
-}
+```sh
+terraform plan -var="enable_validation=true"
 ```
 
-This runs 19 check blocks on every `terraform plan`, surfacing misconfigurations as warnings:
+The example already includes the wiring — `validation_config.enabled` is bound to the `enable_validation` variable (defaults to `false`).
+
+This runs check blocks on every `terraform plan`, surfacing misconfigurations as warnings:
 
 - **Resource existence**: S3 bucket, IAM roles, CloudWatch log groups
 - **Trust policy structure**: Glue service trust, OIDC federation on PCG writer, ExternalId on NR reader
