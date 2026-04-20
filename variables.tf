@@ -39,10 +39,17 @@ variable "clusters" {
 #     delete_file_threshold                = 1
 #──────────────────────────────────────────────────────────────
 
+variable "retention_enabled" {
+  description = "Enable data retention feature. When true, creates Glue job to delete old data based on per-table retention_in_days."
+  type        = bool
+  default     = false
+}
+
 variable "default_table_setting" {
   description = "Settings for the primary federated log table, including Iceberg table parameters and optimizer configuration"
   type = object({
-    table_parameters = optional(map(string), {})
+    retention_in_days = optional(number, 30)
+    table_parameters  = optional(map(string), {})
     optimizer_configuration = optional(object({
       orphan_file_deletion = optional(object({
         orphan_file_retention_period_in_days = optional(number, 3)
@@ -67,7 +74,8 @@ variable "default_table_setting" {
 variable "partition_tables" {
   description = "Map of additional partition tables. Each entry can override table_parameters and/or optimizer_configuration, or use {} for all defaults."
   type = map(object({
-    table_parameters = optional(map(string), {})
+    retention_in_days = optional(number, 30)
+    table_parameters  = optional(map(string), {})
     optimizer_configuration = optional(object({
       orphan_file_deletion = optional(object({
         orphan_file_retention_period_in_days = optional(number, 3)
@@ -93,15 +101,4 @@ variable "newrelic_api_key" {
   description = "New Relic API key for NGEP API authentication (stored in AWS Secrets Manager)"
   type        = string
   sensitive   = true
-}
-
-variable "retention_period" {
-  description = "Data retention period for all tables. If null, retention is disabled."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.retention_period == null || can(regex("^[0-9]+ DAYS?$", var.retention_period))
-    error_message = "retention_period must be in format '<number> DAYS' or '<number> DAY' (e.g., '7 DAYS', '1 DAY') or null to disable retention"
-  }
 }

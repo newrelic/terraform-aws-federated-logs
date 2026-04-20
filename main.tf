@@ -23,5 +23,5 @@ module "partition" {
   glue_service_role_arn = module.role.glue_service_role_arn
   default_table_setting = var.default_table_setting
   partition_tables      = var.partition_tables
-  retention_period      = var.retention_period
+  retention_enabled     = var.retention_enabled
 }

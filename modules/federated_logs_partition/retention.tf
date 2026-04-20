@@ -14,25 +14,12 @@ from awsglue.utils import getResolvedOptions
 def main():
 
     # Parse job parameters
-    args = getResolvedOptions(sys.argv, ['DATABASE_NAME', 'TABLE_NAMES'])
+    args = getResolvedOptions(sys.argv, ['DATABASE_NAME', 'TABLE_RETENTION'])
     database = args['DATABASE_NAME']
-    table_names = args['TABLE_NAMES'].split(',')  # Comma-separated list of tables
-    retention_period = "1 DAY"  # Hardcoded for now, will be fetched from NGEP 
+    table_retention_json = args['TABLE_RETENTION']
 
-    # Parse retention period (format: "7 DAYS" or "1 DAY")
-    parts = retention_period.strip().split()
-    if len(parts) != 2 or parts[1].upper() not in ['DAY', 'DAYS']:
-        raise ValueError(f"Invalid retention format: {retention_period}. Expected '<number> DAYS'")
-
-    days = int(parts[0])
-    print(f"Retention period in days: {days} day(s)")
-
-    # Calculate cutoff timestamp aligned to midnight UTC for efficient partition deletion
-    # This ensures we delete whole hourly partitions from a fixed 00:00 hours
-    now = datetime.now(timezone.utc)
-    cutoff = (now - timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
-    cutoff_str = cutoff.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"Cutoff timestamp (midnight-aligned): {cutoff_str}")
+    # Parse JSON map of table names to retention days
+    table_retention = json.loads(table_retention_json)
 
     # Initialize Spark session with Hive support for Iceberg tables
     spark = SparkSession.builder \
@@ -40,9 +27,17 @@ def main():
         .enableHiveSupport() \
         .getOrCreate()
 
-    # Process each table with the same retention period
+    # Process each table with its specific retention period
     results = {}
-    for table_name in table_names:
+    for table_name, retention_days in table_retention.items():
+        print(f"Processing table: {table_name}")
+        print(f"Retention period: {retention_days} days")
+
+        # Calculate cutoff timestamp aligned to midnight UTC for efficient partition deletion
+        now = datetime.now(timezone.utc)
+        cutoff = (now - timedelta(days=retention_days)).replace(hour=0, minute=0, second=0, microsecond=0)
+        cutoff_str = cutoff.strftime('%Y-%m-%d %H:%M:%S')
+        print(f"Cutoff timestamp (midnight-aligned): {cutoff_str}")
 
         try:
             # Execute DELETE using Spark SQL with Iceberg catalog
@@ -51,14 +46,14 @@ def main():
             spark.sql(delete_query)
 
             results[table_name] = 'SUCCESS'
-            print(f"[{table_name}] ✓ Deletion completed successfully")
+            print(f"[{table_name}] Deletion completed successfully")
 
             # TODO: Report success to NGEP API
 
         except Exception as e:
             error_msg = str(e)
             results[table_name] = f'ERROR: {error_msg}'
-            print(f"[{table_name}] ✗ Error: {error_msg}")
+            print(f"[{table_name}] Error: {error_msg}")
 
             # TODO: Report failure to NGEP API
 
@@ -68,12 +63,10 @@ def main():
     # Stop Spark session
     spark.stop()
 
-    # Summary
-
     # Exit with error code if any failures
     failed = [t for t, s in results.items() if s != 'SUCCESS']
     if failed:
-        print(f"{len(failed)} table(s) failed: {', '.join(failed)}")
+        print(f" {len(failed)} table(s) failed: {', '.join(failed)}")
         sys.exit(1)
     else:
         print(f" All {len(results)} table(s) processed successfully")
@@ -110,7 +103,7 @@ resource "aws_glue_job" "retention" {
     "--datalake-formats"                 = "iceberg"
     "--conf"                             = "spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions --conf spark.sql.catalog.glue_catalog=org.apache.iceberg.spark.SparkCatalog --conf spark.sql.catalog.glue_catalog.warehouse=s3://${var.s3_bucket_name}/warehouse/ --conf spark.sql.catalog.glue_catalog.catalog-impl=org.apache.iceberg.aws.glue.GlueCatalog --conf spark.sql.catalog.glue_catalog.io-impl=org.apache.iceberg.aws.s3.S3FileIO --conf spark.sql.iceberg.handle-timestamp-without-timezone=true"
     "--DATABASE_NAME"                    = var.glue_catalog_db_name
-    "--TABLE_NAMES"                      = join(",", keys(local.all_tables))
+    "--TABLE_RETENTION"                  = jsonencode(local.table_retention_days)
   }
   depends_on = [aws_s3_object.retention_script]
 }
