@@ -54,7 +54,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
-          terraform_version: "~> 1.6"
+          terraform_version: "1.12.0"
 
       - name: Terraform Format Check
         run: terraform fmt -check
