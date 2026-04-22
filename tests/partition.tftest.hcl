@@ -322,3 +322,22 @@ run "test_custom_default_table_setting" {
     error_message = "Should have exactly 1 table (customized default). Got: ${length(output.all_tables)}"
   }
 }
+
+# =============================================================================
+# CLEANUP (empty bucket before destroy)
+# =============================================================================
+# Iceberg creates metadata files that Terraform doesn't manage.
+# Empty the bucket before destroy to prevent "BucketNotEmpty" errors.
+# =============================================================================
+
+run "cleanup_bucket" {
+  command = apply
+
+  variables {
+    bucket_name = run.setup.s3_bucket_name
+  }
+
+  module {
+    source = "./tests/helpers/empty_bucket"
+  }
+}
