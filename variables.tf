@@ -18,6 +18,7 @@ variable "clusters" {
   type = map(object({
     k8s_namespace            = string
     k8s_service_account_name = string
+    auth_mode                = string
     oidc_provider_arn        = string
   }))
 }

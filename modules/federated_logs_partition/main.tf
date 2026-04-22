@@ -19,12 +19,7 @@ resource "aws_glue_catalog_table" "iceberg_table" {
   lifecycle {
     ignore_changes = [
       # Prevent TF from fighting with Athena/Iceberg over these dynamic keys
-      parameters["previous_metadata_location"],
-      parameters["metadata_location"],
-      parameters["current-snapshot-id"],
-      parameters["current-snapshot-timestamp-ms"],
-      parameters["current-snapshot-summary"],
-      parameters["snapshot-count"]
+      parameters
     ]
   }
 
@@ -74,14 +69,14 @@ EOF
 "string"
 EOF
           }
-          fields {
-            id       = 5
-            name     = "messageId"
-            required = true
-            type     = <<EOF
-"string"
-EOF
-          }
+          #           fields {
+          #             id       = 5
+          #             name     = "messageId"
+          #             required = true
+          #             type     = <<EOF
+          # "string"
+          # EOF
+          #           }
         }
 
         partition_spec {
