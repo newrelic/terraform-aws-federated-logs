@@ -55,5 +55,4 @@ jobs:
         if: always()
         run: |
           echo "Cleaning up any orphaned test resources..."
-          # Cleanup script would run here
-          # ./scripts/cleanup-test-resources.sh
+          ./scripts/cleanup-test-resources.sh
