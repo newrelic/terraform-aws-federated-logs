@@ -1,0 +1,58 @@
+name: Integration Tests
+
+on:
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  TF_VAR_test_run_id: ${{ github.run_id }}
+
+jobs:
+  integration-tests:
+    name: Run Integration Tests
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.12.0"
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_TEST_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Run Setup Resource Tests
+        run: terraform test -filter=tests/setup_resource.tftest.hcl
+        continue-on-error: false
+
+      - name: Run Role Tests
+        run: terraform test -filter=tests/role.tftest.hcl
+        continue-on-error: false
+
+      - name: Run Partition Tests
+        run: terraform test -filter=tests/partition.tftest.hcl
+        continue-on-error: false
+
+      # - name: Run E2E Tests
+      #   run: terraform test -filter=tests/e2e.tftest.hcl
+      #   continue-on-error: false
+
+      - name: Cleanup Test Resources
+        if: always()
+        run: |
+          echo "Cleaning up any orphaned test resources..."
+          ./scripts/cleanup-test-resources.sh
