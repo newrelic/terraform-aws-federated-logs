@@ -16,9 +16,6 @@ resource "aws_glue_catalog_table" "iceberg_table" {
   database_name = var.glue_catalog_db_name
   region        = data.aws_region.current.id
 
-  # Ensure S3 folder exists before creating Iceberg table
-  depends_on = [aws_s3_object.folder]
-
   lifecycle {
     ignore_changes = [
       # Prevent TF from fighting with Athena/Iceberg over these dynamic keys
