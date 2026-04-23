@@ -162,7 +162,7 @@ resource "aws_iam_role" "pcg-writer-role" {
         Principal = {
           AWS = var.base_role_arn
         }
-        Action = "sts:AssumeRole"
+        Action = ["sts:AssumeRole", "sts:TagSession"]
         Condition = {
           StringEquals = {
             "aws:PrincipalTag/PCG_Instance" = var.pcg_instance_name

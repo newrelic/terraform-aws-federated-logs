@@ -1,9 +1,9 @@
-variable "name" {
-  description = "Fleet name. Used in resource naming and as the PCG_Instance tag value for ABAC."
+variable "setup_name" {
+  description = "Name for this data processing setup. Used in resource naming and as the PCG_Instance tag value for ABAC."
   type        = string
   validation {
-    condition     = can(regex("^[a-z0-9][a-z0-9-]{1,24}[a-z0-9]$", var.name))
-    error_message = "name must be lowercase alphanumeric with hyphens (not first/last), 3–26 chars."
+    condition     = can(regex("^[a-z0-9][a-z0-9-]{1,24}[a-z0-9]$", var.setup_name))
+    error_message = "setup_name must be lowercase alphanumeric with hyphens (not first/last), 3–26 chars."
   }
 }
 
@@ -43,8 +43,13 @@ variable "clusters" {
   }
 }
 
-variable "newrelic_account_id" {
-  description = "New Relic account ID used to scope NGEP entities."
+variable "fleet_entity_guid" {
+  description = "NGEP entity GUID of the fleet (e.g. FederatedLogsDataProcessingEntity). A relationship of type APPLY_TO will be created from this entity to the AWS Connection Entity."
+  type        = string
+}
+
+variable "newrelic_org_id" {
+  description = "New Relic organization ID (GUID) used to scope NGEP entities at the ORGANIZATION level."
   type        = string
 }
 

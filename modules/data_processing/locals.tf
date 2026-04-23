@@ -1,5 +1,5 @@
 locals {
-  naming_prefix = "newrelic-fed-logs-${var.name}"
+  naming_prefix = "newrelic-fed-logs-${var.setup_name}"
 
   auth_mode = length(var.clusters) > 0 ? values(var.clusters)[0].auth_mode : "irsa"
 
