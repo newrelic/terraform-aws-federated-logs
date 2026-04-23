@@ -14,12 +14,13 @@ variable "setup_name" {
 }
 
 variable "clusters" {
-  description = "Map of cluster configurations for PCG writer role authentication"
+  description = "A map of cluster configurations for federated logging. Set auth_mode to 'irsa' (default) or 'pod_identity'. NOTE: 'pod_identity' requires the 'eks-pod-identity-agent' addon to be installed on each cluster — manage that in your EKS cluster module."
   type = map(object({
+    auth_mode                = optional(string, "irsa")
     k8s_namespace            = string
     k8s_service_account_name = string
-    auth_mode                = string
-    oidc_provider_arn        = string
+    oidc_provider_arn        = optional(string)
+    cluster_name             = optional(string)
   }))
 }
 
