@@ -1,0 +1,18 @@
+{
+  "name": "@shared-package/federated-logs-terraform-template",
+  "version": "0.1.2",
+  "description": "Terraform template for Federated Logs UI",
+  "main": "index.js",
+  "scripts": {
+    "generate": "node generate.js"
+  },
+  "files": [
+    "index.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/newrelic/terraform-aws-federated-logs.git",
+    "directory": "npm/federated-logs-terraform-template"
+  },
+  "license": "Apache-2.0"
+}

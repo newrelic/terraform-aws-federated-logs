@@ -1,0 +1,87 @@
+name: Publish Terraform Template
+
+on:
+  push:
+    branches:
+      - master
+      - publish-terraform-as-shared-package  # TEMPORARY: Remove before merging
+    # TEMPORARY: Paths filter commented for testing - uncomment before merging
+    # paths:
+    #   - 'main.tf'
+    #   - 'npm/federated-logs-terraform-template/**'
+
+  # Manual trigger - allows running workflow on any branch
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: Publish @shared-package/federated-logs-terraform-template
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    defaults:
+      run:
+        working-directory: npm/federated-logs-terraform-template
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Configure Artifactory authentication
+        env:
+          ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
+          ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+        run: |
+          if [[ -z "$ARTIFACTORY_USERNAME" || -z "$ARTIFACTORY_PASSWORD" ]]; then
+            echo "ARTIFACTORY_USERNAME/ARTIFACTORY_PASSWORD secrets are required"
+            exit 1
+          fi
+
+          echo "Debug mode enabled for Artifactory auth"
+          echo "Node: $(node -v)"
+          echo "npm: $(npm -v)"
+          echo "Working directory: $PWD"
+          set +e
+          curl -v -u "$ARTIFACTORY_USERNAME:$ARTIFACTORY_PASSWORD" \
+            https://artifacts.datanerd.us/api/npm/newrelic-js-local/auth/datanerd \
+            -o /tmp/artifactory-auth-response.txt
+          set -e
+          echo "Auth response preview:"
+          head -n 20 /tmp/artifactory-auth-response.txt || true
+
+          curl -sSf -u "$ARTIFACTORY_USERNAME:$ARTIFACTORY_PASSWORD" \
+            https://artifacts.datanerd.us/api/npm/newrelic-js-local/auth/datanerd > .npmrc
+
+          # Add @shared-package scope to the same .npmrc file
+          echo "@shared-package:registry=https://artifacts.datanerd.us/artifactory/api/npm/newrelic-js-local/" >> .npmrc
+
+          echo "Final .npmrc configuration:"
+          cat .npmrc
+
+      - name: Generate template from main.tf
+        run: npm run generate
+
+      - name: Publish release package
+        run: |
+          echo "Debug mode enabled for npm publish"
+          npm config get @shared-package:registry || true
+          set +e
+          npm publish --loglevel verbose
+          PUBLISH_EXIT=$?
+          set -e
+
+          if [[ "$PUBLISH_EXIT" -ne 0 ]]; then
+            echo "Latest npm debug log:"
+            LATEST_NPM_LOG=$(ls -t ~/.npm/_logs/*-debug-0.log 2>/dev/null | head -n 1)
+            if [[ -n "$LATEST_NPM_LOG" ]]; then
+              cat "$LATEST_NPM_LOG"
+            fi
+          fi
+
+          exit "$PUBLISH_EXIT"
