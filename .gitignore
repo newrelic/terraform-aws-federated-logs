@@ -16,3 +16,6 @@ tfplan.txt
 
 # OS files
 .DS_Store
+
+# IDE
+.idea/
