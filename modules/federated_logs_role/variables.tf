@@ -40,12 +40,12 @@ variable "clusters" {
   }
 
   validation {
-    condition     = alltrue([for c in var.clusters : c.auth_mode != "irsa" || (c.oidc_provider_arn != null && length(c.oidc_provider_arn) > 0)])
+    condition     = alltrue([for c in var.clusters : c.auth_mode != "irsa" || try(length(c.oidc_provider_arn) > 0, false)])
     error_message = "oidc_provider_arn must be set for clusters using auth_mode = 'irsa'."
   }
 
   validation {
-    condition     = alltrue([for c in var.clusters : c.auth_mode != "pod_identity" || (c.cluster_name != null && length(c.cluster_name) > 0)])
+    condition     = alltrue([for c in var.clusters : c.auth_mode != "pod_identity" || try(length(c.cluster_name) > 0, false)])
     error_message = "cluster_name must be set for clusters using auth_mode = 'pod_identity'."
   }
 }
