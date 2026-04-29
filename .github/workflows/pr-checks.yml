@@ -149,7 +149,7 @@ jobs:
               commit_info="$(git log -1 --format='%H - %s' "$commit")"
               invalid_commits="$invalid_commits\n- $commit_info"
             fi
-          done < <(git rev-list "$base_sha".."$HEAD_SHA")
+          done < <(git rev-list --no-merges "$base_sha".."$HEAD_SHA")
 
           if [ -n "$invalid_commits" ]; then
             echo "The following commits do not follow the Conventional Commits format:"
