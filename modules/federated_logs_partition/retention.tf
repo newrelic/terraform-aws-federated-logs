@@ -1,6 +1,6 @@
 # S3 object to store the Glue Spark ETL script
 resource "aws_s3_object" "retention_script" {
-  count = local.is_retention_enabled ? 1 : 0
+  count = local.is_data_retention_enabled ? 1 : 0
 
   bucket = var.s3_bucket_name
   key    = "${var.glue_catalog_db_name}/scripts/retention_job.py"
@@ -10,7 +10,7 @@ resource "aws_s3_object" "retention_script" {
 
 # AWS Glue Spark ETL Job for retention cleanup
 resource "aws_glue_job" "retention" {
-  count = local.is_retention_enabled ? 1 : 0
+  count = local.is_data_retention_enabled ? 1 : 0
 
   name         = "${local.setup_naming_prefix}-retention-job"
   role_arn     = var.glue_service_role_arn
@@ -24,7 +24,7 @@ resource "aws_glue_job" "retention" {
 
   worker_type       = "G.1X"
   number_of_workers = 2
-  timeout           = 120
+  timeout           = 60
   max_retries       = 1
 
   default_arguments = {
@@ -43,7 +43,7 @@ resource "aws_glue_job" "retention" {
 # Glue Trigger to schedule retention job
 # Runs daily at midnight UTC (00:00) to delete old data based on table retention_period settings
 resource "aws_glue_trigger" "retention_schedule" {
-  count = local.is_retention_enabled ? 1 : 0
+  count = local.is_data_retention_enabled ? 1 : 0
 
   name     = "${local.setup_naming_prefix}-retention-schedule"
   type     = "SCHEDULED"
@@ -56,7 +56,7 @@ resource "aws_glue_trigger" "retention_schedule" {
 
 # CloudWatch Log Group for retention job logs
 resource "aws_cloudwatch_log_group" "retention_logs" {
-  count = local.is_retention_enabled ? 1 : 0
+  count = local.is_data_retention_enabled ? 1 : 0
 
   name              = "/aws-glue/jobs/${local.setup_naming_prefix}-retention-job"
   retention_in_days = 7

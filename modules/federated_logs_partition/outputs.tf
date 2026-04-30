@@ -10,5 +10,5 @@ output "all_tables" {
 
 output "retention_job_name" {
   description = "Name of the Glue retention job (if enabled)"
-  value       = local.is_retention_enabled ? aws_glue_job.retention[0].name : null
+  value       = local.is_data_retention_enabled ? aws_glue_job.retention[0].name : null
 }

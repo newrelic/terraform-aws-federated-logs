@@ -39,14 +39,10 @@ def main():
             results[table_name] = 'SUCCESS'
             print(f"[{table_name}] Deletion completed successfully")
 
-            # TODO: Report success to NGEP API
-
         except Exception as e:
             error_msg = str(e)
             results[table_name] = f'ERROR: {error_msg}'
             print(f"[{table_name}] Error: {error_msg}")
-
-            # TODO: Report failure to NGEP API
 
             # Continue with other tables (don't fail fast)
             continue
