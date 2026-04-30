@@ -2,78 +2,10 @@
 resource "aws_s3_object" "retention_script" {
   count = local.is_retention_enabled ? 1 : 0
 
-  bucket  = var.s3_bucket_name
-  key     = "${var.glue_catalog_db_name}/scripts/retention_job.py"
-  content = <<-PYTHON
-import sys
-import json
-from datetime import datetime, timedelta, timezone
-from pyspark.sql import SparkSession
-from awsglue.utils import getResolvedOptions
-
-def main():
-
-    # Parse job parameters
-    args = getResolvedOptions(sys.argv, ['DATABASE_NAME', 'TABLE_RETENTION'])
-    database = args['DATABASE_NAME']
-    table_retention_json = args['TABLE_RETENTION']
-
-    # Parse JSON map of table names to retention days
-    table_retention = json.loads(table_retention_json)
-
-    # Initialize Spark session with Hive support for Iceberg tables
-    spark = SparkSession.builder \
-        .appName("FederatedLogsRetention") \
-        .enableHiveSupport() \
-        .getOrCreate()
-
-    # Process each table with its specific retention period
-    results = {}
-    for table_name, retention_days in table_retention.items():
-        print(f"Processing table: {table_name}")
-        print(f"Retention period: {retention_days} days")
-
-        # Calculate cutoff timestamp aligned to midnight UTC for efficient partition deletion
-        now = datetime.now(timezone.utc)
-        cutoff = (now - timedelta(days=retention_days)).replace(hour=0, minute=0, second=0, microsecond=0)
-        cutoff_str = cutoff.strftime('%Y-%m-%d %H:%M:%S')
-        print(f"Cutoff timestamp (midnight-aligned): {cutoff_str}")
-
-        try:
-            # Execute DELETE using Spark SQL with Iceberg catalog
-            delete_query = f"DELETE FROM glue_catalog.{database}.{table_name} WHERE timestamp < TIMESTAMP '{cutoff_str}'"
-            print(f"[{table_name}] Executing: {delete_query}")
-            spark.sql(delete_query)
-
-            results[table_name] = 'SUCCESS'
-            print(f"[{table_name}] Deletion completed successfully")
-
-            # TODO: Report success to NGEP API
-
-        except Exception as e:
-            error_msg = str(e)
-            results[table_name] = f'ERROR: {error_msg}'
-            print(f"[{table_name}] Error: {error_msg}")
-
-            # TODO: Report failure to NGEP API
-
-            # Continue with other tables (don't fail fast)
-            continue
-
-    # Stop Spark session
-    spark.stop()
-
-    # Exit with error code if any failures
-    failed = [t for t, s in results.items() if s != 'SUCCESS']
-    if failed:
-        print(f" {len(failed)} table(s) failed: {', '.join(failed)}")
-        sys.exit(1)
-    else:
-        print(f" All {len(results)} table(s) processed successfully")
-
-if __name__ == '__main__':
-    main()
-PYTHON
+  bucket = var.s3_bucket_name
+  key    = "${var.glue_catalog_db_name}/scripts/retention_job.py"
+  source = "${path.module}/scripts/retention_job.py"
+  etag   = filemd5("${path.module}/scripts/retention_job.py")
 }
 
 # AWS Glue Spark ETL Job for retention cleanup

@@ -22,8 +22,3 @@ output "setup_name" {
   description = "Name of the federated logs setup, used in resource naming"
   value       = var.setup_name
 }
-
-output "user_key_secret_arn" {
-  description = "ARN of the Secrets Manager secret storing the New Relic API key"
-  value       = aws_secretsmanager_secret.newrelic_api_key.arn
-}

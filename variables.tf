@@ -40,7 +40,7 @@ variable "clusters" {
 #     delete_file_threshold                = 1
 #──────────────────────────────────────────────────────────────
 
-variable "retention_enabled" {
+variable "data_retention_enabled" {
   description = "Enable data retention feature. When true, creates Glue job to delete old data based on per-table retention_in_days."
   type        = bool
   default     = false
@@ -96,10 +96,4 @@ variable "partition_tables" {
     }), {})
   }))
   default = {}
-}
-
-variable "newrelic_api_key" {
-  description = "New Relic API key for NGEP API authentication (stored in AWS Secrets Manager)"
-  type        = string
-  sensitive   = true
 }

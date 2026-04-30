@@ -15,11 +15,8 @@ module "federated_logs" {
     }
   }
 
-  # New Relic API key for NGEP authentication
-  newrelic_api_key = "your-newrelic-api-key-here"
-
   # Enable data retention feature (creates Glue job to delete old data)
-  retention_enabled = true
+  data_retention_enabled = true
 
   default_table_setting = {
     retention_in_days = 30
