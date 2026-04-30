@@ -204,7 +204,7 @@ run "test_validation_rejects_empty_namespace" {
     glue_catalog_db_name = "test_db"
     clusters = {
       "test-cluster" = {
-        k8s_namespace            = ""  # Empty - should fail
+        k8s_namespace            = "" # Empty - should fail
         k8s_service_account_name = "pcg-writer-sa"
         oidc_provider_arn        = var.test_oidc_arn
       }
@@ -231,7 +231,7 @@ run "test_validation_rejects_empty_service_account" {
     clusters = {
       "test-cluster" = {
         k8s_namespace            = "federated-logs"
-        k8s_service_account_name = ""  # Empty - should fail
+        k8s_service_account_name = "" # Empty - should fail
         oidc_provider_arn        = var.test_oidc_arn
       }
     }
@@ -258,7 +258,7 @@ run "test_validation_rejects_empty_oidc_arn" {
       "test-cluster" = {
         k8s_namespace            = "federated-logs"
         k8s_service_account_name = "pcg-writer-sa"
-        oidc_provider_arn        = ""  # Empty - should fail
+        oidc_provider_arn        = "" # Empty - should fail
       }
     }
   }

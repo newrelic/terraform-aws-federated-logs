@@ -15,7 +15,11 @@ module "federated_logs" {
     }
   }
 
+  # Enable data retention feature (creates Glue job to delete old data)
+  data_retention_enabled = true
+
   default_table_setting = {
+    retention_in_days = 30
     table_parameters = {
       "write.target-file-size-bytes"               = "26214400" # 25 MB
       "write.metadata.delete-after-commit.enabled" = "true"
@@ -41,8 +45,11 @@ module "federated_logs" {
   }
 
   partition_tables = {
-    "application_log" = {},
+    "application_log" = {
+      retention_in_days = 5
+    },
     "security_log" = {
+      retention_in_days = 10
       optimizer_configuration = {
         orphan_file_deletion = {
           orphan_file_retention_period_in_days = 3

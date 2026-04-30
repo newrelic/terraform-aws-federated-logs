@@ -40,10 +40,17 @@ variable "clusters" {
 #     delete_file_threshold                = 1
 #──────────────────────────────────────────────────────────────
 
+variable "data_retention_enabled" {
+  description = "Enable data retention feature. When true, creates Glue job to delete old data based on per-table retention_in_days."
+  type        = bool
+  default     = false
+}
+
 variable "default_table_setting" {
   description = "Settings for the primary federated log table, including Iceberg table parameters and optimizer configuration"
   type = object({
-    table_parameters = optional(map(string), {})
+    retention_in_days = optional(number, 30)
+    table_parameters  = optional(map(string), {})
     optimizer_configuration = optional(object({
       orphan_file_deletion = optional(object({
         orphan_file_retention_period_in_days = optional(number, 3)
@@ -68,7 +75,8 @@ variable "default_table_setting" {
 variable "partition_tables" {
   description = "Map of additional partition tables. Each entry can override table_parameters and/or optimizer_configuration, or use {} for all defaults."
   type = map(object({
-    table_parameters = optional(map(string), {})
+    retention_in_days = optional(number, 30)
+    table_parameters  = optional(map(string), {})
     optimizer_configuration = optional(object({
       orphan_file_deletion = optional(object({
         orphan_file_retention_period_in_days = optional(number, 3)

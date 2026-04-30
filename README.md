@@ -10,6 +10,9 @@ module "federated_logs" {
 
   setup_name = "my-app-logs"
 
+  # Optional: set true to enable retention 
+  data_retention_enabled = true  
+
   # AWS region where resources will be created. If not set, uses the provider's configured region.
   #region = "us-east-2"
 

@@ -48,4 +48,13 @@ locals {
     )
   }
 
+  # Data retention configuration - enabled when data_retention_enabled is true at setup level
+  is_data_retention_enabled = var.data_retention_enabled
+
+  # Map of table names to their retention periods (in days)
+  table_retention_days = {
+    for k, v in local.all_tables :
+    k => v.retention_in_days
+  }
+
 }
