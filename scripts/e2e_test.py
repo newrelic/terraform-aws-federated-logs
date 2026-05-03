@@ -245,13 +245,13 @@ def main():
 
     # Validate required inputs
     required = {
-        "PCG_ENDPOINT / --pcg-endpoint": args.pcg_endpoint,
-        "NR_LICENSE_KEY / --license-key": args.license_key,
-        "PARTITION_NAME / --partition": args.partition,
-        "NR_ACCOUNT_ID / --nr-account-id": args.nr_account_id,
-        "NR_API_KEY / --nr-api-key": args.nr_api_key,
+        "PCG_ENDPOINT / --pcg-endpoint": bool(args.pcg_endpoint),
+        "NR_LICENSE_KEY / --license-key": bool(args.license_key),
+        "PARTITION_NAME / --partition": bool(args.partition),
+        "NR_ACCOUNT_ID / --nr-account-id": bool(args.nr_account_id),
+        "NR_API_KEY / --nr-api-key": bool(args.nr_api_key),
     }
-    missing = [name for name, val in required.items() if not val]
+    missing = [name for name, present in required.items() if not present]
     if missing:
         fail_msg("Missing required inputs:")
         for m in missing:
