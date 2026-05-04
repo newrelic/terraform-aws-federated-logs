@@ -1,0 +1,24 @@
+[
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/v1/logs"
+    },
+    "httpResponse": {
+      "statusCode": 202,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"requestId\": \"mock-request-id\"}"
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/graphql"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"data\":{\"actor\":{\"account\":{\"nrql\":{\"results\":[{\"message\":\"federated-logs e2e test\",\"level\":\"info\",\"e2e_test_id\":\"mock-uuid\"}]}}}}}"
+    }
+  }
+]

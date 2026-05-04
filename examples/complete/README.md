@@ -14,3 +14,37 @@ terraform init
 terraform plan
 terraform apply
 ```
+
+## Post-Deploy Validation
+
+Enable validation on demand via a variable:
+
+```sh
+terraform plan -var="enable_validation=true"
+```
+
+The example already includes the wiring — `validation_config.enabled` is bound to the `enable_validation` variable (defaults to `false`).
+
+This runs check blocks on every `terraform plan`, surfacing misconfigurations as warnings:
+
+- **Resource existence**: S3 bucket, IAM roles, CloudWatch log groups
+- **Trust policy structure**: Glue service trust, OIDC federation on PCG writer, ExternalId on NR reader
+- **Permission simulation**: Positive and negative IAM permission checks for all three roles
+- **OIDC provider existence**: Verifies each cluster's OIDC provider ARN exists (opt-in)
+
+No resources are created. Disable at any time by setting `enabled = false` or removing the block.
+
+### Prerequisites
+
+| Feature | Permission required |
+|---------|-------------------|
+| Permission checks (default on) | `iam:SimulatePrincipalPolicy` |
+| OIDC validation (default off) | `iam:GetOpenIDConnectProvider` |
+
+```hcl
+validation_config = {
+  enabled                  = true
+  enable_permission_checks = false  # Skip if lacking iam:SimulatePrincipalPolicy
+  enable_oidc_validation   = true   # Opt in if you have iam:GetOpenIDConnectProvider
+}
+```

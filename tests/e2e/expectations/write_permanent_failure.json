@@ -1,0 +1,12 @@
+[
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/v1/logs"
+    },
+    "httpResponse": {
+      "statusCode": 503,
+      "body": "Service Unavailable"
+    }
+  }
+]

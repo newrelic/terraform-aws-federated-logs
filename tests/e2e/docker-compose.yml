@@ -1,0 +1,9 @@
+services:
+  mockserver:
+    image: mockserver/mockserver:5.15.0
+    ports:
+      - "1080:1080"
+    environment:
+      MOCKSERVER_LOG_LEVEL: WARN
+    volumes:
+      - ./expectations:/config:ro
