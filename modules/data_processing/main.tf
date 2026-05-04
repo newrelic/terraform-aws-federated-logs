@@ -49,7 +49,7 @@ resource "aws_iam_role" "base_role" {
   })
 
   tags = {
-    PCG_Instance = var.setup_name
+    PCG_Instance = var.data_processing_module_name
   }
 }
 
@@ -109,81 +109,7 @@ resource "null_resource" "aws_connection_entity" {
       NR_API_KEY        = var.newrelic_api_key
       NR_ENDPOINT       = local.nr_graphql_endpoint
     }
-    command = <<-EOT
-      set -e
-      python3 - <<'PYEOF'
-import json, urllib.request, os, sys
-
-endpoint          = os.environ['NR_ENDPOINT']
-api_key           = os.environ['NR_API_KEY']
-role_arn          = os.environ['ROLE_ARN']
-name              = os.environ['ENTITY_NAME']
-org_id            = os.environ['NR_ORG_ID']
-fleet_entity_guid = os.environ['FLEET_ENTITY_GUID']
-
-def call_graphql(query):
-    payload = json.dumps({"query": query}).encode()
-    req = urllib.request.Request(endpoint, data=payload, headers={
-        "Content-Type": "application/json",
-        "API-Key": api_key
-    })
-    try:
-        return json.loads(urllib.request.urlopen(req).read())
-    except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", errors="replace")
-        print("HTTP %d %s\nResponse: %s" % (e.code, e.reason, body), file=sys.stderr)
-        sys.exit(1)
-
-# Step 1: Create AWS Connection Entity
-create_mutation = """
-mutation {
-  entityManagementCreateAwsConnection(
-    awsConnectionEntity: {
-      name: "%s",
-      credential: {assumeRole: {roleArn: "%s"}},
-      scope: {id: "%s", type: ORGANIZATION}
-    }
-  ) {
-    entity { id }
-  }
-}
-""" % (name, role_arn, org_id)
-
-resp = call_graphql(create_mutation)
-if "errors" in resp:
-    print("GraphQL errors (create entity): " + json.dumps(resp["errors"], indent=2), file=sys.stderr)
-    sys.exit(1)
-
-entity_id = resp['data']['entityManagementCreateAwsConnection']['entity']['id']
-print("Created AWS Connection Entity: " + entity_id)
-
-# Step 2: Create APPLY_TO relationship fleet_entity_guid -> aws_connection_entity
-rel_mutation = """
-mutation {
-  entityManagementCreateRelationship(
-    relationship: {
-      source: {id: "%s", scope: ORGANIZATION}
-      target: {id: "%s", scope: ORGANIZATION}
-      type: "APPLY_TO"
-    }
-  ) {
-    relationship {
-      type
-      source { id }
-      target { id }
-    }
-  }
-}
-""" % (fleet_entity_guid, entity_id)
-
-resp = call_graphql(rel_mutation)
-if "errors" in resp:
-    print("GraphQL errors (create relationship): " + json.dumps(resp["errors"], indent=2), file=sys.stderr)
-    sys.exit(1)
-
-print("Created APPLY_TO relationship: %s -> %s" % (fleet_entity_guid, entity_id))
-PYEOF
-    EOT
+    command = "python3 ${path.module}/scripts/create_aws_connection.py"
   }
 
   provisioner "local-exec" {
@@ -195,56 +121,7 @@ PYEOF
       FLEET_ENTITY_GUID = self.triggers.fleet_entity_guid
       NR_ORG_ID         = self.triggers.nr_org_id
     }
-    command = <<-EOT
-      set -e
-      python3 - <<'PYEOF'
-import json, urllib.request, os, sys
-
-endpoint          = os.environ['NR_ENDPOINT']
-api_key           = os.environ['NR_API_KEY']
-entity_name       = os.environ['ENTITY_NAME']
-fleet_entity_guid = os.environ['FLEET_ENTITY_GUID']
-org_id            = os.environ['NR_ORG_ID']
-
-def call_graphql(query):
-    payload = json.dumps({"query": query}).encode()
-    req = urllib.request.Request(endpoint, data=payload, headers={
-        "Content-Type": "application/json",
-        "API-Key": api_key
-    })
-    try:
-        return json.loads(urllib.request.urlopen(req).read())
-    except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", errors="replace")
-        print("HTTP %d %s\nResponse: %s" % (e.code, e.reason, body), file=sys.stderr)
-        sys.exit(1)
-
-# Look up the entity ID by name so we don't rely on any local file.
-search_query = """
-{
-  actor {
-    entitySearch(query: "name = '%s' AND type = 'AWS_CONNECTION'") {
-      results {
-        entities { guid }
-      }
-    }
-  }
-}
-""" % entity_name
-
-resp = call_graphql(search_query)
-entities = resp.get('data', {}).get('actor', {}).get('entitySearch', {}).get('results', {}).get('entities', [])
-if not entities:
-    print("AWS Connection Entity '%s' not found, skipping delete." % entity_name)
-    sys.exit(0)
-
-entity_id = entities[0]['guid']
-
-# TODO: Delete APPLY_TO relationship once delete mutation is confirmed.
-# TODO: Delete AWS Connection Entity once delete mutation is confirmed.
-print("TODO: delete relationship and AWS Connection Entity %s — mutations not yet confirmed." % entity_id)
-PYEOF
-    EOT
+    command = "python3 ${path.module}/scripts/delete_aws_connection.py"
   }
 }
 

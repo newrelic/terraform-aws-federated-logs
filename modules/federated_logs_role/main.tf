@@ -5,6 +5,15 @@ data "aws_region" "current" {
   region = var.region
 }
 
+data "external" "base_role" {
+  program = ["python3", "${path.module}/scripts/fetch_base_role.py"]
+  query = {
+    fleet_entity_guid = var.fleet_entity_guid
+    nr_api_key        = var.newrelic_api_key
+    nr_endpoint       = local.nr_graphql_endpoint
+  }
+}
+
 resource "random_uuid" "external_id" {
   keepers = {
     # If this value changes, a new UUID will be generated
@@ -173,7 +182,7 @@ resource "aws_iam_role" "pcg-writer-role" {
       {
         Effect = "Allow"
         Principal = {
-          AWS = var.base_role_arn
+          AWS = data.external.base_role.result["role_arn"]
         }
         Action = ["sts:AssumeRole", "sts:TagSession"]
         Condition = {

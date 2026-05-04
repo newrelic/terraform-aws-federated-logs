@@ -1,9 +1,9 @@
-variable "setup_name" {
+variable "data_processing_module_name" {
   description = "Name for this data processing setup. Used in resource naming and as the PCG_Instance tag value for ABAC."
   type        = string
   validation {
-    condition     = can(regex("^[a-z0-9][a-z0-9-]{1,24}[a-z0-9]$", var.setup_name))
-    error_message = "setup_name must be lowercase alphanumeric with hyphens (not first/last), 3–26 chars."
+    condition     = can(regex("^[a-z0-9][a-z0-9-]{1,24}[a-z0-9]$", var.data_processing_module_name))
+    error_message = "data_processing_module_name must be lowercase alphanumeric with hyphens (not first/last), 3–26 chars."
   }
 }
 

@@ -13,14 +13,30 @@ variable "setup_name" {
   }
 }
 
-variable "base_role_arn" {
-  description = "ARN of the fleet-level PCG base role (output of the data_processing module). The per-setup pcg-writer role will trust this role via ABAC."
+variable "fleet_entity_guid" {
+  description = "NGEP entity GUID of the PCG fleet (output of the data_processing module). Used to resolve the base role ARN via the AWS Connection Entity."
   type        = string
 }
 
 variable "pcg_instance_name" {
-  description = "Fleet name used as the PCG_Instance ABAC tag value. Must match the name used in the data_processing module."
+  description = "Fleet name used as the PCG_Instance ABAC tag value. Must match the data_processing_module_name used in the data_processing module."
   type        = string
+}
+
+variable "newrelic_api_key" {
+  description = "New Relic User API key for NerdGraph queries."
+  type        = string
+  sensitive   = true
+}
+
+variable "newrelic_region" {
+  description = "New Relic region: 'US', 'EU', or 'STAGING'."
+  type        = string
+  default     = "US"
+  validation {
+    condition     = contains(["US", "EU", "STAGING"], var.newrelic_region)
+    error_message = "newrelic_region must be 'US', 'EU', or 'STAGING'."
+  }
 }
 
 #──────────────────────────────────────────────────────────────
