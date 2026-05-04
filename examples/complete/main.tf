@@ -1,10 +1,10 @@
-module "federated_logs" {
-  source = "../../"
+module "data_processing" {
+  source = "../../modules/data_processing"
 
-  setup_name = "my-app-logs"
-
-  # AWS region where resources will be created. If not set, uses the provider's configured region.
-  #region = "us-east-2"
+  setup_name        = "my-app-logs"
+  newrelic_org_id   = "YOUR_NR_ORG_ID"
+  newrelic_api_key  = "YOUR_NR_API_KEY"
+  fleet_entity_guid = "YOUR_FLEET_ENTITY_GUID"
 
   clusters = {
     "cluster-1" = {
@@ -14,8 +14,23 @@ module "federated_logs" {
       oidc_provider_arn        = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-east-2.amazonaws.com/id/EXAMPLE"
     }
   }
+}
+
+module "federated_logs" {
+  source = "../../"
+
+  setup_name        = "my-app-logs"
+  base_role_arn     = module.data_processing.base_role_arn
+  pcg_instance_name = module.data_processing.pcg_instance_name
+
+  # AWS region where resources will be created. If not set, uses the provider's configured region.
+  #region = "us-east-2"
+
+  # Enable data retention feature (creates Glue job to delete old data)
+  data_retention_enabled = true
 
   default_table_setting = {
+    retention_in_days = 30
     table_parameters = {
       "write.target-file-size-bytes"               = "26214400" # 25 MB
       "write.metadata.delete-after-commit.enabled" = "true"
@@ -41,8 +56,11 @@ module "federated_logs" {
   }
 
   partition_tables = {
-    "application_log" = {},
+    "application_log" = {
+      retention_in_days = 5
+    },
     "security_log" = {
+      retention_in_days = 10
       optimizer_configuration = {
         orphan_file_deletion = {
           orphan_file_retention_period_in_days = 3

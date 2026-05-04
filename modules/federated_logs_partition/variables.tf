@@ -35,10 +35,17 @@ variable "glue_service_role_arn" {
 #     delete_file_threshold                = 1
 #──────────────────────────────────────────────────────────────
 
+variable "data_retention_enabled" {
+  description = "Enable data retention feature. When true, creates Glue job to delete old data based on per-table retention_in_days."
+  type        = bool
+  default     = false
+}
+
 variable "default_table_setting" {
   description = "Settings for the primary 'Log' table"
   type = object({
-    table_parameters = optional(map(string), {})
+    retention_in_days = optional(number, 30)
+    table_parameters  = optional(map(string), {})
     optimizer_configuration = optional(object({
       orphan_file_deletion = optional(object({
         orphan_file_retention_period_in_days = optional(number, 3)
@@ -65,7 +72,8 @@ variable "default_table_setting" {
 variable "partition_tables" {
   description = "Map of extra tables using the exact same structure as the default"
   type = map(object({
-    table_parameters = optional(map(string), {})
+    retention_in_days = optional(number, 30)
+    table_parameters  = optional(map(string), {})
     optimizer_configuration = optional(object({
       orphan_file_deletion = optional(object({
         orphan_file_retention_period_in_days = optional(number, 3)
