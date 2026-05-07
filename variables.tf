@@ -97,3 +97,101 @@ variable "partition_tables" {
   }))
   default = {}
 }
+
+# =============================================================================
+# Data Processing (Flink Commit Worker) Configuration
+# =============================================================================
+
+variable "flink_jar_bucket" {
+  description = "S3 bucket containing the Flink application JAR"
+  type        = string
+}
+
+variable "flink_jar_key" {
+  description = "S3 key for the Flink application JAR file"
+  type        = string
+}
+
+variable "flink_runtime" {
+  description = "Flink runtime environment version"
+  type        = string
+  default     = "FLINK-1_18"
+}
+
+variable "parallelism" {
+  description = "Flink application parallelism"
+  type        = number
+  default     = 1
+}
+
+variable "checkpoint_interval_ms" {
+  description = "Flink checkpoint interval in milliseconds"
+  type        = number
+  default     = 60000
+}
+
+variable "snapshots_enabled" {
+  description = "Whether Flink application snapshots are enabled"
+  type        = bool
+  default     = true
+}
+
+variable "sqs_batch_size" {
+  description = "Number of messages to receive per SQS batch"
+  type        = number
+  default     = 10
+}
+
+variable "sqs_visibility_timeout" {
+  description = "SQS main queue visibility timeout in seconds"
+  type        = number
+  default     = 300
+}
+
+variable "sqs_message_retention" {
+  description = "SQS message retention period in seconds"
+  type        = number
+  default     = 1209600
+}
+
+variable "sqs_max_receive_count" {
+  description = "Maximum number of receives before a message is moved to the DLQ"
+  type        = number
+  default     = 5
+}
+
+variable "newrelic_license_key_secret" {
+  description = "AWS Secrets Manager secret name for the New Relic license key"
+  type        = string
+  default     = ""
+}
+
+variable "newrelic_metrics_endpoint" {
+  description = "New Relic metrics API endpoint"
+  type        = string
+  default     = "https://metric-api.newrelic.com/metric/v1"
+}
+
+variable "log_retention_days" {
+  description = "CloudWatch log group retention in days for Flink application"
+  type        = number
+  default     = 30
+}
+
+variable "secrets_manager_prefix" {
+  description = "Secrets Manager path prefix for secrets the Flink commit worker can access"
+  type        = string
+  default     = "pcg/flink-iceberg-commit-worker"
+}
+
+variable "permissions_boundary_arn" {
+  description = "ARN of the IAM permissions boundary to attach to the Flink role. If null, no boundary is applied."
+  type        = string
+  default     = null
+}
+
+variable "tags" {
+  description = "A map of tags to apply to data processing resources"
+  type        = map(string)
+  default     = {}
+}

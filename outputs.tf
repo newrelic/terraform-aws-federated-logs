@@ -32,3 +32,28 @@ output "iceberg_tables" {
   description = "Map of created Iceberg table names and their configurations"
   value       = module.partition.all_tables
 }
+
+output "flink_application_name" {
+  description = "Name of the Flink commit worker application"
+  value       = module.data_processing.flink_application_name
+}
+
+output "flink_application_arn" {
+  description = "ARN of the Flink commit worker application"
+  value       = module.data_processing.flink_application_arn
+}
+
+output "flink_role_arn" {
+  description = "ARN of the IAM role used by Flink commit worker"
+  value       = module.data_processing_role.flink_role_arn
+}
+
+output "sqs_queue_url" {
+  description = "URL of the SQS queue for Iceberg file events"
+  value       = module.data_processing.sqs_queue_url
+}
+
+output "sqs_queue_arn" {
+  description = "ARN of the SQS queue for Iceberg file events"
+  value       = module.data_processing.sqs_queue_arn
+}
