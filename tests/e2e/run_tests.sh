@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 MOCK_URL="http://localhost:1080"
-E2E_SCRIPT="$REPO_ROOT/scripts/e2e_test.py"
+E2E_SCRIPT="$REPO_ROOT/modules/federated_logs_e2e_validation/scripts/e2e_test.py"
 
 # Zero out wait times for mock testing
 export E2E_WRITE_RETRY_DELAY=0
