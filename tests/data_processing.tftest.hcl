@@ -22,6 +22,7 @@ variables {
   fleet_entity_guid = "YOUR_TEST_FLEET_ENTITY_GUID"
   newrelic_api_key  = "YOUR_TEST_NR_API_KEY"
   newrelic_org_id   = "YOUR_TEST_NR_ORG_ID"
+  newrelic_region   = "STAGING"
 }
 
 # =============================================================================
@@ -35,6 +36,7 @@ run "test_base_role_naming" {
     data_processing_module_name = "inttest-dp-name"
     fleet_entity_guid           = var.fleet_entity_guid
     newrelic_api_key            = var.newrelic_api_key
+    newrelic_region             = var.newrelic_region
     newrelic_org_id             = var.newrelic_org_id
     clusters = {
       "test-cluster" = {
@@ -95,6 +97,7 @@ run "test_validation_rejects_empty_namespace" {
     data_processing_module_name = "inttest-dp-val1"
     fleet_entity_guid           = var.fleet_entity_guid
     newrelic_api_key            = var.newrelic_api_key
+    newrelic_region             = var.newrelic_region
     newrelic_org_id             = var.newrelic_org_id
     clusters = {
       "test-cluster" = {
@@ -119,6 +122,7 @@ run "test_validation_rejects_empty_service_account" {
     data_processing_module_name = "inttest-dp-val2"
     fleet_entity_guid           = var.fleet_entity_guid
     newrelic_api_key            = var.newrelic_api_key
+    newrelic_region             = var.newrelic_region
     newrelic_org_id             = var.newrelic_org_id
     clusters = {
       "test-cluster" = {
@@ -143,6 +147,7 @@ run "test_validation_rejects_empty_oidc_arn" {
     data_processing_module_name = "inttest-dp-val3"
     fleet_entity_guid           = var.fleet_entity_guid
     newrelic_api_key            = var.newrelic_api_key
+    newrelic_region             = var.newrelic_region
     newrelic_org_id             = var.newrelic_org_id
     clusters = {
       "test-cluster" = {
@@ -167,6 +172,7 @@ run "test_validation_rejects_mixed_auth_modes" {
     data_processing_module_name = "inttest-dp-val4"
     fleet_entity_guid           = var.fleet_entity_guid
     newrelic_api_key            = var.newrelic_api_key
+    newrelic_region             = var.newrelic_region
     newrelic_org_id             = var.newrelic_org_id
     clusters = {
       "irsa-cluster" = {
@@ -202,6 +208,7 @@ run "setup_for_multi_cluster_test" {
     data_processing_module_name = "inttest-dp-multi"
     fleet_entity_guid           = var.fleet_entity_guid
     newrelic_api_key            = var.newrelic_api_key
+    newrelic_region             = var.newrelic_region
     newrelic_org_id             = var.newrelic_org_id
     clusters = {
       "prod-cluster-account-a" = {
@@ -245,6 +252,7 @@ run "update_test_create_single_cluster" {
     data_processing_module_name = "inttest-dp-upd"
     fleet_entity_guid           = var.fleet_entity_guid
     newrelic_api_key            = var.newrelic_api_key
+    newrelic_region             = var.newrelic_region
     newrelic_org_id             = var.newrelic_org_id
     clusters = {
       "cluster-1" = {
@@ -272,6 +280,7 @@ run "update_test_add_cluster" {
     data_processing_module_name = "inttest-dp-upd"
     fleet_entity_guid           = var.fleet_entity_guid
     newrelic_api_key            = var.newrelic_api_key
+    newrelic_region             = var.newrelic_region
     newrelic_org_id             = var.newrelic_org_id
     clusters = {
       "cluster-1" = {
@@ -305,6 +314,7 @@ run "update_test_remove_cluster" {
     data_processing_module_name = "inttest-dp-upd"
     fleet_entity_guid           = var.fleet_entity_guid
     newrelic_api_key            = var.newrelic_api_key
+    newrelic_region             = var.newrelic_region
     newrelic_org_id             = var.newrelic_org_id
     clusters = {
       "cluster-1" = {

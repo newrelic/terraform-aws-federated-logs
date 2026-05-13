@@ -19,6 +19,7 @@
 variables {
   fleet_entity_guid = "YOUR_TEST_FLEET_ENTITY_GUID"
   newrelic_api_key  = "YOUR_TEST_NR_API_KEY"
+  newrelic_region   = "STAGING"
 }
 
 # =============================================================================
@@ -59,6 +60,7 @@ run "test_role_naming_conventions" {
     glue_catalog_db_name = run.setup_for_naming_test.glue_catalog_db_name
     fleet_entity_guid    = var.fleet_entity_guid
     newrelic_api_key     = var.newrelic_api_key
+    newrelic_region      = var.newrelic_region
   }
 
   module {
@@ -226,6 +228,7 @@ run "test_module_wiring" {
     glue_catalog_db_name = run.setup_for_wiring_test.glue_catalog_db_name
     fleet_entity_guid    = var.fleet_entity_guid
     newrelic_api_key     = var.newrelic_api_key
+    newrelic_region      = var.newrelic_region
   }
 
   module {
