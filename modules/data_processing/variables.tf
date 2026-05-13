@@ -1,5 +1,5 @@
 variable "data_processing_module_name" {
-  description = "Name for this data processing setup. Used in resource naming and as the PCG_Instance tag value for ABAC."
+  description = "Name for this data processing setup. Used in resource naming."
   type        = string
   validation {
     condition     = can(regex("^[a-z0-9][a-z0-9-]{1,24}[a-z0-9]$", var.data_processing_module_name))

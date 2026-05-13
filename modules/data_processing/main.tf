@@ -49,12 +49,12 @@ resource "aws_iam_role" "base_role" {
   })
 
   tags = {
-    PCG_Instance = var.data_processing_module_name
+    fleet_entity_guid = var.fleet_entity_guid
   }
 }
 
 # ABAC wildcard policy: allows assuming any pcg-writer role in any account
-# where the role's PCG_Instance tag matches this base role's PCG_Instance tag.
+# where the role's fleet_entity_guid tag matches this base role's fleet_entity_guid tag.
 resource "aws_iam_role_policy" "abac_assume_policy" {
   name = "${local.naming_prefix}-abac-assume"
   role = aws_iam_role.base_role.id
@@ -68,7 +68,7 @@ resource "aws_iam_role_policy" "abac_assume_policy" {
         Resource = "arn:aws:iam::*:role/newrelic-fed-logs-*-pcg-writer"
         Condition = {
           StringEquals = {
-            "aws:ResourceTag/PCG_Instance" = "$${aws:PrincipalTag/PCG_Instance}"
+            "aws:ResourceTag/fleet_entity_guid" = "$${aws:PrincipalTag/fleet_entity_guid}"
           }
         }
       }

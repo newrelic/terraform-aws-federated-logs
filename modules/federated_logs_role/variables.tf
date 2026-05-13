@@ -35,11 +35,6 @@ variable "newrelic_region" {
   }
 }
 
-variable "pcg_instance_name" {
-  description = "Fleet name used as the PCG_Instance ABAC tag value. Must match the name used in the data_processing module."
-  type        = string
-}
-
 variable "setup_name" {
   description = "A name for this federated logs setup, also used in resource naming."
   type        = string

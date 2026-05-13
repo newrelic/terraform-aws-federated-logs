@@ -18,11 +18,6 @@ variable "fleet_entity_guid" {
   type        = string
 }
 
-variable "pcg_instance_name" {
-  description = "Fleet name used as the PCG_Instance ABAC tag value. Must match the data_processing_module_name used in the data_processing module."
-  type        = string
-}
-
 variable "newrelic_api_key" {
   description = "New Relic User API key for NerdGraph queries."
   type        = string

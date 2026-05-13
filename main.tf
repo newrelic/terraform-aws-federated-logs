@@ -12,8 +12,7 @@ module "role" {
   fleet_entity_guid    = var.fleet_entity_guid
   newrelic_api_key     = var.newrelic_api_key
   newrelic_region      = var.newrelic_region
-  pcg_instance_name    = var.pcg_instance_name
-  region               = var.region
+region               = var.region
 }
 
 module "partition" {

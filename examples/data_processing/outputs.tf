@@ -8,7 +8,3 @@ output "base_role_name" {
   value       = module.data_processing.base_role_name
 }
 
-output "pcg_instance_name" {
-  description = "The PCG_Instance tag value. Pass this to each federated_logs_setup module as pcg_instance_name."
-  value       = module.data_processing.pcg_instance_name
-}

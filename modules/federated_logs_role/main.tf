@@ -170,7 +170,7 @@ resource "aws_iam_policy" "reader_policy" {
 
 # ── PCG Writer Role ───────────────────────────────────────────────────────────
 # Per-setup writer role. Trusts ONLY the fleet base role via ABAC tag matching.
-# The base role must have PCG_Instance = var.pcg_instance_name to satisfy the condition.
+# The base role must have fleet_entity_guid = var.fleet_entity_guid to satisfy the condition.
 
 resource "aws_iam_role" "pcg-writer-role" {
   name        = "${local.setup_naming_prefix}-pcg-writer"
@@ -187,7 +187,7 @@ resource "aws_iam_role" "pcg-writer-role" {
         Action = ["sts:AssumeRole", "sts:TagSession"]
         Condition = {
           StringEquals = {
-            "aws:PrincipalTag/PCG_Instance" = var.pcg_instance_name
+            "aws:PrincipalTag/fleet_entity_guid" = var.fleet_entity_guid
           }
         }
       }
@@ -195,7 +195,7 @@ resource "aws_iam_role" "pcg-writer-role" {
   })
 
   tags = {
-    PCG_Instance = var.pcg_instance_name
+    fleet_entity_guid = var.fleet_entity_guid
   }
 }
 
