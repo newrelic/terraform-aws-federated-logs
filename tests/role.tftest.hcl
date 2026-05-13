@@ -8,18 +8,17 @@
 #   3. Trust policy structure (ABAC condition, ExternalId, etc.)
 #   4. Module dependency wiring (uses setup_resource outputs correctly)
 #
-# Prerequisites:
-#   - NR staging credentials: TF_VAR_newrelic_api_key and TF_VAR_fleet_entity_guid
-#     must be set. fleet_entity_guid must reference a real NR entity that has an
-#     associated AWS Connection Entity (created by the data_processing module).
+# No NR credentials are required to run these tests. The data.external.base_role
+# data source (which calls fetch_base_role.py) is mocked via override_data in
+# each run block that uses the federated_logs_role module.
 #
 # =============================================================================
 
 # Shared test variables
 variables {
-  fleet_entity_guid = "YOUR_TEST_FLEET_ENTITY_GUID"
-  newrelic_api_key  = "YOUR_TEST_NR_API_KEY"
-  newrelic_region   = "STAGING"
+  fleet_entity_guid = "test-fleet-entity-guid"
+  newrelic_api_key  = "test-nr-api-key"
+  newrelic_region   = "US"
 }
 
 # =============================================================================
@@ -61,6 +60,15 @@ run "test_role_naming_conventions" {
     fleet_entity_guid    = var.fleet_entity_guid
     newrelic_api_key     = var.newrelic_api_key
     newrelic_region      = var.newrelic_region
+  }
+
+  override_data {
+    target = data.external.base_role
+    values = {
+      result = {
+        role_arn = "arn:aws:iam::123456789012:role/newrelic-fed-logs-fleet-test-base"
+      }
+    }
   }
 
   module {
@@ -185,10 +193,10 @@ run "test_role_naming_conventions" {
     error_message = "NR reader role trust policy missing ExternalId condition - security risk for cross-account access"
   }
 
-  # Verify base role ARN resolved from NGEP is a valid IAM role ARN
+  # Verify base_role_arn_from_ngep is the mocked ARN
   assert {
     condition     = can(regex("^arn:aws:iam::[0-9]{12}:role/.+", output.base_role_arn_from_ngep))
-    error_message = "fetch_base_role.py must return a valid IAM role ARN from NGEP"
+    error_message = "base_role_arn_from_ngep must be a valid IAM role ARN"
   }
 
   # Verify pcg-writer role is tagged with fleet_entity_guid
@@ -229,6 +237,15 @@ run "test_module_wiring" {
     fleet_entity_guid    = var.fleet_entity_guid
     newrelic_api_key     = var.newrelic_api_key
     newrelic_region      = var.newrelic_region
+  }
+
+  override_data {
+    target = data.external.base_role
+    values = {
+      result = {
+        role_arn = "arn:aws:iam::123456789012:role/newrelic-fed-logs-fleet-test-base"
+      }
+    }
   }
 
   module {
