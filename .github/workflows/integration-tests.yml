@@ -8,6 +8,9 @@ on:
 env:
   AWS_REGION: us-east-1
   TF_VAR_test_run_id: ${{ github.run_id }}
+  TF_VAR_fleet_entity_guid: ${{ secrets.TEST_FLEET_ENTITY_GUID }}
+  TF_VAR_newrelic_api_key: ${{ secrets.TEST_NR_API_KEY }}
+  TF_VAR_newrelic_org_id: ${{ secrets.TEST_NR_ORG_ID }}
 
 jobs:
   integration-tests:
@@ -37,6 +40,10 @@ jobs:
 
       - name: Run Setup Resource Tests
         run: terraform test -filter=tests/setup_resource.tftest.hcl
+        continue-on-error: false
+
+      - name: Run Data Processing Tests
+        run: terraform test -filter=tests/data_processing.tftest.hcl
         continue-on-error: false
 
       - name: Run Role Tests
