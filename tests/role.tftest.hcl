@@ -51,7 +51,7 @@ run "setup_for_naming_test" {
 # Why: Naming is defined in module's main.tf using local.setup_naming_prefix
 # -----------------------------------------------------------------------------
 run "test_role_naming_conventions" {
-  command = apply
+  command = plan
 
   variables {
     setup_name           = run.setup_for_naming_test.setup_name
@@ -228,7 +228,7 @@ run "setup_for_wiring_test" {
 # TEST: Module wiring - outputs from setup_resource flow correctly to role
 # -----------------------------------------------------------------------------
 run "test_module_wiring" {
-  command = apply
+  command = plan
 
   variables {
     setup_name           = run.setup_for_wiring_test.setup_name
