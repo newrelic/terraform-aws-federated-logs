@@ -44,7 +44,7 @@ variable "clusters" {
 }
 
 variable "fleet_entity_guid" {
-  description = "NGEP entity GUID of the fleet (e.g. FederatedLogsDataProcessingEntity). A relationship of type APPLY_TO will be created from this entity to the AWS Connection Entity."
+  description = "NGEP entity GUID of the fleet (e.g. FederatedLogsDataProcessingEntity). A relationship of type HAS_FED_LOGS_BASE_ROLE will be created from this entity to the AWS Connection Entity."
   type        = string
 }
 

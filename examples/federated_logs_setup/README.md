@@ -10,7 +10,7 @@ It creates:
 - A New Relic reader IAM role for cross-account query access
 - Iceberg tables with configurable optimizer and retention settings
 
-The `fleet_entity_guid` and `pcg_instance_name` inputs come from the outputs of the `data_processing` module.
+The `fleet_entity_guid` input comes from the outputs of the `data_processing` module.
 
 ## Usage
 
