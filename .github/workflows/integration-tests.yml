@@ -39,6 +39,10 @@ jobs:
         run: terraform test -filter=tests/setup_resource.tftest.hcl
         continue-on-error: false
 
+      - name: Run Data Processing Tests
+        run: terraform test -filter=tests/data_processing.tftest.hcl
+        continue-on-error: false
+
       - name: Run Role Tests
         run: terraform test -filter=tests/role.tftest.hcl
         continue-on-error: false

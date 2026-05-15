@@ -13,15 +13,25 @@ variable "setup_name" {
   }
 }
 
-variable "clusters" {
-  description = "A map of cluster configurations for federated logging. Set auth_mode to 'irsa' (default) or 'pod_identity'. NOTE: 'pod_identity' requires the 'eks-pod-identity-agent' addon to be installed on each cluster — manage that in your EKS cluster module."
-  type = map(object({
-    auth_mode                = optional(string, "irsa")
-    k8s_namespace            = string
-    k8s_service_account_name = string
-    oidc_provider_arn        = optional(string)
-    cluster_name             = optional(string)
-  }))
+variable "fleet_entity_guid" {
+  description = "NGEP entity GUID of the PCG fleet (output of the data_processing module). Used to resolve the base role ARN via the AWS Connection Entity."
+  type        = string
+}
+
+variable "newrelic_api_key" {
+  description = "New Relic User API key for NerdGraph queries."
+  type        = string
+  sensitive   = true
+}
+
+variable "newrelic_region" {
+  description = "New Relic region: 'US', 'EU', or 'STAGING'."
+  type        = string
+  default     = "US"
+  validation {
+    condition     = contains(["US", "EU", "STAGING"], var.newrelic_region)
+    error_message = "newrelic_region must be 'US', 'EU', or 'STAGING'."
+  }
 }
 
 #──────────────────────────────────────────────────────────────

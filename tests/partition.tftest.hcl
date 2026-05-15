@@ -9,11 +9,6 @@
 #
 # =============================================================================
 
-# Shared test variables
-variables {
-  test_oidc_arn = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/EXAMPLED539D4633E53DE1B71EXAMPLE"
-}
-
 # =============================================================================
 # VALIDATION TESTS (plan-only, no AWS resources needed)
 # =============================================================================
@@ -81,13 +76,37 @@ run "roles" {
     setup_name           = run.setup.setup_name
     s3_bucket_name       = run.setup.s3_bucket_name
     glue_catalog_db_name = run.setup.glue_catalog_db_name
-    clusters = {
-      "test-cluster" = {
-        k8s_namespace            = "federated-logs"
-        k8s_service_account_name = "pcg-writer-sa"
-        oidc_provider_arn        = var.test_oidc_arn
+    fleet_entity_guid    = "test-fleet-entity-guid"
+    newrelic_api_key     = "test-nr-api-key"
+    newrelic_region      = "US"
+  }
+
+  # Mock the NGEP fetch — no NR API call needed
+  override_data {
+    target = data.external.base_role
+    values = {
+      result = {
+        role_arn = "arn:aws:iam::123456789012:role/mock-base-role"
       }
     }
+  }
+
+  # Skip pcg-writer role creation: its trust policy principal (an IAM role ARN)
+  # is mocked, so AWS would reject the fake account ID. The partition tests only
+  # need glue_service_role_arn, not the pcg-writer role.
+  override_resource {
+    target = aws_iam_role.pcg-writer-role
+    values = {
+      arn  = "arn:aws:iam::000000000000:role/mock-pcg-writer"
+      name = "mock-pcg-writer"
+      tags = {}
+    }
+  }
+
+  # Skip the policy attachment since the role above is mocked and doesn't exist in AWS
+  override_resource {
+    target = aws_iam_role_policy_attachment.writer_attach
+    values = {}
   }
 
   module {

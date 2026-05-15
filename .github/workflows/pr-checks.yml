@@ -16,7 +16,7 @@ jobs:
     steps:
       - id: set-matrix
         run: |
-          echo 'paths=[{"name":"root","path":"."},{"name":"examples-complete","path":"examples/complete"},{"name":"federated_logs_partition","path":"modules/federated_logs_partition"},{"name":"federated_logs_role","path":"modules/federated_logs_role"},{"name":"federated_logs_setup_resource","path":"modules/federated_logs_setup_resource"}]' >> $GITHUB_OUTPUT
+          echo 'paths=[{"name":"root","path":"."},{"name":"examples-data-processing","path":"examples/data_processing"},{"name":"examples-federated-logs-setup","path":"examples/federated_logs_setup"},{"name":"data_processing","path":"modules/data_processing"},{"name":"federated_logs_partition","path":"modules/federated_logs_partition"},{"name":"federated_logs_role","path":"modules/federated_logs_role"},{"name":"federated_logs_setup_resource","path":"modules/federated_logs_setup_resource"}]' >> $GITHUB_OUTPUT
 
   # ──────────────────────────────────────────────────────────────
   # PR Title Lint

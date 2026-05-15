@@ -1,19 +1,13 @@
 module "federated_logs" {
   source = "../../"
 
-  setup_name = "my-app-logs"
+  setup_name        = "my-app-logs"
+  fleet_entity_guid = "YOUR_FLEET_ENTITY_GUID"
+  newrelic_api_key  = "YOUR_NR_API_KEY"
+  # newrelic_region = "US" # "US" (default), "EU", or "STAGING"
 
   # AWS region where resources will be created. If not set, uses the provider's configured region.
   #region = "us-east-2"
-
-  clusters = {
-    "cluster-1" = {
-      k8s_namespace            = "federated-logs"
-      auth_mode                = "irsa" # "irsa" or "pod_identity"
-      k8s_service_account_name = "pcg-writer-sa"
-      oidc_provider_arn        = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-east-2.amazonaws.com/id/EXAMPLE"
-    }
-  }
 
   # Enable data retention feature (creates Glue job to delete old data)
   data_retention_enabled = true
