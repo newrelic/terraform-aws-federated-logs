@@ -23,7 +23,7 @@ def call_graphql(query, variables=None):
         print("HTTP %d %s\nResponse: %s" % (e.code, e.reason, body), file=sys.stderr)
         sys.exit(1)
 
-# TO DO to chagne this to use nr provider if possible
+# TO DO to change this to use nr provider if possible
 # Step 1: Create AWS Connection Entity
 create_mutation = """
 mutation($input: AwsConnectionEntityInput!) {
