@@ -62,3 +62,112 @@ variable "newrelic_region" {
     error_message = "newrelic_region must be 'US', 'EU', or 'STAGING'."
   }
 }
+
+# =============================================================================
+# SQS / EVENTBRIDGE VARIABLES
+# =============================================================================
+
+variable "eventbridge_rule_arn" {
+  description = "ARN of the per-setup EventBridge rule (from federated_logs_setup_resource) used to scope the SQS queue policy."
+  type        = string
+}
+
+# =============================================================================
+# FLINK VARIABLES
+# =============================================================================
+
+variable "s3_bucket_name" {
+  description = "Name of the S3 bucket storing federated logs. Used as the Iceberg warehouse and SQS notification source."
+  type        = string
+}
+
+variable "flink_jar_bucket" {
+  description = "Name of the S3 bucket containing the Flink application JAR."
+  type        = string
+}
+
+variable "flink_iceberg_commit_worker_version" {
+  description = "Version of the flink-iceberg-commit-worker JAR to deploy (e.g. v1.0.0). Defaults to latest."
+  type        = string
+  default     = "latest"
+}
+
+variable "flink_runtime" {
+  description = "Flink runtime environment version."
+  type        = string
+  default     = "FLINK-1_18"
+}
+
+variable "parallelism" {
+  description = "Flink application parallelism."
+  type        = number
+  default     = 1
+}
+
+variable "checkpoint_interval_ms" {
+  description = "Flink checkpoint interval in milliseconds."
+  type        = number
+  default     = 60000
+}
+
+variable "snapshots_enabled" {
+  description = "Whether Flink application snapshots are enabled."
+  type        = bool
+  default     = true
+}
+
+variable "newrelic_license_key_secret" {
+  description = "AWS Secrets Manager secret name for the New Relic license key."
+  type        = string
+  sensitive   = true
+}
+
+variable "newrelic_metrics_endpoint" {
+  description = "New Relic metrics API endpoint."
+  type        = string
+  default     = "https://metric-api.newrelic.com/metric/v1"
+}
+
+variable "log_retention_days" {
+  description = "CloudWatch log group retention in days."
+  type        = number
+  default     = 30
+}
+
+# =============================================================================
+# SQS VARIABLES
+# =============================================================================
+
+variable "sqs_batch_size" {
+  description = "Number of messages to receive per SQS batch."
+  type        = number
+  default     = 10
+}
+
+variable "sqs_visibility_timeout" {
+  description = "SQS main queue visibility timeout in seconds."
+  type        = number
+  default     = 300
+}
+
+variable "sqs_message_retention" {
+  description = "SQS message retention period in seconds."
+  type        = number
+  default     = 1209600
+}
+
+variable "sqs_max_receive_count" {
+  description = "Maximum number of receives before a message is moved to the DLQ."
+  type        = number
+  default     = 5
+}
+
+# =============================================================================
+# TAGS
+# =============================================================================
+
+variable "tags" {
+  description = "A map of tags to apply to all resources."
+  type        = map(string)
+  default     = {}
+}

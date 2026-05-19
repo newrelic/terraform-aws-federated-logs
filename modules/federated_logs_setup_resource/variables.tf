@@ -12,3 +12,8 @@ variable "region" {
   type        = string
   default     = null
 }
+
+variable "sqs_queue_arn" {
+  description = "ARN of the fleet-level SQS queue (from data_processing module) that EventBridge routes .parquet file events into."
+  type        = string
+}
