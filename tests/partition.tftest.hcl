@@ -61,7 +61,8 @@ run "setup" {
   command = apply
 
   variables {
-    setup_name = "inttest-partition"
+    setup_name    = "inttest-partition"
+    sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:test-queue"
   }
 
   module {

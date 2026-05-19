@@ -35,7 +35,8 @@ run "setup_for_naming_test" {
   command = apply
 
   variables {
-    setup_name = "inttest-role-name"
+    setup_name    = "inttest-role-name"
+    sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:test-queue"
   }
 
   module {
@@ -230,7 +231,8 @@ run "setup_for_wiring_test" {
   command = apply
 
   variables {
-    setup_name = "inttest-role-wire"
+    setup_name    = "inttest-role-wire"
+    sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:test-queue"
   }
 
   module {
