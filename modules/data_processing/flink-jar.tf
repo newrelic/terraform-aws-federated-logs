@@ -1,6 +1,6 @@
 locals {
   flink_jar_filename  = "flink-iceberg-commit-worker-${var.flink_iceberg_commit_worker_version}.jar"
-  flink_jar_s3_source = "nr-downloads-main/pipeline-control-gateway/fed-logs/${local.flink_jar_filename}"
+  flink_jar_s3_source = "/nr-downloads-main/pipeline-control-gateway/fed-logs/${local.flink_jar_filename}"
   flink_jar_s3_key    = "jars/${local.flink_jar_filename}"
 }
 

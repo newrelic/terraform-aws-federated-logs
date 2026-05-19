@@ -76,11 +76,6 @@ variable "eventbridge_rule_arn" {
 # FLINK VARIABLES
 # =============================================================================
 
-variable "s3_bucket_name" {
-  description = "Name of the S3 bucket storing federated logs. Used as the Iceberg warehouse and SQS notification source."
-  type        = string
-}
-
 variable "flink_jar_bucket" {
   description = "Name of the S3 bucket containing the Flink application JAR."
   type        = string
