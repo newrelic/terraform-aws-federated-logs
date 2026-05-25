@@ -85,25 +85,19 @@ variable "flink_runtime" {
 }
 
 variable "parallelism" {
-  description = "Flink application parallelism. For I/O-bound workloads, higher parallelism with parallelism_per_kpu=8 is cost-effective."
+  description = "Flink application parallelism."
   type        = number
-  default     = 8
+  default     = 1
 }
 
 variable "parallelism_per_kpu" {
-  description = "Parallelism per KPU. For I/O-bound workloads like Iceberg commits, 8 is recommended (CDD §5). This maximizes parallel tasks per KPU, reducing cost."
+  description = "Parallelism per KPU."
   type        = number
-  default     = 8
+  default     = 1
 }
 
 variable "auto_scaling_enabled" {
-  description = "Enable Flink auto-scaling. When parallelism=1, auto-scaling can only scale up. Set to false until a meaningful parallelism floor is configured."
-  type        = bool
-  default     = false
-}
-
-variable "checkpoint_based_commits_enabled" {
-  description = "Enable checkpoint-aligned commits (EXACTLY_ONCE semantics per CDD §3.5). When true, uses IcebergCommitOperator; when false, uses legacy IcebergCommitProcessor which may produce duplicates on crash recovery."
+  description = "Enable Flink auto-scaling."
   type        = bool
   default     = true
 }

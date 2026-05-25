@@ -222,10 +222,9 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
     flink_application_configuration {
 
       checkpoint_configuration {
-        configuration_type            = "CUSTOM"
-        checkpointing_enabled         = true
-        checkpoint_interval           = var.checkpoint_interval_ms
-        min_pause_between_checkpoints = 5000
+        configuration_type    = "CUSTOM"
+        checkpointing_enabled = true
+        checkpoint_interval   = var.checkpoint_interval_ms
       }
 
       monitoring_configuration {
@@ -265,8 +264,6 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
           "schema.evolution.enabled"        = "true"
           "schema.evolution.max.retries"    = "3"
           "schema.evolution.retry.delay.ms" = "1000"
-
-          "checkpoint.based.commits.enabled" = tostring(var.checkpoint_based_commits_enabled)
 
           "flink.parallelism"         = tostring(var.parallelism)
           "flink.checkpoint.interval" = tostring(var.checkpoint_interval_ms)

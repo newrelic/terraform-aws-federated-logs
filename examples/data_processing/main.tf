@@ -9,13 +9,10 @@ module "data_processing" {
   flink_jar_bucket            = "my-flink-jars-bucket"
   newrelic_license_key_secret = "newrelic/license-key"
 
-  # Flink parallelism settings (defaults optimized for I/O-bound workloads per CDD §5)
-  # parallelism         = 8   # Number of parallel tasks
-  # parallelism_per_kpu = 8   # Tasks per KPU (8 maximizes cost efficiency for I/O workloads)
-  # auto_scaling_enabled = false  # Disabled until meaningful parallelism floor is set
-
-  # Checkpoint-aligned commits for EXACTLY_ONCE semantics (CDD §3.5)
-  # checkpoint_based_commits_enabled = true
+  # Flink parallelism settings (optional - defaults: parallelism=1, parallelism_per_kpu=1, auto_scaling=true)
+  # parallelism          = 1
+  # parallelism_per_kpu  = 1
+  # auto_scaling_enabled = true
 
   clusters = {
     "cluster-1" = {
