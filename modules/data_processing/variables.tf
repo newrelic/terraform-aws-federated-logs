@@ -84,11 +84,6 @@ variable "flink_runtime" {
   default     = "FLINK-1_18"
 }
 
-variable "iceberg_catalog_warehouse" {
-  description = "S3 path for the Iceberg catalog warehouse (e.g. s3://bucket-name/warehouse/). Required by the Flink commit worker."
-  type        = string
-}
-
 variable "parallelism" {
   description = "Flink application parallelism. For I/O-bound workloads, higher parallelism with parallelism_per_kpu=8 is cost-effective."
   type        = number

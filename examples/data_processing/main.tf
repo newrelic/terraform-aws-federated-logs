@@ -8,7 +8,6 @@ module "data_processing" {
   # Flink configuration
   flink_jar_bucket            = "my-flink-jars-bucket"
   newrelic_license_key_secret = "newrelic/license-key"
-  iceberg_catalog_warehouse   = "s3://my-warehouse-bucket/warehouse/"
 
   # Flink parallelism settings (defaults optimized for I/O-bound workloads per CDD §5)
   # parallelism         = 8   # Number of parallel tasks
