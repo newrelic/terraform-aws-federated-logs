@@ -14,6 +14,35 @@
 #
 # =============================================================================
 
+# Mock the external provider to avoid requiring NEWRELIC_API_KEY in CI
+mock_provider "external" {
+  mock_data "external" {
+    defaults = {
+      result = {
+        role_arn      = "arn:aws:iam::123456789012:role/mock-role"
+        sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:mock-queue"
+      }
+    }
+  }
+}
+
+# Mock AWS provider for data sources
+mock_provider "aws" {
+  mock_data "aws_region" {
+    defaults = {
+      name = "us-east-1"
+      id   = "us-east-1"
+    }
+  }
+  mock_data "aws_caller_identity" {
+    defaults = {
+      account_id = "123456789012"
+      arn        = "arn:aws:iam::123456789012:root"
+      user_id    = "AIDAEXAMPLE"
+    }
+  }
+}
+
 # Shared test variables
 variables {
   fleet_entity_guid = "test-fleet-entity-guid"
@@ -35,8 +64,9 @@ run "setup_for_naming_test" {
   command = plan
 
   variables {
-    setup_name    = "inttest-role-name"
-    sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:test-queue"
+    setup_name        = "inttest-role-name"
+    fleet_entity_guid = var.fleet_entity_guid
+    newrelic_region   = var.newrelic_region
   }
 
   module {
@@ -231,8 +261,9 @@ run "setup_for_wiring_test" {
   command = plan
 
   variables {
-    setup_name    = "inttest-role-wire"
-    sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:test-queue"
+    setup_name        = "inttest-role-wire"
+    fleet_entity_guid = var.fleet_entity_guid
+    newrelic_region   = var.newrelic_region
   }
 
   module {
