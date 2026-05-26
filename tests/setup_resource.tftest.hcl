@@ -6,6 +6,17 @@
 #   1. Input validation rules (setup_name regex)
 #   2. Naming conventions (S3 bucket and Glue DB naming patterns)
 
+# Mock the external provider to avoid requiring NEWRELIC_API_KEY in CI
+mock_provider "external" {
+  mock_data "external" {
+    defaults = {
+      result = {
+        role_arn      = "arn:aws:iam::123456789012:role/mock-role"
+        sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:mock-queue"
+      }
+    }
+  }
+}
 
 # -----------------------------------------------------------------------------
 # TEST: Naming Convention - S3 Bucket
