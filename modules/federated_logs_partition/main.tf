@@ -92,3 +92,43 @@ EOF
     }
   }
 }
+
+# ── Non-default partitions on the New Relic side ─────────────────────────────
+# For each entry in var.partition_tables, create a newrelic_federated_logs_partition
+# alongside the Glue table.
+#
+# We iterate over local.sanitized_partition_tables (which excludes the default)
+# rather than local.all_tables.
+resource "newrelic_federated_logs_partition" "this" {
+  for_each = local.sanitized_partition_tables
+
+  setup_id    = var.setup_id
+  name        = each.key
+  description = "Federated logs partition '${each.key}' for setup '${var.setup_name}'."
+
+  storage {
+    table             = each.key
+    data_location_uri = "s3://${var.s3_bucket_name}/${var.glue_catalog_db_name}/${each.key}"
+  }
+
+  data_retention_policy {
+    duration = each.value.retention_in_days
+    unit     = "DAYS"
+  }
+
+  # Routing rule: when routing_expression is set, the partition receives logs
+  # matching the OTTL expression. When unset, the forwarder_configuration block
+  # is omitted and the partition exists but receives no traffic — which is the
+  # legacy behavior preserved for backwards compatibility.
+  dynamic "forwarder_configuration" {
+    for_each = each.value.routing_expression != null ? [1] : []
+    content {
+      type = "PIPELINE_CONTROL"
+      pipeline_control {
+        partition_rule {
+          expression = each.value.routing_expression
+        }
+      }
+    }
+  }
+}

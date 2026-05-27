@@ -70,10 +70,11 @@ variable "default_table_setting" {
 }
 
 variable "partition_tables" {
-  description = "Map of extra tables using the exact same structure as the default"
+  description = "Map of extra tables using the exact same structure as the default. `routing_expression` is an optional OTTL expression that determines which logs route to this partition; without it, the partition exists but receives no traffic."
   type = map(object({
-    retention_in_days = optional(number, 30)
-    table_parameters  = optional(map(string), {})
+    retention_in_days  = optional(number, 30)
+    routing_expression = optional(string)
+    table_parameters   = optional(map(string), {})
     optimizer_configuration = optional(object({
       orphan_file_deletion = optional(object({
         orphan_file_retention_period_in_days = optional(number, 3)
@@ -107,4 +108,9 @@ variable "setup_name" {
     condition     = can(regex("^[a-z0-9][a-z0-9-]{1,24}[a-z0-9]$", var.setup_name))
     error_message = "The setup_name must be all lowercase and alphanumeric, can contain hyphens but not as the first or last character, and must be between 3 and 26 characters long."
   }
+}
+
+variable "setup_id" {
+  description = "Entity GUID of the parent newrelic_federated_logs_setup. Used as setup_id on each newrelic_federated_logs_partition created alongside the Glue tables."
+  type        = string
 }
