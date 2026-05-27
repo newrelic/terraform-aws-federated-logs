@@ -88,10 +88,11 @@ variable "default_table_setting" {
 }
 
 variable "partition_tables" {
-  description = "Map of additional partition tables. Each entry can override table_parameters and/or optimizer_configuration, or use {} for all defaults."
+  description = "Map of additional partition tables. Each entry can override table_parameters, optimizer_configuration, and/or routing_expression — or use {} for all defaults."
   type = map(object({
-    retention_in_days = optional(number, 30)
-    table_parameters  = optional(map(string), {})
+    retention_in_days  = optional(number, 30)
+    routing_expression = optional(string)
+    table_parameters   = optional(map(string), {})
     optimizer_configuration = optional(object({
       orphan_file_deletion = optional(object({
         orphan_file_retention_period_in_days = optional(number, 3)

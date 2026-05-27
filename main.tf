@@ -3,10 +3,8 @@ data "aws_region" "current" {
 }
 
 locals {
-  # Glue table name for the default partition. Mirrors the partition
-  # module's internal formula (locals.tf — `setup_naming_prefix` +
-  # `default_partition_name`, sanitised lowercase + non-alphanumerics →
-  # underscore, truncated to 255 chars) so the table name on
+  # Glue table name for the default partition. Syncs with the partition
+  # module's naming convention so the table name on
   # newrelic_federated_logs_setup.default_partition.storage.table matches
   # the aws_glue_catalog_table that the partition module actually creates
   # for the default. If the partition module's naming changes, change this
@@ -34,15 +32,6 @@ module "role" {
 
 
 # ── Federated Logs Setup (NR provider resource) ──────────────────────────────
-# Wires the AWS-side resources (S3 bucket, Glue DB) to the NR side. Lives at
-# top-level (not inside any module) because it depends on outputs from BOTH
-# the setup_resource module AND the role module — putting it inside either
-# would create a circular module dependency.
-#
-# The default_partition block creates the default partition entity in NR
-# alongside this setup; its corresponding aws_glue_catalog_table is created
-# by the federated_logs_partition module (using the same default_partition_table
-# name — kept aligned via the local above).
 resource "newrelic_federated_logs_setup" "this" {
   name        = var.setup_name
   description = "Federated logs setup ${var.setup_name}: AWS S3 + Glue catalog as the underlying store, with a default partition created alongside."
@@ -88,6 +77,7 @@ resource "newrelic_federated_logs_setup" "this" {
 module "partition" {
   source                 = "./modules/federated_logs_partition"
   setup_name             = var.setup_name
+  setup_id               = newrelic_federated_logs_setup.this.id
   s3_bucket_name         = module.setup.s3_bucket_name
   glue_catalog_db_name   = module.setup.glue_catalog_db_name
   glue_service_role_arn  = module.role.glue_service_role_arn
