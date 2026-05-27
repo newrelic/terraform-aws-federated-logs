@@ -60,6 +60,6 @@ output "pcg_writer_role_tags" {
 }
 
 output "query_connection_id" {
-  description = "NGEP guid of the per-setup AWS Connection entity wrapping the reader role. Created via create_query_aws_connection.py (idempotent) and looked up by tag via fetch_query_aws_connection_id.py — same two-step shape as the data_processing module's fleet ingest connection + fetch_base_role.py. Used as `newrelic_federated_logs_setup.storage.query_connection_id`."
-  value       = data.external.query_connection.result["connection_id"]
+  description = "Entity GUID of the per-setup AWS Connection wrapping the reader role."
+  value       = newrelic_aws_connection.query.id
 }
