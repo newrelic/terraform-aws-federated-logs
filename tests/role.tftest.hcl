@@ -49,9 +49,7 @@ run "setup_for_naming_test" {
   command = plan
 
   variables {
-    setup_name        = "inttest-role-name"
-    fleet_entity_guid = var.fleet_entity_guid
-    newrelic_region   = var.newrelic_region
+    setup_name = "inttest-role-name"
   }
 
   module {
@@ -246,9 +244,7 @@ run "setup_for_wiring_test" {
   command = plan
 
   variables {
-    setup_name        = "inttest-role-wire"
-    fleet_entity_guid = var.fleet_entity_guid
-    newrelic_region   = var.newrelic_region
+    setup_name = "inttest-role-wire"
   }
 
   module {

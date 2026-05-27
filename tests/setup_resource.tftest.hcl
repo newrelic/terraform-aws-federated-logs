@@ -6,18 +6,6 @@
 #   1. Input validation rules (setup_name regex)
 #   2. Naming conventions (S3 bucket and Glue DB naming patterns)
 
-# Mock the external provider to avoid requiring NEWRELIC_API_KEY in CI
-mock_provider "external" {
-  mock_data "external" {
-    defaults = {
-      result = {
-        role_arn      = "arn:aws:iam::123456789012:role/mock-role"
-        sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:mock-queue"
-      }
-    }
-  }
-}
-
 # -----------------------------------------------------------------------------
 # TEST: Naming Convention - S3 Bucket
 # -----------------------------------------------------------------------------
@@ -28,9 +16,7 @@ run "test_s3_bucket_naming_convention" {
   command = plan
 
   variables {
-    setup_name        = "inttest-naming-01"
-    fleet_entity_guid = "MXxOR0VQfEZMRUVUfDEyMzQ1Njc4OTA"
-    newrelic_region   = "US"
+    setup_name = "inttest-naming-01"
   }
 
   module {
@@ -55,9 +41,7 @@ run "test_glue_db_naming_convention" {
   command = plan
 
   variables {
-    setup_name        = "inttest-naming-02"
-    fleet_entity_guid = "MXxOR0VQfEZMRUVUfDEyMzQ1Njc4OTA"
-    newrelic_region   = "US"
+    setup_name = "inttest-naming-02"
   }
 
   module {
@@ -81,9 +65,7 @@ run "test_setup_name_output" {
   command = plan
 
   variables {
-    setup_name        = "inttest-output-01"
-    fleet_entity_guid = "MXxOR0VQfEZMRUVUfDEyMzQ1Njc4OTA"
-    newrelic_region   = "US"
+    setup_name = "inttest-output-01"
   }
 
   module {
@@ -114,9 +96,7 @@ run "test_validation_rejects_uppercase" {
   command = plan
 
   variables {
-    setup_name        = "InvalidName"
-    fleet_entity_guid = "MXxOR0VQfEZMRUVUfDEyMzQ1Njc4OTA"
-    newrelic_region   = "US"
+    setup_name = "InvalidName"
   }
 
   module {
@@ -133,9 +113,7 @@ run "test_validation_rejects_leading_hyphen" {
   command = plan
 
   variables {
-    setup_name        = "-invalid-name"
-    fleet_entity_guid = "MXxOR0VQfEZMRUVUfDEyMzQ1Njc4OTA"
-    newrelic_region   = "US"
+    setup_name = "-invalid-name"
   }
 
   module {
@@ -152,9 +130,7 @@ run "test_validation_rejects_trailing_hyphen" {
   command = plan
 
   variables {
-    setup_name        = "invalid-name-"
-    fleet_entity_guid = "MXxOR0VQfEZMRUVUfDEyMzQ1Njc4OTA"
-    newrelic_region   = "US"
+    setup_name = "invalid-name-"
   }
 
   module {
@@ -171,9 +147,7 @@ run "test_validation_rejects_special_chars" {
   command = plan
 
   variables {
-    setup_name        = "invalid_name!"
-    fleet_entity_guid = "MXxOR0VQfEZMRUVUfDEyMzQ1Njc4OTA"
-    newrelic_region   = "US"
+    setup_name = "invalid_name!"
   }
 
   module {
@@ -190,9 +164,7 @@ run "test_validation_rejects_too_short" {
   command = plan
 
   variables {
-    setup_name        = "ab"
-    fleet_entity_guid = "MXxOR0VQfEZMRUVUfDEyMzQ1Njc4OTA"
-    newrelic_region   = "US"
+    setup_name = "ab"
   }
 
   module {
@@ -209,9 +181,7 @@ run "test_validation_rejects_too_long" {
   command = plan
 
   variables {
-    setup_name        = "this-name-is-very-much-long-for-validation"
-    fleet_entity_guid = "MXxOR0VQfEZMRUVUfDEyMzQ1Njc4OTA"
-    newrelic_region   = "US"
+    setup_name = "this-name-is-very-much-long-for-validation"
   }
 
   module {
@@ -228,9 +198,7 @@ run "test_validation_accepts_min_length" {
   command = plan
 
   variables {
-    setup_name        = "abc"
-    fleet_entity_guid = "MXxOR0VQfEZMRUVUfDEyMzQ1Njc4OTA"
-    newrelic_region   = "US"
+    setup_name = "abc"
   }
 
   module {
@@ -247,9 +215,7 @@ run "test_validation_accepts_middle_hyphens" {
   command = plan
 
   variables {
-    setup_name        = "valid-name-here"
-    fleet_entity_guid = "MXxOR0VQfEZMRUVUfDEyMzQ1Njc4OTA"
-    newrelic_region   = "US"
+    setup_name = "valid-name-here"
   }
 
   module {

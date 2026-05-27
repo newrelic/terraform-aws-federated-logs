@@ -102,8 +102,3 @@ variable "partition_tables" {
   default = {}
 }
 
-variable "flink_assume_role_arn" {
-  description = "IAM role ARN injected into EventBridge SQS message envelope. The Flink commit worker will AssumeRole into this role."
-  type        = string
-  default     = ""
-}

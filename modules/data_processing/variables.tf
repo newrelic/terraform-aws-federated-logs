@@ -67,15 +67,15 @@ variable "newrelic_region" {
 # FLINK VARIABLES
 # =============================================================================
 
-variable "flink_jar_bucket" {
-  description = "Name of the S3 bucket containing the Flink application JAR."
-  type        = string
-}
-
 variable "flink_iceberg_commit_worker_version" {
   description = "Version of the flink-iceberg-commit-worker JAR to deploy (e.g. v1.0.0). Defaults to latest."
   type        = string
   default     = "latest"
+}
+
+variable "flink_jar_bucket" {
+  description = "S3 bucket in customer's AWS account where the Flink JAR will be copied. The Flink application will read the JAR from this bucket."
+  type        = string
 }
 
 variable "flink_runtime" {

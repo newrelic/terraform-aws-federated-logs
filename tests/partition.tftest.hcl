@@ -73,9 +73,7 @@ run "setup" {
   command = apply
 
   variables {
-    setup_name        = "inttest-partition"
-    fleet_entity_guid = "test-fleet-entity-guid"
-    newrelic_region   = "US"
+    setup_name = "inttest-partition"
   }
 
   module {

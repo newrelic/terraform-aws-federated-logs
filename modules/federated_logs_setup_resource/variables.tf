@@ -13,23 +13,3 @@ variable "region" {
   default     = null
 }
 
-variable "fleet_entity_guid" {
-  description = "NGEP entity GUID of the fleet. Used to look up the SQS queue ARN and base role ARN from the AWS Connection Entity."
-  type        = string
-}
-
-variable "newrelic_region" {
-  description = "New Relic region: 'US', 'EU', or 'STAGING'."
-  type        = string
-  default     = "US"
-  validation {
-    condition     = contains(["US", "EU", "STAGING"], var.newrelic_region)
-    error_message = "newrelic_region must be 'US', 'EU', or 'STAGING'."
-  }
-}
-
-variable "flink_assume_role_arn" {
-  description = "IAM role ARN injected into EventBridge SQS message envelope. The Flink commit worker will AssumeRole into this role."
-  type        = string
-  default     = ""
-}

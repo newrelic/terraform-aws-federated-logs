@@ -5,10 +5,6 @@ module "federated_logs" {
   fleet_entity_guid = var.fleet_entity_guid
   # newrelic_region = "US" # "US" (default), "EU", or "STAGING"
 
-  # IAM role ARN that Flink will AssumeRole into for Iceberg commits.
-  # This is typically the pcg-writer role ARN from your federated_logs_role module.
-  # flink_assume_role_arn = module.federated_logs_role.pcg_writer_role_arn
-
   # AWS region where resources will be created. If not set, uses the provider's configured region.
   #region = "us-east-2"
 

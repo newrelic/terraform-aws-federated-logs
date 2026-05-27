@@ -113,7 +113,7 @@ resource "aws_iam_role_policy" "flink_role_policy" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      # S3 read-only access for the JAR deployment bucket
+      # S3 read-only access for the JAR deployment bucket (customer's bucket)
       {
         Sid    = "S3DeploymentBucketAccess"
         Effect = "Allow"
@@ -211,7 +211,7 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
       code_content {
         s3_content_location {
           bucket_arn = "arn:aws:s3:::${var.flink_jar_bucket}"
-          file_key   = local.flink_jar_s3_key
+          file_key   = local.flink_jar_dest_key
         }
       }
       code_content_type = "ZIPFILE"

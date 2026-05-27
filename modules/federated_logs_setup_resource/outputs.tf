@@ -22,8 +22,3 @@ output "setup_name" {
   description = "Name of the federated logs setup, used in resource naming"
   value       = var.setup_name
 }
-
-output "eventbridge_rule_arn" {
-  description = "ARN of the per-setup EventBridge rule that filters .parquet file-creation events for this bucket."
-  value       = aws_cloudwatch_event_rule.iceberg_file_events.arn
-}
