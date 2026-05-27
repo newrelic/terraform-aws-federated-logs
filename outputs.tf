@@ -35,12 +35,12 @@ output "iceberg_tables" {
 
 output "newrelic_federated_logs_setup_id" {
   description = "ID of the newrelic_federated_logs_setup created for this AWS module."
-  value       = newrelic_federated_logs_setup.this.id
+  value       = module.role.setup_id
 }
 
 output "newrelic_default_partition_id" {
   description = "ID of the default partition created alongside the federated logs setup. Read-only."
-  value       = newrelic_federated_logs_setup.this.default_partition_id
+  value       = module.role.default_partition_id
 }
 
 output "newrelic_query_connection_id" {

@@ -63,3 +63,13 @@ output "query_connection_id" {
   description = "Entity GUID of the per-setup AWS Connection wrapping the reader role."
   value       = newrelic_aws_connection.query.id
 }
+
+output "setup_id" {
+  description = "Entity GUID of the newrelic_federated_logs_setup. Pass into the partition module as setup_id."
+  value       = newrelic_federated_logs_setup.this.id
+}
+
+output "default_partition_id" {
+  description = "Entity GUID of the default partition created alongside the federated logs setup."
+  value       = newrelic_federated_logs_setup.this.default_partition_id
+}

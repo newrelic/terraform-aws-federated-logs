@@ -259,3 +259,43 @@ resource "newrelic_aws_connection" "query" {
   scope_type = "ORGANIZATION"
   scope_id   = var.newrelic_org_id
 }
+
+# ── Federated Logs Setup (NR provider resource) ──────────────────────────────
+resource "newrelic_federated_logs_setup" "this" {
+  name        = var.setup_name
+  description = "Federated logs setup ${var.setup_name}: AWS S3 + Glue catalog as the underlying store, with a default partition created alongside."
+
+  storage {
+    data_location_bucket      = var.s3_bucket_name
+    database                  = var.glue_catalog_db_name
+    data_ingest_connection_id = data.external.base_role.result["connection_id"]
+    query_connection_id       = newrelic_aws_connection.query.id
+
+    cloud_provider_configuration {
+      provider = "AWS"
+      region   = data.aws_region.current.id
+    }
+  }
+
+  default_partition {
+    storage {
+      table             = local.default_partition_table
+      data_location_uri = "s3://${var.s3_bucket_name}/${var.glue_catalog_db_name}/${local.default_partition_table}"
+    }
+
+    dynamic "data_retention_policy" {
+      for_each = var.default_partition_data_retention_days > 0 ? [1] : []
+      content {
+        duration = var.default_partition_data_retention_days
+        unit     = "DAYS"
+      }
+    }
+  }
+
+  forwarder {
+    type = "PIPELINE_CONTROL"
+    pipeline_control {
+      fleet_id = var.fleet_entity_guid
+    }
+  }
+}
