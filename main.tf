@@ -19,8 +19,7 @@ module "notifications" {
   setup_name          = module.setup.setup_name
   s3_bucket_id        = module.setup.s3_bucket_name
   pcg_writer_role_arn = module.role.pcg_writer_role_arn
-  fleet_entity_guid   = var.fleet_entity_guid
-  newrelic_region     = var.newrelic_region
+  sqs_queue_arn       = module.role.sqs_queue_arn_from_ngep
 }
 
 module "partition" {

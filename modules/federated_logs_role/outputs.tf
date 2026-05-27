@@ -49,6 +49,11 @@ output "base_role_arn_from_ngep" {
   value       = data.external.base_role.result["role_arn"]
 }
 
+output "sqs_queue_arn_from_ngep" {
+  description = "SQS queue ARN resolved from NR NGEP via fleet_entity_guid tag lookup."
+  value       = data.external.base_role.result["sqs_queue_arn"]
+}
+
 output "pcg_writer_role_tags" {
   description = "Tags applied to the PCG writer role."
   value       = aws_iam_role.pcg-writer-role.tags

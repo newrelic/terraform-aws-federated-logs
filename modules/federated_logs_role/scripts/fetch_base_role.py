@@ -63,4 +63,6 @@ if not role_arn:
     print("credential.assumeRole.roleArn tag not found on entity: %s" % entity["guid"], file=sys.stderr)
     sys.exit(1)
 
-print(json.dumps({"role_arn": role_arn}))
+sqs_queue_arn = tags.get("sqs_queue_arn", "")
+
+print(json.dumps({"role_arn": role_arn, "sqs_queue_arn": sqs_queue_arn}))

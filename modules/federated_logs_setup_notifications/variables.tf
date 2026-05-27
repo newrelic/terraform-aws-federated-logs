@@ -13,17 +13,7 @@ variable "pcg_writer_role_arn" {
   type        = string
 }
 
-variable "fleet_entity_guid" {
-  description = "NGEP entity GUID of the fleet. Used to look up the SQS queue ARN from the AWS Connection Entity."
+variable "sqs_queue_arn" {
+  description = "ARN of the SQS queue to send EventBridge events to. Fetched from the role module via NGEP."
   type        = string
-}
-
-variable "newrelic_region" {
-  description = "New Relic region: 'US', 'EU', or 'STAGING'."
-  type        = string
-  default     = "US"
-  validation {
-    condition     = contains(["US", "EU", "STAGING"], var.newrelic_region)
-    error_message = "newrelic_region must be 'US', 'EU', or 'STAGING'."
-  }
 }

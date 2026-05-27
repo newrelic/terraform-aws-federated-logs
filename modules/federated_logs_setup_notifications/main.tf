@@ -1,18 +1,3 @@
-locals {
-  nr_graphql_endpoint = var.newrelic_region == "EU" ? "https://api.eu.newrelic.com/graphql" : (
-    var.newrelic_region == "STAGING" ? "https://staging-api.newrelic.com/graphql" : "https://api.newrelic.com/graphql"
-  )
-}
-
-# Fetch SQS queue ARN from NGEP AWS Connection Entity
-data "external" "ngep_config" {
-  program = ["python3", "${path.module}/scripts/fetch_ngep_config.py"]
-  query = {
-    fleet_entity_guid = var.fleet_entity_guid
-    nr_endpoint       = local.nr_graphql_endpoint
-  }
-}
-
 # =============================================================================
 # S3 → EVENTBRIDGE NOTIFICATION
 # =============================================================================
@@ -55,7 +40,7 @@ resource "aws_cloudwatch_event_rule" "iceberg_file_events" {
 resource "aws_cloudwatch_event_target" "iceberg_file_events_sqs" {
   rule      = aws_cloudwatch_event_rule.iceberg_file_events.name
   target_id = "sqs-target"
-  arn       = data.external.ngep_config.result["sqs_queue_arn"]
+  arn       = var.sqs_queue_arn
 
   input_transformer {
     input_paths = {
