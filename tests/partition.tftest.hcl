@@ -97,7 +97,8 @@ run "roles" {
     target = data.external.base_role
     values = {
       result = {
-        role_arn = "arn:aws:iam::123456789012:role/mock-base-role"
+        role_arn      = "arn:aws:iam::123456789012:role/mock-base-role"
+        sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:mock-queue"
       }
     }
   }
