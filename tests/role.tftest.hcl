@@ -79,7 +79,8 @@ run "test_role_naming_conventions" {
     target = data.external.base_role
     values = {
       result = {
-        role_arn = "arn:aws:iam::123456789012:role/newrelic-fed-logs-fleet-test-base"
+        role_arn      = "arn:aws:iam::123456789012:role/newrelic-fed-logs-fleet-test-base"
+        sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:mock-queue"
       }
     }
   }
@@ -271,7 +272,8 @@ run "test_module_wiring" {
     target = data.external.base_role
     values = {
       result = {
-        role_arn = "arn:aws:iam::123456789012:role/newrelic-fed-logs-fleet-test-base"
+        role_arn      = "arn:aws:iam::123456789012:role/newrelic-fed-logs-fleet-test-base"
+        sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:mock-queue"
       }
     }
   }
