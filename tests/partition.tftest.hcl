@@ -9,6 +9,18 @@
 #
 # =============================================================================
 
+# Mock the external provider to avoid requiring NEWRELIC_API_KEY in CI
+mock_provider "external" {
+  mock_data "external" {
+    defaults = {
+      result = {
+        role_arn      = "arn:aws:iam::123456789012:role/mock-role"
+        sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:mock-queue"
+      }
+    }
+  }
+}
+
 # =============================================================================
 # VALIDATION TESTS (plan-only, no AWS resources needed)
 # =============================================================================
@@ -85,7 +97,8 @@ run "roles" {
     target = data.external.base_role
     values = {
       result = {
-        role_arn = "arn:aws:iam::123456789012:role/mock-base-role"
+        role_arn      = "arn:aws:iam::123456789012:role/mock-base-role"
+        sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:mock-queue"
       }
     }
   }

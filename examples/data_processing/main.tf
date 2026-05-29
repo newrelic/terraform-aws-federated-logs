@@ -5,6 +5,14 @@ module "data_processing" {
   newrelic_org_id             = "YOUR_NR_ORG_ID"
   fleet_entity_guid           = "YOUR_FLEET_ENTITY_GUID"
 
+  # Flink configuration
+  flink_jar_bucket = "my-flink-jars-bucket"
+
+  # Flink parallelism settings (optional - defaults: parallelism=1, parallelism_per_kpu=1, auto_scaling=true)
+  # parallelism          = 1
+  # parallelism_per_kpu  = 1
+  # auto_scaling_enabled = true
+
   clusters = {
     "cluster-1" = {
       k8s_namespace            = "federated-logs"

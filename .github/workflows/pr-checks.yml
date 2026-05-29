@@ -145,7 +145,7 @@ jobs:
 
           while read -r commit; do
             commit_msg=$(git log -1 --format=%B "$commit")
-            if ! echo "$commit_msg" | grep -qP '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z0-9-]+\))?: .+$'; then
+            if ! echo "$commit_msg" | grep -qiP '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z0-9-]+\))?(?:: .+| .+)$'; then
               commit_info="$(git log -1 --format='%H - %s' "$commit")"
               invalid_commits="$invalid_commits\n- $commit_info"
             fi
@@ -155,7 +155,7 @@ jobs:
             echo "The following commits do not follow the Conventional Commits format:"
             echo -e "$invalid_commits"
             echo ""
-            echo "Required format: <type>[optional scope]: <description>"
+            echo "Required format: <type>[optional scope]: <description> (preferred) or <type> <description>"
             echo "Valid types: build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test"
             exit 1
           fi

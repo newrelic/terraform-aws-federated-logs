@@ -13,5 +13,9 @@ terraform {
       source  = "newrelic/newrelic"
       version = ">= 3.62.0"
     }
+    external = {
+      source  = "hashicorp/external"
+      version = "~> 2.0"
+    }
   }
 }

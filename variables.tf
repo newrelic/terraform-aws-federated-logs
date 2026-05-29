@@ -126,3 +126,4 @@ variable "partition_tables" {
   }))
   default = {}
 }
+

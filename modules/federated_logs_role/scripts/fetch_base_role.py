@@ -63,8 +63,6 @@ if not role_arn:
     print("credential.assumeRole.roleArn tag not found on entity: %s" % entity["guid"], file=sys.stderr)
     sys.exit(1)
 
-# entity["guid"] is the fleet ingest connection_id — same entity created by
-# data_processing/scripts/create_aws_connection.py. Returning it here lets the
-# role module expose it as `fleet_ingest_connection_id` so the federated logs
-# setup can wire `storage.data_ingest_connection_id` without an extra var.
-print(json.dumps({"role_arn": role_arn, "connection_id": entity["guid"]}))
+sqs_queue_arn = tags.get("sqs_queue_arn", "")
+
+print(json.dumps({"role_arn": role_arn, "connection_id": entity["guid"], "sqs_queue_arn": sqs_queue_arn}))

@@ -14,11 +14,40 @@
 #
 # =============================================================================
 
+# Mock the external provider to avoid requiring NEWRELIC_LICENSE_KEY in CI
+mock_provider "external" {
+  mock_data "external" {
+    defaults = {
+      result = {
+        license_key = "mock-license-key-for-testing"
+      }
+    }
+  }
+}
+
+# Mock AWS provider for data sources
+mock_provider "aws" {
+  mock_data "aws_region" {
+    defaults = {
+      name = "us-east-1"
+      id   = "us-east-1"
+    }
+  }
+  mock_data "aws_caller_identity" {
+    defaults = {
+      account_id = "123456789012"
+      arn        = "arn:aws:iam::123456789012:root"
+      user_id    = "AIDAEXAMPLE"
+    }
+  }
+}
+
 variables {
   test_oidc_arn     = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/EXAMPLED539D4633E53DE1B71EXAMPLE"
   fleet_entity_guid = "test-fleet-entity-guid"
   newrelic_org_id   = "test-nr-org-id"
   newrelic_region   = "US"
+  flink_jar_bucket  = "test-flink-jars-bucket"
 }
 
 # =============================================================================
@@ -33,6 +62,7 @@ run "test_base_role_naming_and_abac" {
     fleet_entity_guid           = var.fleet_entity_guid
     newrelic_org_id             = var.newrelic_org_id
     newrelic_region             = var.newrelic_region
+    flink_jar_bucket            = var.flink_jar_bucket
     clusters = {
       "test-cluster" = {
         k8s_namespace            = "federated-logs"
@@ -83,6 +113,7 @@ run "test_validation_rejects_empty_namespace" {
     fleet_entity_guid           = var.fleet_entity_guid
     newrelic_org_id             = var.newrelic_org_id
     newrelic_region             = var.newrelic_region
+    flink_jar_bucket            = var.flink_jar_bucket
     clusters = {
       "test-cluster" = {
         k8s_namespace            = ""
@@ -107,6 +138,7 @@ run "test_validation_rejects_empty_service_account" {
     fleet_entity_guid           = var.fleet_entity_guid
     newrelic_org_id             = var.newrelic_org_id
     newrelic_region             = var.newrelic_region
+    flink_jar_bucket            = var.flink_jar_bucket
     clusters = {
       "test-cluster" = {
         k8s_namespace            = "federated-logs"
@@ -131,6 +163,7 @@ run "test_validation_rejects_empty_oidc_arn" {
     fleet_entity_guid           = var.fleet_entity_guid
     newrelic_org_id             = var.newrelic_org_id
     newrelic_region             = var.newrelic_region
+    flink_jar_bucket            = var.flink_jar_bucket
     clusters = {
       "test-cluster" = {
         k8s_namespace            = "federated-logs"
@@ -155,6 +188,7 @@ run "test_validation_rejects_mixed_auth_modes" {
     fleet_entity_guid           = var.fleet_entity_guid
     newrelic_org_id             = var.newrelic_org_id
     newrelic_region             = var.newrelic_region
+    flink_jar_bucket            = var.flink_jar_bucket
     clusters = {
       "irsa-cluster" = {
         k8s_namespace            = "federated-logs"

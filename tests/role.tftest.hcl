@@ -14,6 +14,20 @@
 #
 # =============================================================================
 
+# Mock the external provider to avoid requiring NEWRELIC_API_KEY in CI
+# Note: AWS provider is NOT mocked here because role tests use "command = apply"
+# and need real AWS resources (IAM roles/policies) to be created in CI.
+mock_provider "external" {
+  mock_data "external" {
+    defaults = {
+      result = {
+        role_arn      = "arn:aws:iam::123456789012:role/mock-role"
+        sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:mock-queue"
+      }
+    }
+  }
+}
+
 # Shared test variables
 variables {
   fleet_entity_guid = "test-fleet-entity-guid"
@@ -32,7 +46,7 @@ variables {
 
 # Step 1: Create setup resources (dependency for role module)
 run "setup_for_naming_test" {
-  command = apply
+  command = plan
 
   variables {
     setup_name = "inttest-role-name"
@@ -65,7 +79,8 @@ run "test_role_naming_conventions" {
     target = data.external.base_role
     values = {
       result = {
-        role_arn = "arn:aws:iam::123456789012:role/newrelic-fed-logs-fleet-test-base"
+        role_arn      = "arn:aws:iam::123456789012:role/newrelic-fed-logs-fleet-test-base"
+        sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:mock-queue"
       }
     }
   }
@@ -227,7 +242,7 @@ run "test_role_naming_conventions" {
 # =============================================================================
 
 run "setup_for_wiring_test" {
-  command = apply
+  command = plan
 
   variables {
     setup_name = "inttest-role-wire"
@@ -257,7 +272,8 @@ run "test_module_wiring" {
     target = data.external.base_role
     values = {
       result = {
-        role_arn = "arn:aws:iam::123456789012:role/newrelic-fed-logs-fleet-test-base"
+        role_arn      = "arn:aws:iam::123456789012:role/newrelic-fed-logs-fleet-test-base"
+        sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:mock-queue"
       }
     }
   }

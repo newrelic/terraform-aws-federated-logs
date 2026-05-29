@@ -18,6 +18,14 @@ module "role" {
   query_connection_description          = var.query_connection_description
 }
 
+module "notifications" {
+  source              = "./modules/federated_logs_setup_notifications"
+  setup_name          = module.setup.setup_name
+  s3_bucket_id        = module.setup.s3_bucket_name
+  pcg_writer_role_arn = module.role.pcg_writer_role_arn
+  sqs_queue_arn       = module.role.sqs_queue_arn_from_ngep
+}
+
 module "partition" {
   source                 = "./modules/federated_logs_partition"
   setup_name             = var.setup_name
