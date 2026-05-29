@@ -53,11 +53,6 @@ variable "newrelic_org_id" {
   type        = string
 }
 
-variable "newrelic_account_id" {
-  description = "New Relic account ID (numeric). Set on newrelic_aws_connection.account_id for the fleet ingest connection."
-  type        = number
-}
-
 variable "newrelic_region" {
   description = "New Relic region: 'US', 'EU', or 'STAGING'. Defaults to STAGING for parity with the top-level + role module defaults — the federatedLogs* wrapper APIs are mocked on prod, so staging is the active integration target. Override once the wrapper API is live in prod."
   type        = string

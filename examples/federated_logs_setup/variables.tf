@@ -8,7 +8,3 @@ variable "newrelic_org_id" {
   type        = string
 }
 
-variable "newrelic_account_id" {
-  description = "New Relic account ID (numeric)."
-  type        = number
-}
