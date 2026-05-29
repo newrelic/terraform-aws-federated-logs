@@ -43,6 +43,11 @@ variable "newrelic_org_id" {
   type        = string
 }
 
+variable "newrelic_account_id" {
+  description = "New Relic account ID."
+  type        = number
+}
+
 variable "default_partition_data_retention_days" {
   description = "Number of days to retain logs in the default partition."
   type        = number

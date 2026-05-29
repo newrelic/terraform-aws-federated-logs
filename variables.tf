@@ -14,13 +14,18 @@ variable "setup_name" {
 }
 
 variable "fleet_entity_guid" {
-  description = "NGEP entity GUID of the PCG fleet (output of the data_processing module). Used to resolve the base role ARN via the AWS Connection Entity."
+  description = "NGEP entity GUID of the PCG fleet (output of the data_processing module)."
   type        = string
 }
 
 variable "newrelic_org_id" {
-  description = "New Relic organization ID (UUID). Used as scope_id on the per-setup query AWS Connection (scope_type = ORGANIZATION)."
+  description = "New Relic organization ID."
   type        = string
+}
+
+variable "newrelic_account_id" {
+  description = "New Relic account ID."
+  type        = number
 }
 
 variable "default_partition_data_retention_days" {

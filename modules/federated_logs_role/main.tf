@@ -13,13 +13,6 @@ data "external" "base_role" {
   }
 }
 
-resource "random_uuid" "external_id" {
-  keepers = {
-    # If this value changes, a new UUID will be generated
-    setup_name = var.setup_name
-  }
-}
-
 resource "aws_iam_role" "glue_service_role" {
   name        = "${local.setup_naming_prefix}-glue-service"
   description = "Role for Glue Service to access S3 and manage its own resources"
@@ -119,7 +112,7 @@ resource "aws_iam_role" "reader-role" {
       Action = "sts:AssumeRole"
       Condition = {
         StringEquals = {
-          "sts:ExternalId" = random_uuid.external_id.result
+          "sts:ExternalId" = local.nr_assume_role_external_id
         }
       }
     }]
@@ -254,10 +247,16 @@ resource "aws_iam_role_policy_attachment" "writer_attach" {
 resource "newrelic_aws_connection" "query" {
   name        = "${local.setup_naming_prefix}-query-aws-connection"
   description = var.query_connection_description
-  role_arn    = aws_iam_role.reader-role.arn
 
   scope_type = "ORGANIZATION"
   scope_id   = var.newrelic_org_id
+
+  credential {
+    assume_role {
+      role_arn    = aws_iam_role.reader-role.arn
+      external_id = local.nr_assume_role_external_id
+    }
+  }
 }
 
 # ── Federated Logs Setup (NR provider resource) ──────────────────────────────

@@ -3,6 +3,11 @@ locals {
 
   auth_mode = length(var.clusters) > 0 ? values(var.clusters)[0].auth_mode : "irsa"
 
+  # WARNING [DO NOT CHANGE]: External ID that NR sends during AssumeRole
+  # when assuming the fleet base role.
+  # Editing this will break cross-account assumption at runtime.
+  nr_assume_role_external_id = "FederatedLogs-CrossAccount-SecureToken"
+
   nr_graphql_endpoint = var.newrelic_region == "EU" ? "https://api.eu.newrelic.com/graphql" : (
     var.newrelic_region == "STAGING" ? "https://staging-api.newrelic.com/graphql" : "https://api.newrelic.com/graphql"
   )

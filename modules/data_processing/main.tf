@@ -382,10 +382,16 @@ resource "aws_sqs_queue_redrive_allow_policy" "iceberg_dlq_allow" {
 resource "newrelic_aws_connection" "fleet_ingest" {
   name        = "${local.naming_prefix}-aws-connection"
   description = var.fleet_ingest_connection_description
-  role_arn    = aws_iam_role.base_role.arn
 
   scope_type = "ORGANIZATION"
   scope_id   = var.newrelic_org_id
+
+  credential {
+    assume_role {
+      role_arn    = aws_iam_role.base_role.arn
+      external_id = local.nr_assume_role_external_id
+    }
+  }
 }
 
 resource "newrelic_entity_tags" "fleet_ingest_tags" {
