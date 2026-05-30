@@ -44,8 +44,8 @@ mutation($input: EntityManagementRelationshipCreateInput!) {
 variables = {
     "input": {
         "type":   "HAS_FED_LOGS_BASE_ROLE",
-        "source": {"id": fleet_entity_guid},
-        "target": {"id": connection_id},
+        "source": {"id": fleet_entity_guid, "scope": "ORGANIZATION"},
+        "target": {"id": connection_id,     "scope": "ORGANIZATION"},
     }
 }
 

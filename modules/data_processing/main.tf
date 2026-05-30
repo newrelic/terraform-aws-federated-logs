@@ -372,13 +372,10 @@ resource "aws_sqs_queue_redrive_allow_policy" "iceberg_dlq_allow" {
 }
 
 
-# ── NGEP: AWS Connection Entity, Tags, and Relationship ──────────────────────
-# 1. newrelic_aws_connection
-# 2. newrelic_entity_tags    — applies `fleet_entity_guid` and `auth_mode`
-#    tags so federated_logs_role's fetch_base_role.py keeps finding the
-#    entity by tag.
-# 3. null_resource           — Python script that only creates the
-#      HAS_FED_LOGS_BASE_ROLE relationship.
+# ── NGEP: AWS Connection Entity and Relationship ─────────────────────────────
+# 1. newrelic_aws_connection — entity + tags
+# 2. null_resource            — Python script that only creates the
+#    HAS_FED_LOGS_BASE_ROLE relationship.
 resource "newrelic_aws_connection" "fleet_ingest" {
   name        = "${local.naming_prefix}-aws-connection"
   description = var.fleet_ingest_connection_description
@@ -392,10 +389,6 @@ resource "newrelic_aws_connection" "fleet_ingest" {
       external_id = local.nr_assume_role_external_id
     }
   }
-}
-
-resource "newrelic_entity_tags" "fleet_ingest_tags" {
-  guid = newrelic_aws_connection.fleet_ingest.id
 
   tag {
     key    = "fleet_entity_guid"
@@ -429,5 +422,5 @@ resource "null_resource" "fleet_relationship" {
     command = "python3 ${path.module}/scripts/create_relationship.py"
   }
 
-  depends_on = [newrelic_entity_tags.fleet_ingest_tags]
+  depends_on = [newrelic_aws_connection.fleet_ingest]
 }
