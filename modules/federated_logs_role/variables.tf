@@ -20,7 +20,7 @@ variable "fleet_entity_guid" {
 }
 
 variable "newrelic_region" {
-  description = "New Relic region: 'US', 'EU', or 'STAGING'. Default mirrors the top-level default (STAGING) so standalone module use lands on the same endpoint."
+  description = "New Relic region: 'US', 'EU', or 'STAGING'."
   type        = string
   default     = "STAGING"
   validation {

@@ -14,7 +14,7 @@ output "aws_connection_entity_name" {
 }
 
 output "fleet_ingest_connection_id" {
-  description = "Entity GUID of the AWS Connection wrapping the fleet base role. Customers can pass this directly into a federated_logs_setup apply (alternative to tag-based discovery via fetch_base_role.py)."
+  description = "Entity GUID of the AWS Connection wrapping the fleet base role."
   value       = newrelic_aws_connection.fleet_ingest.id
 }
 

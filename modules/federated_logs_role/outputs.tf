@@ -50,7 +50,7 @@ output "base_role_arn_from_ngep" {
 }
 
 output "fleet_ingest_connection_id" {
-  description = "NGEP guid of the fleet-level AWS Connection entity (the one created by data_processing/scripts/create_aws_connection.py). Same entity that fetch_base_role.py looks up by fleet_entity_guid tag — its guid is the connection_id consumed as `newrelic_federated_logs_setup.storage.data_ingest_connection_id`."
+  description = "NGEP guid of the fleet-level AWS Connection entity."
   value       = data.external.base_role.result["connection_id"]
 }
 
@@ -70,7 +70,7 @@ output "query_connection_id" {
 }
 
 output "setup_id" {
-  description = "Entity GUID of the newrelic_federated_logs_setup. Pass into the partition module as setup_id."
+  description = "Entity GUID of the newrelic_federated_logs_setup."
   value       = newrelic_federated_logs_setup.this.id
 }
 

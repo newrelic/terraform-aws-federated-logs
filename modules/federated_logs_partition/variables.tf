@@ -70,7 +70,7 @@ variable "default_table_setting" {
 }
 
 variable "partition_tables" {
-  description = "Map of extra tables using the exact same structure as the default. `routing_expression` is an optional OTTL expression that determines which logs route to this partition; without it, the partition exists but receives no traffic. `description` is an optional free-form description for the NR partition entity."
+  description = "Map of custom tables."
   type = map(object({
     retention_in_days  = optional(number, 30)
     routing_expression = optional(string)
@@ -112,6 +112,6 @@ variable "setup_name" {
 }
 
 variable "setup_id" {
-  description = "Entity GUID of the parent newrelic_federated_logs_setup. Used as setup_id on each newrelic_federated_logs_partition created alongside the Glue tables."
+  description = "Entity GUID of the parent newrelic_federated_logs_setup."
   type        = string
 }

@@ -44,17 +44,17 @@ variable "clusters" {
 }
 
 variable "fleet_entity_guid" {
-  description = "NGEP entity GUID of the fleet (e.g. FederatedLogsDataProcessingEntity). A relationship of type HAS_FED_LOGS_BASE_ROLE will be created from this entity to the AWS Connection Entity."
+  description = "NGEP entity GUID of the fleet."
   type        = string
 }
 
 variable "newrelic_org_id" {
-  description = "New Relic organization ID (GUID) used to scope NGEP entities at the ORGANIZATION level."
+  description = "New Relic organization ID"
   type        = string
 }
 
 variable "newrelic_region" {
-  description = "New Relic region: 'US', 'EU', or 'STAGING'. Defaults to STAGING for parity with the top-level + role module defaults — the federatedLogs* wrapper APIs are mocked on prod, so staging is the active integration target. Override once the wrapper API is live in prod."
+  description = "New Relic region"
   type        = string
   default     = "STAGING"
   validation {
@@ -70,7 +70,7 @@ variable "fleet_ingest_connection_description" {
 }
 
 variable "newrelic_license_key" {
-  description = "New Relic license key, used by the Flink commit worker to send metrics. Pass via the TF_VAR_newrelic_license_key env var so the value is never written to a tfvars file. Customers who already export NEW_RELIC_LICENSE_KEY can alias it: `export TF_VAR_newrelic_license_key=\"$NEW_RELIC_LICENSE_KEY\"`."
+  description = "New Relic license key."
   type        = string
   sensitive   = true
   nullable    = false

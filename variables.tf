@@ -47,7 +47,7 @@ variable "query_connection_description" {
 }
 
 variable "newrelic_region" {
-  description = "New Relic region: 'US', 'EU', or 'STAGING'. Defaults to STAGING because the federatedLogs* wrapper mutations are mocked on prod — staging is the only environment where the new newrelic_federated_logs_setup resource exercises the real path. Override to 'US'/'EU' once the wrapper API is live in prod."
+  description = "New Relic region: 'US', 'EU', or 'STAGING'."
   type        = string
   default     = "STAGING"
   validation {
