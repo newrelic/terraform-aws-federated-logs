@@ -16,7 +16,7 @@ The `base_role_arn` output is available for reference. The `fleet_entity_guid` i
 Export your New Relic credentials as environment variables before running Terraform:
 
 ```sh
-export NEW_RELIC_API_KEY="your-new-relic-api-key"
+export NEWRELIC_API_KEY="your-new-relic-api-key"
 export NEWRELIC_LICENSE_KEY="your-new-relic-license-key"
 ```
 

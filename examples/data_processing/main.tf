@@ -1,17 +1,9 @@
-variable "newrelic_license_key" {
-  description = "New Relic license key."
-  type        = string
-  sensitive   = true
-  nullable    = false
-}
-
 module "data_processing" {
   source = "../../modules/data_processing"
 
   data_processing_module_name = "my-app-logs"
   newrelic_org_id             = "YOUR_NR_ORG_ID"
   fleet_entity_guid           = "YOUR_FLEET_ENTITY_GUID"
-  newrelic_license_key        = var.newrelic_license_key
 
   # Flink configuration
   flink_jar_bucket = "my-flink-jars-bucket"

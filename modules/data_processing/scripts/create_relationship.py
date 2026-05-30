@@ -10,9 +10,9 @@ import json, os, urllib.request, sys
 # lands in the provider.
 
 endpoint          = os.environ['NR_ENDPOINT']
-nr_api_key        = os.environ['NEW_RELIC_API_KEY']
+nr_api_key        = os.environ['NEWRELIC_API_KEY']
 if not nr_api_key:
-    print("Error: NEW_RELIC_API_KEY environment variable is not set", file=sys.stderr)
+    print("Error: NEWRELIC_API_KEY environment variable is not set", file=sys.stderr)
     sys.exit(1)
 fleet_entity_guid = os.environ['FLEET_ENTITY_GUID']
 connection_id     = os.environ['CONNECTION_ID']

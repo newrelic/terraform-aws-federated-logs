@@ -16,9 +16,9 @@ def call_graphql(endpoint, nr_api_key, query):
         sys.exit(1)
 
 
-nr_api_key = os.environ['NEW_RELIC_API_KEY']
+nr_api_key = os.environ['NEWRELIC_API_KEY']
 if not nr_api_key:
-    print("Error: NEW_RELIC_API_KEY environment variable is not set", file=sys.stderr)
+    print("Error: NEWRELIC_API_KEY environment variable is not set", file=sys.stderr)
     sys.exit(1)
     
 query = json.load(sys.stdin)
