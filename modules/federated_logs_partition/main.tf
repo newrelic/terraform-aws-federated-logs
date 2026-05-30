@@ -116,10 +116,6 @@ resource "newrelic_federated_logs_partition" "this" {
     unit     = "DAYS"
   }
 
-  # Routing rule: when routing_expression is set, the partition receives logs
-  # matching the OTTL expression. When unset, the forwarder_configuration block
-  # is omitted and the partition exists but receives no traffic — which is the
-  # legacy behavior preserved for backwards compatibility.
   dynamic "forwarder_configuration" {
     for_each = each.value.routing_expression != null ? [1] : []
     content {
