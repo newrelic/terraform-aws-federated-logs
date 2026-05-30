@@ -1,13 +1,7 @@
 import json, os, urllib.request, sys
 
-# Slim companion to data_processing/main.tf's null_resource.fleet_relationship.
 # Creates a HAS_FED_LOGS_BASE_ROLE relationship from the fleet entity to the
 # AWS Connection entity that wraps the PCG base role.
-#
-# The AWS Connection itself is created by the newrelic_aws_connection resource
-# in main.tf — this script only handles the relationship, which the terraform
-# provider doesn't expose yet. Will be replaced when a relationship resource
-# lands in the provider.
 
 endpoint          = os.environ['NR_ENDPOINT']
 nr_api_key        = os.environ['NEWRELIC_API_KEY']
