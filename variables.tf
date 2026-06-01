@@ -102,6 +102,7 @@ variable "partition_tables" {
   default = {}
 }
 
+
 variable "validation_config" {
   description = "Configuration for post-deploy validation checks. Set enabled = true to run resource existence, trust policy, and IAM permission checks on every terraform plan."
   type = object({

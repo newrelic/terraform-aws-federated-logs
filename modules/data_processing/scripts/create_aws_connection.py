@@ -10,6 +10,7 @@ name              = os.environ['ENTITY_NAME']
 org_id            = os.environ['NR_ORG_ID']
 fleet_entity_guid = os.environ['FLEET_ENTITY_GUID']
 auth_mode         = os.environ['AUTH_MODE']
+sqs_queue_arn     = os.environ['SQS_QUEUE_ARN']
 
 
 def call_graphql(query, variables=None):
@@ -44,6 +45,7 @@ create_variables = {
         "tags": [
             {"key": "fleet_entity_guid", "values": [fleet_entity_guid]},
             {"key": "auth_mode",         "values": [auth_mode]},
+            {"key": "sqs_queue_arn",     "values": [sqs_queue_arn]},
         ],
     }
 }

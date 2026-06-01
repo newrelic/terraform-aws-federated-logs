@@ -106,7 +106,7 @@ resource "aws_iam_policy" "glue_service_policy" {
 }
 
 resource "aws_iam_role" "reader-role" {
-  name        = "${local.setup_naming_prefix}-nr-query"
+  name        = "${local.setup_naming_prefix}-${local.nr_reader_role_suffix}"
   description = "Cross-account role for New Relic Query Engine to read logs"
 
   assume_role_policy = jsonencode({
@@ -114,8 +114,7 @@ resource "aws_iam_role" "reader-role" {
     Statement = [{
       Effect = "Allow"
       Principal = {
-        # The official NR Account provided in your POC
-        AWS = "arn:aws:iam::${local.nr_source_account}:user/federated-logs-user"
+        AWS = "arn:aws:iam::${local.nr_source_account}:role/NRGlobalIAMRole"
       }
       Action = "sts:AssumeRole"
       Condition = {
@@ -128,7 +127,7 @@ resource "aws_iam_role" "reader-role" {
 }
 
 resource "aws_iam_policy" "reader_policy" {
-  name        = "${local.setup_naming_prefix}-nr-query"
+  name        = "${local.setup_naming_prefix}-${local.nr_reader_role_suffix}"
   description = "Policy for New Relic Query Engine to read from S3 and Glue Catalog"
   policy = jsonencode({
     Version = "2012-10-17"

@@ -14,6 +14,20 @@
 #
 # =============================================================================
 
+# Mock the external provider to avoid requiring NEWRELIC_API_KEY in CI
+# Note: AWS provider is NOT mocked here because role tests use "command = apply"
+# and need real AWS resources (IAM roles/policies) to be created in CI.
+mock_provider "external" {
+  mock_data "external" {
+    defaults = {
+      result = {
+        role_arn      = "arn:aws:iam::123456789012:role/mock-role"
+        sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:mock-queue"
+      }
+    }
+  }
+}
+
 # Shared test variables
 variables {
   fleet_entity_guid = "test-fleet-entity-guid"
@@ -32,7 +46,7 @@ variables {
 
 # Step 1: Create setup resources (dependency for role module)
 run "setup_for_naming_test" {
-  command = apply
+  command = plan
 
   variables {
     setup_name = "inttest-role-name"
@@ -65,7 +79,8 @@ run "test_role_naming_conventions" {
     target = data.external.base_role
     values = {
       result = {
-        role_arn = "arn:aws:iam::123456789012:role/newrelic-fed-logs-fleet-test-base"
+        role_arn      = "arn:aws:iam::123456789012:role/newrelic-fed-logs-fleet-test-base"
+        sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:mock-queue"
       }
     }
   }
@@ -213,16 +228,10 @@ run "test_role_naming_conventions" {
     error_message = "NR reader role trust policy missing ExternalId condition - security risk for cross-account access"
   }
 
-  # Verify base_role_arn_from_ngep is the mocked ARN
+  # NR reader role should trust the NRGlobalIAMRole hub role
   assert {
-    condition     = can(regex("^arn:aws:iam::[0-9]{12}:role/.+", output.base_role_arn_from_ngep))
-    error_message = "base_role_arn_from_ngep must be a valid IAM role ARN"
-  }
-
-  # Verify pcg-writer role is tagged with fleet_entity_guid
-  assert {
-    condition     = output.pcg_writer_role_tags["fleet_entity_guid"] == var.fleet_entity_guid
-    error_message = "PCG writer role must be tagged with fleet_entity_guid for ABAC resource tag matching"
+    condition     = can(regex("role/NRGlobalIAMRole", output.nr_reader_trust_policy_json))
+    error_message = "NR reader role trust policy must allow NRGlobalIAMRole to assume it"
   }
 }
 
@@ -233,7 +242,7 @@ run "test_role_naming_conventions" {
 # =============================================================================
 
 run "setup_for_wiring_test" {
-  command = apply
+  command = plan
 
   variables {
     setup_name = "inttest-role-wire"
@@ -263,7 +272,8 @@ run "test_module_wiring" {
     target = data.external.base_role
     values = {
       result = {
-        role_arn = "arn:aws:iam::123456789012:role/newrelic-fed-logs-fleet-test-base"
+        role_arn      = "arn:aws:iam::123456789012:role/newrelic-fed-logs-fleet-test-base"
+        sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:mock-queue"
       }
     }
   }

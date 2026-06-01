@@ -2,7 +2,7 @@ module "federated_logs" {
   source = "../../"
 
   setup_name        = "my-app-logs"
-  fleet_entity_guid = "YOUR_FLEET_ENTITY_GUID"
+  fleet_entity_guid = var.fleet_entity_guid
   # newrelic_region = "US" # "US" (default), "EU", or "STAGING"
 
   # AWS region where resources will be created. If not set, uses the provider's configured region.
