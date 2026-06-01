@@ -22,7 +22,7 @@ variable "fleet_entity_guid" {
 variable "newrelic_region" {
   description = "New Relic region: 'US', 'EU', or 'STAGING'."
   type        = string
-  default     = "STAGING"
+  default     = "US"
   validation {
     condition     = contains(["US", "EU", "STAGING"], var.newrelic_region)
     error_message = "newrelic_region must be 'US', 'EU', or 'STAGING'."

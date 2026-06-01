@@ -56,7 +56,7 @@ variable "newrelic_org_id" {
 variable "newrelic_region" {
   description = "New Relic region"
   type        = string
-  default     = "STAGING"
+  default     = "US"
   validation {
     condition     = contains(["US", "EU", "STAGING"], var.newrelic_region)
     error_message = "newrelic_region must be 'US', 'EU', or 'STAGING'."
@@ -67,13 +67,6 @@ variable "fleet_ingest_connection_description" {
   description = "Optional description for the fleet-level newrelic_aws_connection wrapping the PCG base role."
   type        = string
   default     = null
-}
-
-variable "newrelic_license_key" {
-  description = "New Relic license key."
-  type        = string
-  sensitive   = true
-  nullable    = false
 }
 
 # =============================================================================

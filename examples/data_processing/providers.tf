@@ -22,5 +22,5 @@ provider "aws" {
 
 provider "newrelic" {
   account_id = 0         # Replace with your NR account ID.
-  region     = "STAGING" # "US", "EU", or "STAGING"
+  region     = "US"
 }
