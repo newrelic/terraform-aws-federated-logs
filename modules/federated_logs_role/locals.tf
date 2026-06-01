@@ -1,8 +1,7 @@
 locals {
   setup_naming_prefix = "newrelic-fed-logs-${var.setup_name}"
 
-  # Logging Federated
-  nr_source_account = "531948421264"
+  nr_source_account = var.newrelic_region == "STAGING" ? "010928221695" : "531948421264"
 
   # WARNING [DO NOT CHANGE]: Cross-repo contract with the NR hub.
   # Editing this suffix will break cross-account assumption at runtime.
