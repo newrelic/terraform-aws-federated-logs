@@ -48,6 +48,7 @@ module "e2e_validation" {
   pcg_endpoint  = var.e2e_validation_config.pcg_endpoint
   nr_account_id = var.e2e_validation_config.nr_account_id
   nr_region     = var.e2e_validation_config.nr_region
+  setup_id      = module.role.setup_id
 
   depends_on = [module.setup, module.role, module.partition]
 }
