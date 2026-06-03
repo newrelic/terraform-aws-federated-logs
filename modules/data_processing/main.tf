@@ -123,8 +123,8 @@ resource "aws_iam_role_policy" "flink_role_policy" {
           "s3:ListBucket",
         ]
         Resource = [
-          "arn:aws:s3:::${var.flink_jar_bucket}",
-          "arn:aws:s3:::${var.flink_jar_bucket}/*",
+          aws_s3_bucket.flink_jar.arn,
+          "${aws_s3_bucket.flink_jar.arn}/*",
         ]
       },
       # SQS: consume Iceberg file-creation events
@@ -210,7 +210,7 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
     application_code_configuration {
       code_content {
         s3_content_location {
-          bucket_arn = "arn:aws:s3:::${var.flink_jar_bucket}"
+          bucket_arn = aws_s3_bucket.flink_jar.arn
           file_key   = local.flink_jar_dest_key
         }
       }

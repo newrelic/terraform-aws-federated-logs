@@ -73,11 +73,6 @@ variable "flink_iceberg_commit_worker_version" {
   default     = "latest"
 }
 
-variable "flink_jar_bucket" {
-  description = "S3 bucket in customer's AWS account where the Flink JAR will be copied. The Flink application will read the JAR from this bucket."
-  type        = string
-}
-
 variable "flink_runtime" {
   description = "Flink runtime environment version."
   type        = string

@@ -47,7 +47,6 @@ variables {
   fleet_entity_guid = "test-fleet-entity-guid"
   newrelic_org_id   = "test-nr-org-id"
   newrelic_region   = "US"
-  flink_jar_bucket  = "test-flink-jars-bucket"
 }
 
 # =============================================================================
@@ -62,7 +61,6 @@ run "test_base_role_naming_and_abac" {
     fleet_entity_guid           = var.fleet_entity_guid
     newrelic_org_id             = var.newrelic_org_id
     newrelic_region             = var.newrelic_region
-    flink_jar_bucket            = var.flink_jar_bucket
     clusters = {
       "test-cluster" = {
         k8s_namespace            = "federated-logs"
@@ -113,7 +111,6 @@ run "test_validation_rejects_empty_namespace" {
     fleet_entity_guid           = var.fleet_entity_guid
     newrelic_org_id             = var.newrelic_org_id
     newrelic_region             = var.newrelic_region
-    flink_jar_bucket            = var.flink_jar_bucket
     clusters = {
       "test-cluster" = {
         k8s_namespace            = ""
@@ -138,7 +135,6 @@ run "test_validation_rejects_empty_service_account" {
     fleet_entity_guid           = var.fleet_entity_guid
     newrelic_org_id             = var.newrelic_org_id
     newrelic_region             = var.newrelic_region
-    flink_jar_bucket            = var.flink_jar_bucket
     clusters = {
       "test-cluster" = {
         k8s_namespace            = "federated-logs"
@@ -163,7 +159,6 @@ run "test_validation_rejects_empty_oidc_arn" {
     fleet_entity_guid           = var.fleet_entity_guid
     newrelic_org_id             = var.newrelic_org_id
     newrelic_region             = var.newrelic_region
-    flink_jar_bucket            = var.flink_jar_bucket
     clusters = {
       "test-cluster" = {
         k8s_namespace            = "federated-logs"
@@ -188,7 +183,6 @@ run "test_validation_rejects_mixed_auth_modes" {
     fleet_entity_guid           = var.fleet_entity_guid
     newrelic_org_id             = var.newrelic_org_id
     newrelic_region             = var.newrelic_region
-    flink_jar_bucket            = var.flink_jar_bucket
     clusters = {
       "irsa-cluster" = {
         k8s_namespace            = "federated-logs"
