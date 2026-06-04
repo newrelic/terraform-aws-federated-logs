@@ -5,17 +5,17 @@ module "setup" {
 }
 
 module "role" {
-  source                                = "./modules/federated_logs_role"
-  setup_name                            = var.setup_name
-  s3_bucket_name                        = module.setup.s3_bucket_name
-  glue_catalog_db_name                  = module.setup.glue_catalog_db_name
-  fleet_entity_guid                     = var.fleet_entity_guid
-  newrelic_region                       = var.newrelic_region
-  newrelic_org_id                       = var.newrelic_org_id
-  newrelic_account_id                   = var.newrelic_account_id
-  region                                = var.region
-  setup_description                     = var.setup_description
-  query_connection_description          = var.query_connection_description
+  source                       = "./modules/federated_logs_role"
+  setup_name                   = var.setup_name
+  s3_bucket_name               = module.setup.s3_bucket_name
+  glue_catalog_db_name         = module.setup.glue_catalog_db_name
+  fleet_entity_guid            = var.fleet_entity_guid
+  newrelic_region              = var.newrelic_region
+  newrelic_org_id              = var.newrelic_org_id
+  newrelic_account_id          = var.newrelic_account_id
+  region                       = var.region
+  setup_description            = var.setup_description
+  query_connection_description = var.query_connection_description
 }
 
 module "notifications" {

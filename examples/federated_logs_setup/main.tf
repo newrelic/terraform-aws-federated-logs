@@ -4,8 +4,8 @@ module "federated_logs" {
   setup_name          = "my-app-logs-pptt"
   fleet_entity_guid   = var.fleet_entity_guid
   newrelic_org_id     = var.newrelic_org_id
-  newrelic_account_id = 12210474 # Replace with your NR account ID.
-  newrelic_region = "STAGING" # "US" (default), "EU", or "STAGING"
+  newrelic_account_id = 0  # Replace with your NR account ID.
+  newrelic_region     = "US" # "US" (default), "EU", or "STAGING"
 
   # AWS region where resources will be created. If not set, uses the provider's configured region.
   #region = "us-east-2"

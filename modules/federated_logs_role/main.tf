@@ -269,7 +269,7 @@ resource "newrelic_aws_connection" "writer_connection" {
 
   credential {
     assume_role {
-      role_arn    = aws_iam_role.pcg-writer-role.arn
+      role_arn = aws_iam_role.pcg-writer-role.arn
     }
   }
 }

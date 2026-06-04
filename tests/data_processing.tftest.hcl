@@ -46,11 +46,11 @@ mock_provider "aws" {
 mock_provider "newrelic" {}
 
 variables {
-  test_oidc_arn     = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/EXAMPLED539D4633E53DE1B71EXAMPLE"
-  fleet_entity_guid = "test-fleet-entity-guid"
-  newrelic_org_id   = "test-nr-org-id"
+  test_oidc_arn       = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/EXAMPLED539D4633E53DE1B71EXAMPLE"
+  fleet_entity_guid   = "test-fleet-entity-guid"
+  newrelic_org_id     = "test-nr-org-id"
   newrelic_account_id = 12345678
-  newrelic_region   = "US"
+  newrelic_region     = "US"
 }
 
 # =============================================================================
