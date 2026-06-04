@@ -29,11 +29,6 @@ output "nr_reader_policy_json" {
   value       = aws_iam_policy.reader_policy.policy
 }
 
-output "setup_id" {
-  description = "Federated logs setup entity GUID for reporting health status"
-  value       = ""
-}
-
 output "glue_service_trust_policy_json" {
   description = "Trust policy (assume role policy) for the Glue service role"
   value       = aws_iam_role.glue_service_role.assume_role_policy
