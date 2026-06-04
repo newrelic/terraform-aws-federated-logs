@@ -178,11 +178,6 @@ resource "aws_iam_role_policy" "flink_role_policy" {
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 
-# Read NR license key from environment variable (never stored in Terraform state)
-data "external" "license_key" {
-  program = ["python3", "${path.module}/scripts/get_license_key.py"]
-}
-
 resource "aws_cloudwatch_log_group" "flink_log_group" {
   name              = "/aws/kinesis-analytics/${local.naming_prefix}-flink-application"
   retention_in_days = var.log_retention_days
@@ -270,7 +265,7 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
           "flink.parallelism"         = tostring(var.parallelism)
           "flink.checkpoint.interval" = tostring(var.checkpoint_interval_ms)
 
-          "newrelic.license.key"          = data.external.license_key.result.license_key
+          "newrelic.license.key"          = var.newrelic_license_key
           "newrelic.metrics.api.endpoint" = var.newrelic_metrics_endpoint
         }
       }

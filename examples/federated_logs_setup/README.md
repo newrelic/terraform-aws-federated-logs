@@ -16,17 +16,15 @@ The `fleet_entity_guid` is the GUID of your PCG fleet entity in New Relic, avail
 
 ## Prerequisites
 
-Export your New Relic API key as an environment variable before running Terraform:
-
-```sh
-export NEW_RELIC_API_KEY="your-new-relic-api-key"
-```
+Pass your New Relic User API key (`NRAK-...`) as the `newrelic_api_key` input variable. The variable is marked `sensitive` (redacted from CLI output; still written to state — protect your state backend accordingly).
 
 ## Usage
 
 ```sh
 cd examples/federated_logs_setup
 terraform init
-terraform plan
-terraform apply
+terraform plan  -var='newrelic_api_key=NRAK-XXXXXXXXXXXXXXXXXXXX'
+terraform apply -var='newrelic_api_key=NRAK-XXXXXXXXXXXXXXXXXXXX'
 ```
+
+You can also set it via a `*.tfvars` file or `TF_VAR_newrelic_api_key` env var.

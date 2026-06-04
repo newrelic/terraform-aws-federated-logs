@@ -13,21 +13,22 @@ The `base_role_arn` output is available for reference. The `fleet_entity_guid` i
 
 ## Prerequisites
 
-Export your New Relic credentials as environment variables before running Terraform:
+Pass your New Relic credentials as Terraform input variables. Both are marked `sensitive` (redacted from CLI output; still written to state — protect your state backend accordingly).
 
-```sh
-export NEW_RELIC_API_KEY="your-new-relic-api-key"
-export NEW_RELIC_LICENSE_KEY="your-new-relic-license-key"
-```
-
-- `NEW_RELIC_API_KEY`: Used for NerdGraph API calls (fetching base role ARN, creating entities)
-- `NEW_RELIC_LICENSE_KEY`: Your New Relic license key (used by Flink to send metrics to New Relic)
+- `newrelic_api_key` — User API key (`NRAK-...`). Used by the newrelic provider for NerdGraph calls (fetching base role ARN, creating entities).
+- `newrelic_license_key` — Ingest license key (`NRAL-...`). Injected into the Flink application as `newrelic.license.key` so it can send metrics to New Relic.
 
 ## Usage
 
 ```sh
 cd examples/data_processing
 terraform init
-terraform plan
-terraform apply
+terraform plan \
+  -var='newrelic_api_key=NRAK-XXXXXXXXXXXXXXXXXXXX' \
+  -var='newrelic_license_key=NRAL-XXXXXXXXXXXXXXXXXXXX'
+terraform apply \
+  -var='newrelic_api_key=NRAK-XXXXXXXXXXXXXXXXXXXX' \
+  -var='newrelic_license_key=NRAL-XXXXXXXXXXXXXXXXXXXX'
 ```
+
+You can also set them via a `*.tfvars` file or `TF_VAR_newrelic_api_key` / `TF_VAR_newrelic_license_key` env vars.

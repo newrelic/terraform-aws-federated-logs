@@ -69,13 +69,15 @@ module "federated_logs" {
 
 ## Prerequisites
 
-Export your New Relic API key as an environment variable before running Terraform:
+Pass your New Relic User API key (`NRAK-...`) as the `newrelic_api_key` input variable. The variable is marked `sensitive`, so it is redacted from CLI output (it is still written to state — protect your state backend accordingly).
 
 ```sh
-export NEW_RELIC_API_KEY="your-new-relic-api-key"
+terraform apply -var='newrelic_api_key=NRAK-XXXXXXXXXXXXXXXXXXXX'
 ```
 
-This is used to make New Relic API calls (fetching the base role ARN). It is read directly from the environment and is never stored in Terraform state.
+Or set it via a `*.tfvars` file or `TF_VAR_newrelic_api_key` env var.
+
+This key is used to make New Relic API calls (fetching the base role ARN, creating entities).
 
 ## Requirements
 

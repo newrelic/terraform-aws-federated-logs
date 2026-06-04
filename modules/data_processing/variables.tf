@@ -64,6 +64,12 @@ variable "newrelic_region" {
   }
 }
 
+variable "newrelic_license_key" {
+  description = "New Relic Ingest license key (NRAL-...). Injected as 'newrelic.license.key' into Flink application properties."
+  type        = string
+  sensitive   = true
+}
+
 variable "fleet_ingest_connection_description" {
   description = "Optional description for the fleet-level newrelic_aws_connection wrapping the PCG base role."
   type        = string

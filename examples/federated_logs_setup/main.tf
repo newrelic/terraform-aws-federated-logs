@@ -6,6 +6,7 @@ module "federated_logs" {
   newrelic_org_id     = var.newrelic_org_id
   newrelic_account_id = 0    # Replace with your NR account ID.
   newrelic_region     = "US" # "US" (default), "EU", or "STAGING"
+  newrelic_api_key    = var.newrelic_api_key
 
   # AWS region where resources will be created. If not set, uses the provider's configured region.
   #region = "us-east-2"

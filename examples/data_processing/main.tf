@@ -4,6 +4,7 @@ module "data_processing" {
   data_processing_module_name = "my-app-logs"
   newrelic_org_id             = "YOUR_NR_ORG_ID"
   fleet_entity_guid           = "YOUR_FLEET_ENTITY_GUID"
+  newrelic_license_key        = var.newrelic_license_key
 
   # Flink parallelism settings (optional - defaults: parallelism=1, parallelism_per_kpu=1, auto_scaling=true)
   # parallelism          = 1

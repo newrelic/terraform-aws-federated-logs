@@ -8,3 +8,9 @@ variable "newrelic_org_id" {
   type        = string
 }
 
+variable "newrelic_api_key" {
+  description = "New Relic User API key (NRAK-...). Used by the newrelic provider for resource creation."
+  type        = string
+  sensitive   = true
+}
+
