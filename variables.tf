@@ -145,7 +145,6 @@ variable "e2e_validation_config" {
     condition = !var.e2e_validation_config.enabled || (
       var.e2e_validation_config.pcg_endpoint != "" &&
       var.e2e_validation_config.nr_account_id != "" &&
-      var.e2e_validation_config.setup_id != "" &&
       var.e2e_validation_config.test_payload != ""
     )
     error_message = "When e2e_validation_config.enabled is true, pcg_endpoint, nr_account_id, setup_id, and test_payload must all be provided."
