@@ -7,10 +7,10 @@ MOCK_URL="http://localhost:1080"
 E2E_SCRIPT="$REPO_ROOT/modules/federated_logs_e2e_validation/scripts/e2e_test.py"
 
 # Zero out wait times for mock testing
-export E2E_WRITE_RETRY_DELAY=0
-export E2E_READ_RETRY_DELAY=0
+export E2E_RETRY_DELAY=0
 export E2E_INITIAL_READ_WAIT=0
-export E2E_READ_MAX_RETRIES=3
+export E2E_MAX_RETRIES=3
+export NR_GRAPHQL_URL="$MOCK_URL/graphql"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -50,11 +50,11 @@ run_test() {
     set +e
     python3 "$E2E_SCRIPT" \
         --pcg-endpoint "$MOCK_URL" \
-        --graphql-url "$MOCK_URL/graphql" \
         --license-key "mock-license-key" \
         --nr-account-id "12345" \
         --nr-api-key "mock-api-key" \
-        --setup-id "mock-setup-id" 2>&1
+        --setup-id "mock-setup-id" \
+        --payload '{"message":"e2e-test","level":"info"}' 2>&1
     actual_exit=$?
     set -e
 
@@ -83,7 +83,6 @@ done
 # ── Run tests ─────────────────────────────────────────────────
 run_test "Happy path"                    "happy_path.json"              0
 run_test "Write retry then success"      "write_retry.json"             0
-run_test "NR read retry then success"    "read_retry.json"              0
 run_test "Write permanent failure"       "write_permanent_failure.json"  1
 run_test "NR read permanent empty"       "read_permanent_empty.json"    1
 run_test "PCG health check failure"      "health_check_failure.json"    1

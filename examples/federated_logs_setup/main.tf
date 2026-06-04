@@ -78,4 +78,20 @@ module "federated_logs" {
       }
     }
   }
+
+  # Optional: run an end-to-end validation after apply.
+  # Secrets (NEWRELIC_LICENSE_KEY, NEWRELIC_API_KEY) must be exported in the
+  # shell environment before running terraform apply.
+  e2e_validation_config = {
+    enabled       = true
+    pcg_endpoint  = "https://pcg.example.com"
+    nr_account_id = "1234567"
+    nr_region     = "us" # "us" (default), "eu", or "staging"
+    test_payload  = jsonencode({ message = "federated-logs e2e test", level = "info" })
+
+    # Optional tuning — defaults shown:
+    # max_retries       = 3
+    # retry_delay       = 5
+    # initial_read_wait = 30
+  }
 }

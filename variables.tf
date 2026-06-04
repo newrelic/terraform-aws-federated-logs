@@ -129,12 +129,26 @@ variable "partition_tables" {
 variable "e2e_validation_config" {
   description = "Configuration for the optional end-to-end validation module. When enabled=true, a null_resource runs scripts/e2e_test.py which POSTs a test log to the PCG endpoint and verifies it appears in New Relic via NRQL. Failure does not fail terraform apply. Secrets are supplied via the separate e2e_license_key and e2e_nr_api_key variables."
   type = object({
-    enabled       = optional(bool, false)
-    pcg_endpoint  = optional(string, "")
-    nr_account_id = optional(string, "")
-    nr_region     = optional(string, "us")
-    setup_id      = optional(string, "")
+    enabled           = optional(bool, false)
+    pcg_endpoint      = optional(string, "")
+    nr_account_id     = optional(string, "")
+    nr_region         = optional(string, "us")
+    setup_id          = optional(string, "")
+    test_payload      = optional(string, "")
+    max_retries       = optional(number, 3)
+    retry_delay       = optional(number, 5)
+    initial_read_wait = optional(number, 30)
   })
   default = {}
+
+  validation {
+    condition = !var.e2e_validation_config.enabled || (
+      var.e2e_validation_config.pcg_endpoint != "" &&
+      var.e2e_validation_config.nr_account_id != "" &&
+      var.e2e_validation_config.setup_id != "" &&
+      var.e2e_validation_config.test_payload != ""
+    )
+    error_message = "When e2e_validation_config.enabled is true, pcg_endpoint, nr_account_id, setup_id, and test_payload must all be provided."
+  }
 }
 
