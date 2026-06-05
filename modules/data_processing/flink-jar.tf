@@ -36,26 +36,32 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "flink_jar" {
   }
 }
 
-# Block public access to the Flink JAR bucket
-resource "aws_s3_bucket_public_access_block" "flink_jar" {
-  bucket = aws_s3_bucket.flink_jar.id
+# Copy JAR from New Relic's public bucket to customer's bucket via HTTPS download + S3 upload.
+# Uses Python script with AWS Signature V4 (stdlib only - no boto3/AWS CLI required).
+# This approach bypasses VPC endpoint cross-region restrictions that break aws_s3_object_copy.
+resource "null_resource" "flink_jar_copy" {
+  triggers = {
+    source_url  = local.flink_jar_source_url
+    dest_bucket = aws_s3_bucket.flink_jar.id
+    dest_key    = local.flink_jar_dest_key
+    version     = var.flink_iceberg_commit_worker_version
+  }
 
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
-}
+  provisioner "local-exec" {
+    command = "python3 ${path.module}/scripts/copy_flink_jar.py"
 
-# Copy JAR from New Relic's bucket to customer's bucket
-resource "aws_s3_object_copy" "flink_jar" {
-  bucket = aws_s3_bucket.flink_jar.id
-  key    = local.flink_jar_dest_key
-  source = "/${local.flink_jar_source_bucket}/${local.flink_jar_source_key}"
+    environment = {
+      SOURCE_URL   = local.flink_jar_source_url
+      DEST_BUCKET  = aws_s3_bucket.flink_jar.id
+      DEST_KEY     = local.flink_jar_dest_key
+      DEST_REGION  = data.aws_region.current.name
+      CONTENT_TYPE = "application/java-archive"
+    }
+  }
 
   depends_on = [
     aws_s3_bucket_versioning.flink_jar,
     aws_s3_bucket_server_side_encryption_configuration.flink_jar,
-    aws_s3_bucket_public_access_block.flink_jar,
   ]
 }
 
