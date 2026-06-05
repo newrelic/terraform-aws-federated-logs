@@ -5,6 +5,7 @@ locals {
   flink_jar_source_bucket = "nr-downloads-main"
   flink_jar_filename      = "flink-iceberg-commit-worker-${var.flink_iceberg_commit_worker_version}.jar"
   flink_jar_source_key    = "pipeline-control-gateway/fed-logs/${local.flink_jar_filename}"
+  flink_jar_source_url    = "https://${local.flink_jar_source_bucket}.s3.amazonaws.com/${local.flink_jar_source_key}"
   flink_jar_dest_key      = "flink/${local.flink_jar_filename}"
 }
 
@@ -54,7 +55,7 @@ resource "null_resource" "flink_jar_copy" {
       SOURCE_URL   = local.flink_jar_source_url
       DEST_BUCKET  = aws_s3_bucket.flink_jar.id
       DEST_KEY     = local.flink_jar_dest_key
-      DEST_REGION  = data.aws_region.current.name
+      DEST_REGION  = data.aws_region.current.id
       CONTENT_TYPE = "application/java-archive"
     }
   }
