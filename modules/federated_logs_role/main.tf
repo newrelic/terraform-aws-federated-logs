@@ -6,7 +6,7 @@ data "aws_region" "current" {
 }
 
 data "external" "base_role" {
-  program = ["python3", "${path.module}/scripts/fetch_base_role.py"]
+  program = ["sh", "-c", ". /tmp/nr_env.sh && python3 ${path.module}/scripts/fetch_base_role.py"]
   query = {
     fleet_entity_guid = var.fleet_entity_guid
     nr_endpoint       = local.nr_graphql_endpoint
@@ -14,8 +14,9 @@ data "external" "base_role" {
 }
 
 resource "aws_iam_role" "glue_service_role" {
-  name        = "${local.setup_naming_prefix}-glue-service"
-  description = "Role for Glue Service to access S3 and manage its own resources"
+  name                 = "${local.setup_naming_prefix}-glue-service"
+  description          = "Role for Glue Service to access S3 and manage its own resources"
+  permissions_boundary = local.permissions_boundary
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -99,8 +100,9 @@ resource "aws_iam_policy" "glue_service_policy" {
 }
 
 resource "aws_iam_role" "reader-role" {
-  name        = "${local.setup_naming_prefix}-${local.nr_reader_role_suffix}"
-  description = "Cross-account role for New Relic Query Engine to read logs"
+  name                 = "${local.setup_naming_prefix}-${local.nr_reader_role_suffix}"
+  description          = "Cross-account role for New Relic Query Engine to read logs"
+  permissions_boundary = local.permissions_boundary
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -164,8 +166,9 @@ resource "aws_iam_policy" "reader_policy" {
 # The base role must have fleet_entity_guid = var.fleet_entity_guid to satisfy the condition.
 
 resource "aws_iam_role" "pcg-writer-role" {
-  name        = "${local.setup_naming_prefix}-pcg-writer"
-  description = "IAM Role for Iceberg metadata writer with Glue and S3 access"
+  name                 = "${local.setup_naming_prefix}-pcg-writer"
+  description          = "IAM Role for Iceberg metadata writer with Glue and S3 access"
+  permissions_boundary = local.permissions_boundary
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

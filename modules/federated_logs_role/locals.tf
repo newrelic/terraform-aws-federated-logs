@@ -1,5 +1,6 @@
 locals {
-  setup_naming_prefix = "newrelic-fed-logs-${var.setup_name}"
+  setup_naming_prefix  = "newrelic-fed-logs-${var.setup_name}"
+  permissions_boundary = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/resource-provisioner-boundary"
 
   nr_source_account = var.newrelic_region == "STAGING" ? "010928221695" : "531948421264"
 

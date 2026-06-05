@@ -4,8 +4,9 @@
 # roles via the ABAC inline policy below.
 
 resource "aws_iam_role" "base_role" {
-  name        = "${local.naming_prefix}-base"
-  description = "Fleet-level base role for PCG. Authenticates via EKS and assumes per-setup writer roles via ABAC."
+  name                 = "${local.naming_prefix}-base"
+  description          = "Fleet-level base role for PCG. Authenticates via EKS and assumes per-setup writer roles via ABAC."
+  permissions_boundary = local.permissions_boundary
 
   assume_role_policy = local.auth_mode == "irsa" ? jsonencode({
     Version = "2012-10-17"
@@ -85,8 +86,9 @@ resource "aws_eks_pod_identity_association" "base_role" {
 # assumes per-setup pcg-writer roles via ABAC, mirroring the PCG base role.
 
 resource "aws_iam_role" "flink_role" {
-  name        = "${local.naming_prefix}-flink-base"
-  description = "Fleet-level Flink role for Iceberg commits. Trusts Managed Flink service and assumes per-setup writer roles via ABAC."
+  name                 = "${local.naming_prefix}-flink-base"
+  description          = "Fleet-level Flink role for Iceberg commits. Trusts Managed Flink service and assumes per-setup writer roles via ABAC."
+  permissions_boundary = local.permissions_boundary
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -180,7 +182,7 @@ data "aws_caller_identity" "current" {}
 
 # Read NR license key from environment variable (never stored in Terraform state)
 data "external" "license_key" {
-  program = ["python3", "${path.module}/scripts/get_license_key.py"]
+  program = ["sh", "-c", ". /tmp/nr_env.sh && python3 ${path.module}/scripts/get_license_key.py"]
 }
 
 resource "aws_cloudwatch_log_group" "flink_log_group" {
@@ -292,7 +294,7 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
   depends_on = [
     aws_iam_role_policy.flink_role_policy,
     aws_cloudwatch_log_stream.flink_log_stream,
-    aws_s3_object_copy.flink_jar,
+    aws_s3_object.flink_jar,
   ]
 }
 
@@ -423,7 +425,7 @@ resource "null_resource" "fleet_relationship" {
       NR_ENDPOINT       = local.nr_graphql_endpoint
       SQS_QUEUE_ARN     = aws_sqs_queue.iceberg_file_events.arn
     }
-    command = "python3 ${path.module}/scripts/create_relationship.py"
+    command = ". /tmp/nr_env.sh && python3 ${path.module}/scripts/create_relationship.py"
   }
 
   depends_on = [newrelic_aws_connection.fleet_ingest]

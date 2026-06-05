@@ -1,5 +1,6 @@
 locals {
-  naming_prefix = "newrelic-fed-logs-fleet-${var.data_processing_module_name}"
+  naming_prefix        = "newrelic-fed-logs-fleet-${var.data_processing_module_name}"
+  permissions_boundary = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/resource-provisioner-boundary"
 
   auth_mode = length(var.clusters) > 0 ? values(var.clusters)[0].auth_mode : "irsa"
 

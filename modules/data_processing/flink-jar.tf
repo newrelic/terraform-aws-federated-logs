@@ -46,13 +46,25 @@ resource "aws_s3_bucket_public_access_block" "flink_jar" {
   restrict_public_buckets = true
 }
 
-# Copy JAR from New Relic's bucket to customer's bucket
-resource "aws_s3_object_copy" "flink_jar" {
+# Download JAR from New Relic's public bucket via HTTPS
+resource "null_resource" "flink_jar_download" {
+  triggers = {
+    source_key = local.flink_jar_source_key
+  }
+
+  provisioner "local-exec" {
+    command = "curl -sfL https://${local.flink_jar_source_bucket}.s3.us-east-1.amazonaws.com/${local.flink_jar_source_key} -o /tmp/${local.flink_jar_filename}"
+  }
+}
+
+# Upload JAR to customer's bucket using Terraform AWS provider
+resource "aws_s3_object" "flink_jar" {
   bucket = aws_s3_bucket.flink_jar.id
   key    = local.flink_jar_dest_key
-  source = "/${local.flink_jar_source_bucket}/${local.flink_jar_source_key}"
+  source = "/tmp/${local.flink_jar_filename}"
 
   depends_on = [
+    null_resource.flink_jar_download,
     aws_s3_bucket_versioning.flink_jar,
     aws_s3_bucket_server_side_encryption_configuration.flink_jar,
     aws_s3_bucket_public_access_block.flink_jar,
