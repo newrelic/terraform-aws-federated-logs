@@ -15,8 +15,8 @@ Usage:
         --payload '{"message": "test log entry", "level": "info"}'
 
 All arguments can also be set via environment variables:
-    PCG_ENDPOINT, NEWRELIC_LICENSE_KEY,
-    NR_ACCOUNT_ID, NEWRELIC_API_KEY, TEST_PAYLOAD
+    PCG_ENDPOINT, NEW_RELIC_LICENSE_KEY,
+    NR_ACCOUNT_ID, NEW_RELIC_API_KEY, TEST_PAYLOAD
 """
 
 import argparse
@@ -258,7 +258,7 @@ def update_federated_logs_setup(graphql_url, api_key, setup_id, account_id, stat
         'mutation {\n'
         '  federatedLogsUpdateSetup(\n'
         '    id: "%s"\n'
-        '    accountId: "%s"\n'
+        '    accountId: %s\n'
         '    setup: {healthCheck: {end2endDataFlow: {status: %s, message: %s, lastUpdatedAt: "%s"}}}\n'
         '  ) {\n'
         '    setup {\n'
@@ -315,7 +315,7 @@ def main():
     )
     parser.add_argument(
         "--license-key",
-        default=os.environ.get("NEWRELIC_LICENSE_KEY", ""),
+        default=os.environ.get("NEW_RELIC_LICENSE_KEY", ""),
         help="New Relic license/ingest key",
     )
     parser.add_argument(
@@ -325,7 +325,7 @@ def main():
     )
     parser.add_argument(
         "--nr-api-key",
-        default=os.environ.get("NEWRELIC_API_KEY", ""),
+        default=os.environ.get("NEW_RELIC_API_KEY", ""),
         help="New Relic User API key for GraphQL queries",
     )
     parser.add_argument(
@@ -350,9 +350,9 @@ def main():
     # Validate required inputs
     required = {
         "PCG_ENDPOINT / --pcg-endpoint": bool(args.pcg_endpoint),
-        "NEWRELIC_LICENSE_KEY / --license-key": bool(args.license_key),
+        "NEW_RELIC_LICENSE_KEY / --license-key": bool(args.license_key),
         "NR_ACCOUNT_ID / --nr-account-id": bool(args.nr_account_id),
-        "NEWRELIC_API_KEY / --nr-api-key": bool(args.nr_api_key),
+        "NEW_RELIC_API_KEY / --nr-api-key": bool(args.nr_api_key),
         "TEST_PAYLOAD / --payload": bool(args.payload),
         "NR_FEDERATEDLOGS_SETUP_ID / --setup-id": bool(args.setup_id),
     }

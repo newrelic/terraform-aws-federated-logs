@@ -6,7 +6,7 @@ resource "null_resource" "e2e_validation" {
   provisioner "local-exec" {
     on_failure  = continue
     working_dir = path.module
-    command     = "python3 ${path.module}/scripts/e2e_test.py"
+    command     = "python3 scripts/e2e_test.py"
 
     environment = {
       PCG_ENDPOINT              = var.pcg_endpoint
