@@ -116,6 +116,12 @@ variable "snapshots_enabled" {
   default     = true
 }
 
+variable "start_application" {
+  description = "Whether to start the Flink application immediately after creation. When true, Terraform transitions the app from READY to RUNNING. Requires kinesisanalyticsv2:StartApplication on the deploying role."
+  type        = bool
+  default     = true
+}
+
 variable "newrelic_metrics_endpoint" {
   description = "New Relic metrics API endpoint."
   type        = string
