@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=https://grand-central.nr-ops.net/schemas/v0/grand-central.json
+slack_channel: logging-notifications
+deploy_mechanism: terraform
+base_environment: {}
+environments:
+- name: terraform
+  terraform:
+    terraform_version: "1.8.0"
+    auto_backend: ""
+    template_name_override: ""
+disable_default_environments: true
+identity:
+  owning_team: Logging Integrations
+test_suites:
+- command: |
+    for i in `find . -type f -name '*.tf' | xargs -I % dirname % | sort -u`; do
+      echo "Running terraform validate on $i"
+      BASEDIR="$(pwd)/${i}" /start.sh
+    done
+  environment:
+    docker_image: cf-registry.nr-ops.net/tools/terraform-dms-runner:release-33
+    env_vars:
+      ACTION: validate
+      TERRAFORM_VERSION: "1.8.0"
+      VAULT_ADDR: fakevault.example-nr.com
+  name: Terraform validate
+build:
+  environment:
+    docker_image: cf-registry.nr-ops.net/newrelic/base-ubuntu:20.04
+  publish:
+    command: echo 'nothing to do'
+  tag_only: true

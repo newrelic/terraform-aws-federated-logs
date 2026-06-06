@@ -40,3 +40,4 @@ module "partition" {
   data_retention_enabled = var.data_retention_enabled
   newrelic_account_id    = var.newrelic_account_id
 }
+
