@@ -406,6 +406,10 @@ resource "newrelic_aws_connection" "fleet_ingest" {
     key    = "sqs_queue_arn"
     values = [aws_sqs_queue.iceberg_file_events.arn]
   }
+  tag {
+    key    = "flink_base_role_arn"
+    values = [aws_iam_role.flink_role.arn]
+  }
 }
 
 resource "null_resource" "fleet_relationship" {

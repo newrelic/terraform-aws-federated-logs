@@ -173,7 +173,10 @@ resource "aws_iam_role" "pcg-writer-role" {
       {
         Effect = "Allow"
         Principal = {
-          AWS = data.external.base_role.result["role_arn"]
+          AWS = compact([
+            data.external.base_role.result["role_arn"],
+            data.external.base_role.result["flink_base_role_arn"],
+          ])
         }
         Action = ["sts:AssumeRole", "sts:TagSession"]
         Condition = {
