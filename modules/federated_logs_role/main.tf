@@ -176,10 +176,10 @@ resource "aws_iam_role" "pcg-writer-role" {
       {
         Effect = "Allow"
         Principal = {
-          AWS = [
+          AWS = compact([
             data.external.base_role.result["role_arn"],
-            "arn:aws:iam::010928221695:role/newrelic-fed-logs-fleet-demo-setup-flink-base",
-          ]
+            data.external.base_role.result["flink_base_role_arn"],
+          ])
         }
         Action = ["sts:AssumeRole", "sts:TagSession"]
         Condition = {
