@@ -65,12 +65,12 @@ resource "aws_iam_policy" "glue_service_policy" {
           "logs:PutLogEvents"
         ]
         Resource = [
-          "arn:aws:glue:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:catalog",
-          "arn:aws:glue:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:database/${var.glue_catalog_db_name}",
-          "arn:aws:glue:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:database/default",
-          "arn:aws:glue:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:table/${var.glue_catalog_db_name}/*",
-          "arn:aws:glue:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:job/*",
-          "arn:aws:logs:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:log-group:/aws-glue/*"
+          "arn:aws:glue:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:catalog",
+          "arn:aws:glue:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:database/${var.glue_catalog_db_name}",
+          "arn:aws:glue:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:database/default",
+          "arn:aws:glue:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:table/${var.glue_catalog_db_name}/*",
+          "arn:aws:glue:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:job/*",
+          "arn:aws:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws-glue/*"
         ]
       },
       {
@@ -152,9 +152,9 @@ resource "aws_iam_policy" "reader_policy" {
           "glue:BatchGetPartition"
         ]
         Resource = [
-          "arn:aws:glue:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:catalog",
-          "arn:aws:glue:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:database/${var.glue_catalog_db_name}",
-          "arn:aws:glue:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:table/${var.glue_catalog_db_name}/*"
+          "arn:aws:glue:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:catalog",
+          "arn:aws:glue:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:database/${var.glue_catalog_db_name}",
+          "arn:aws:glue:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:table/${var.glue_catalog_db_name}/*"
         ]
       }
     ]
@@ -176,7 +176,10 @@ resource "aws_iam_role" "pcg-writer-role" {
       {
         Effect = "Allow"
         Principal = {
-          AWS = data.external.base_role.result["role_arn"]
+          AWS = [
+            data.external.base_role.result["role_arn"],
+            "arn:aws:iam::010928221695:role/newrelic-fed-logs-fleet-logint-setup-by-rajeev-flink-base",
+          ]
         }
         Action = ["sts:AssumeRole", "sts:TagSession"]
         Condition = {
@@ -222,9 +225,9 @@ resource "aws_iam_policy" "writer_policy" {
           "glue:GetTable"
         ]
         Resource = [
-          "arn:aws:glue:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:catalog",
-          "arn:aws:glue:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:database/${var.glue_catalog_db_name}",
-          "arn:aws:glue:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:table/${var.glue_catalog_db_name}/*"
+          "arn:aws:glue:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:catalog",
+          "arn:aws:glue:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:database/${var.glue_catalog_db_name}",
+          "arn:aws:glue:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:table/${var.glue_catalog_db_name}/*"
         ]
       }
     ]
@@ -292,7 +295,7 @@ resource "newrelic_federated_logs_setup" "this" {
 
     cloud_provider_configuration {
       provider = "AWS"
-      region   = data.aws_region.current.id
+      region   = var.region
     }
   }
 

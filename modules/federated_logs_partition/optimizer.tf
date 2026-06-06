@@ -1,4 +1,7 @@
 data "aws_caller_identity" "current" {}
+data "aws_region" "current" {
+  region = var.region
+}
 
 resource "aws_glue_catalog_table_optimizer" "compaction" {
   for_each      = local.all_tables
@@ -6,7 +9,7 @@ resource "aws_glue_catalog_table_optimizer" "compaction" {
   database_name = var.glue_catalog_db_name
   table_name    = aws_glue_catalog_table.iceberg_table[each.key].name
   type          = "compaction"
-  region        = var.region
+  region        = data.aws_region.current.region
 
   configuration {
     role_arn = var.glue_service_role_arn
@@ -20,7 +23,7 @@ resource "aws_glue_catalog_table_optimizer" "retention" {
   database_name = var.glue_catalog_db_name
   table_name    = aws_glue_catalog_table.iceberg_table[each.key].name
   type          = "retention"
-  region        = var.region
+  region        = data.aws_region.current.region
 
   configuration {
     role_arn = var.glue_service_role_arn
@@ -43,7 +46,7 @@ resource "aws_glue_catalog_table_optimizer" "orphan_deletion" {
   database_name = var.glue_catalog_db_name
   table_name    = aws_glue_catalog_table.iceberg_table[each.key].name
   type          = "orphan_file_deletion"
-  region        = var.region
+  region        = data.aws_region.current.region
 
   configuration {
     role_arn = var.glue_service_role_arn
@@ -94,7 +97,7 @@ resource "null_resource" "compaction_configuration" {
         --table-name ${each.key} \
         --table-optimizer-configuration "$CONFIG" \
         --type compaction \
-        --region ${var.region}
+        --region ${data.aws_region.current.region}
       echo "Compaction configured for ${each.key}."
     EOT
   }

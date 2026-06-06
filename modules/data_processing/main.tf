@@ -151,7 +151,7 @@ resource "aws_iam_role_policy" "flink_role_policy" {
           "logs:PutLogEvents",
           "logs:DescribeLogStreams",
         ]
-        Resource = ["arn:aws:logs:${data.aws_region.current.id}:*:log-group:/aws/kinesis-analytics/*"]
+        Resource = ["arn:aws:logs:${data.aws_region.current.region}:*:log-group:/aws/kinesis-analytics/*"]
       },
       # CloudWatch Metrics: emit application-level metrics
       {
@@ -250,10 +250,10 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
         property_group_id = "FlinkApplicationProperties"
 
         property_map = {
-          "aws.region" = data.aws_region.current.id
+          "aws.region" = data.aws_region.current.region
 
           "sqs.queue.url"  = aws_sqs_queue.iceberg_file_events.url
-          "sqs.region"     = data.aws_region.current.id
+          "sqs.region"     = data.aws_region.current.region
           "sqs.batch.size" = tostring(var.sqs_batch_size)
 
           "iceberg.catalog.type"            = "glue"

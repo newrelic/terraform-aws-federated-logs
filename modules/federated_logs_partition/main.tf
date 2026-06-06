@@ -3,7 +3,7 @@ resource "aws_s3_object" "folder" {
   for_each = local.all_tables
   bucket   = var.s3_bucket_name
   key      = "${var.glue_catalog_db_name}/${each.key}/"
-  region   = var.region
+  region   = data.aws_region.current.region
 }
 
 resource "aws_glue_catalog_table" "iceberg_table" {
@@ -11,13 +11,19 @@ resource "aws_glue_catalog_table" "iceberg_table" {
 
   name          = each.key
   database_name = var.glue_catalog_db_name
-  region        = var.region
+  region        = data.aws_region.current.region
   table_type    = "ICEBERG"
 
   lifecycle {
     ignore_changes = [
-      # Prevent TF from fighting with Athena/Iceberg over these dynamic keys
-      parameters
+      # Iceberg tables are materialized in Glue as EXTERNAL_TABLE with Iceberg
+      # metadata pointers, so AWS read-back disagrees with the HCL declaration.
+      # Without these ignores, every plan after creation shows spurious drift
+      # (and would force destroy/recreate → data loss).
+      parameters,              # metadata_location, format-version, etc. — managed by Iceberg
+      table_type,              # AWS returns EXTERNAL_TABLE on read
+      open_table_format_input, # one-shot CREATE directive; not echoed back on read
+      storage_descriptor,      # Iceberg mutates this on each commit
     ]
   }
 
