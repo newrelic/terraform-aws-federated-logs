@@ -12,6 +12,7 @@ env:
 jobs:
   integration-tests:
     name: Run Integration Tests
+    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.pull_request.head.repo.fork }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
