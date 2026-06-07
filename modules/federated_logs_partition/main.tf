@@ -102,33 +102,48 @@ EOF
 #
 # We iterate over local.sanitized_partition_tables (which excludes the default)
 # rather than local.all_tables.
-# resource "newrelic_federated_logs_partition" "this" {
-#   for_each = local.sanitized_partition_tables
+resource "newrelic_federated_logs_partition" "this" {
+  for_each = local.sanitized_partition_tables
 
-#   account_id  = var.newrelic_account_id
-#   setup_id    = var.setup_id
-#   name        = local.nr_partition_names[each.key]
-#   description = each.value.description
+  account_id  = var.newrelic_account_id
+  setup_id    = var.setup_id
+  name        = local.nr_partition_names[each.key]
+  description = each.value.description
 
-#   storage {
-#     table             = each.key
-#     data_location_uri = "s3://${var.s3_bucket_name}/${var.glue_catalog_db_name}/${each.key}"
-#   }
+  storage {
+    table             = each.key
+    data_location_uri = "s3://${var.s3_bucket_name}/${var.glue_catalog_db_name}/${each.key}"
+  }
 
-#   data_retention_policy {
-#     duration = each.value.retention_in_days
-#     unit     = "DAYS"
-#   }
+  data_retention_policy {
+    duration = each.value.retention_in_days
+    unit     = "DAYS"
+  }
 
-#   dynamic "forwarder_configuration" {
-#     for_each = each.value.routing_expression != null ? [1] : []
-#     content {
-#       type = "PIPELINE_CONTROL"
-#       pipeline_control {
-#         partition_rule {
-#           expression = each.value.routing_expression
-#         }
-#       }
-#     }
-#   }
-# }
+  dynamic "forwarder_configuration" {
+    for_each = each.value.routing_expression != null ? [1] : []
+    content {
+      type = "PIPELINE_CONTROL"
+      pipeline_control {
+        partition_rule {
+          expression = each.value.routing_expression
+        }
+      }
+    }
+  }
+}
+
+removed {
+  from = newrelic_federated_logs_partition.this["error_only"]
+
+  lifecycle {
+    destroy = false
+  }
+}
+
+removed {
+  from = newrelic_federated_logs_partition.this["compliance"]
+
+  lifecycle {
+    destroy = false
+  
