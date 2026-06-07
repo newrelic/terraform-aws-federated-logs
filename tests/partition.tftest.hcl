@@ -115,6 +115,7 @@ run "roles" {
         role_arn                = "arn:aws:iam::123456789012:role/mock-base-role"
         base_role_connection_id = "mock-connection-guid"
         sqs_queue_arn           = "arn:aws:sqs:us-east-1:123456789012:mock-queue"
+        flink_base_role_arn     = "arn:aws:iam::123456789012:role/mock-flink-base-role"
       }
     }
   }
