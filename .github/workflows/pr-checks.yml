@@ -67,6 +67,8 @@ jobs:
       - name: Terraform Validate
         run: terraform validate
         working-directory: ${{ matrix.path.path }}
+        env:
+          NEW_RELIC_API_KEY: "dummy-for-validate"
 
   # ──────────────────────────────────────────────────────────────
   # TFLint

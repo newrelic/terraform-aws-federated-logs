@@ -7,3 +7,9 @@ variable "enable_validation" {
   type        = bool
   default     = false
 }
+
+variable "newrelic_org_id" {
+  description = "New Relic organization ID (UUID)."
+  type        = string
+}
+

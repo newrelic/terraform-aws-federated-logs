@@ -13,6 +13,11 @@ output "aws_connection_entity_name" {
   value       = "${local.naming_prefix}-aws-connection"
 }
 
+output "fleet_ingest_connection_id" {
+  description = "Entity GUID of the AWS Connection wrapping the fleet base role."
+  value       = newrelic_aws_connection.fleet_ingest.id
+}
+
 output "base_role_tags" {
   description = "Tags applied to the fleet-level base role."
   value       = aws_iam_role.base_role.tags

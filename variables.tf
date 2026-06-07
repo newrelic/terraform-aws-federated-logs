@@ -14,8 +14,30 @@ variable "setup_name" {
 }
 
 variable "fleet_entity_guid" {
-  description = "NGEP entity GUID of the PCG fleet (output of the data_processing module). Used to resolve the base role ARN via the AWS Connection Entity."
+  description = "NGEP entity GUID of the PCG fleet (output of the data_processing module)."
   type        = string
+}
+
+variable "newrelic_org_id" {
+  description = "New Relic organization ID."
+  type        = string
+}
+
+variable "newrelic_account_id" {
+  description = "New Relic account ID."
+  type        = number
+}
+
+variable "setup_description" {
+  description = "Optional description for the newrelic_federated_logs_setup resource."
+  type        = string
+  default     = null
+}
+
+variable "query_connection_description" {
+  description = "Optional description for the per-setup newrelic_aws_connection wrapping the reader role."
+  type        = string
+  default     = null
 }
 
 variable "newrelic_region" {
@@ -77,10 +99,12 @@ variable "default_table_setting" {
 }
 
 variable "partition_tables" {
-  description = "Map of additional partition tables. Each entry can override table_parameters and/or optimizer_configuration, or use {} for all defaults."
+  description = "Map of additional partition tables. Each entry can override table_parameters, optimizer_configuration, routing_expression, and/or description — or use {} for all defaults."
   type = map(object({
-    retention_in_days = optional(number, 30)
-    table_parameters  = optional(map(string), {})
+    retention_in_days  = optional(number, 30)
+    routing_expression = optional(string)
+    description        = optional(string)
+    table_parameters   = optional(map(string), {})
     optimizer_configuration = optional(object({
       orphan_file_deletion = optional(object({
         orphan_file_retention_period_in_days = optional(number, 3)

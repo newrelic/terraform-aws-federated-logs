@@ -16,12 +16,12 @@ The `base_role_arn` output is available for reference. The `fleet_entity_guid` i
 Export your New Relic credentials as environment variables before running Terraform:
 
 ```sh
-export NEWRELIC_API_KEY="your-new-relic-api-key"
-export NEWRELIC_LICENSE_KEY="your-new-relic-license-key"
+export NEW_RELIC_API_KEY="your-new-relic-api-key"
+export NEW_RELIC_LICENSE_KEY="your-new-relic-license-key"
 ```
 
-- `NEWRELIC_API_KEY`: Used for NerdGraph API calls (fetching base role ARN, creating entities)
-- `NEWRELIC_LICENSE_KEY`: Your New Relic license key (used by Flink to send metrics to New Relic)
+- `NEW_RELIC_API_KEY`: Used for NerdGraph API calls (fetching base role ARN, creating entities)
+- `NEW_RELIC_LICENSE_KEY`: Your New Relic license key (used by Flink to send metrics to New Relic)
 
 ## Usage
 

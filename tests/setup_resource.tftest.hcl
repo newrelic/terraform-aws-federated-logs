@@ -6,6 +6,10 @@
 #   1. Input validation rules (setup_name regex)
 #   2. Naming conventions (S3 bucket and Glue DB naming patterns)
 
+provider "aws" {
+  region = "us-east-1"
+}
+
 # -----------------------------------------------------------------------------
 # TEST: Naming Convention - S3 Bucket
 # -----------------------------------------------------------------------------
