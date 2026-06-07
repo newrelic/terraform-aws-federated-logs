@@ -96,12 +96,39 @@ EOF
   }
 }
 
-# ── Drop all newrelic_federated_logs_partition from state without destroying ───
-# The NR delete API is non-functional, so we silently remove from state.
-removed {
-  from = newrelic_federated_logs_partition.this
+# ── Non-default partitions on the New Relic side ─────────────────────────────
+# For each entry in var.partition_tables, create a newrelic_federated_logs_partition
+# alongside the Glue table.
+#
+# We iterate over local.sanitized_partition_tables (which excludes the default)
+# rather than local.all_tables.
+resource "newrelic_federated_logs_partition" "this" {
+  for_each = local.sanitized_partition_tables
 
-  lifecycle {
-    destroy = false
+  account_id  = var.newrelic_account_id
+  setup_id    = var.setup_id
+  name        = local.nr_partition_names[each.key]
+  description = each.value.description
+
+  storage {
+    table             = each.key
+    data_location_uri = "s3://${var.s3_bucket_name}/${var.glue_catalog_db_name}/${each.key}"
   }
-} 
+
+  data_retention_policy {
+    duration = each.value.retention_in_days
+    unit     = "DAYS"
+  }
+
+  dynamic "forwarder_configuration" {
+    for_each = each.value.routing_expression != null ? [1] : []
+    content {
+      type = "PIPELINE_CONTROL"
+      pipeline_control {
+        partition_rule {
+          expression = each.value.routing_expression
+        }
+      }
+    }
+  }
+}

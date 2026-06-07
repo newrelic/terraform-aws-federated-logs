@@ -15,5 +15,7 @@ output "retention_job_name" {
 
 output "partition_ids" {
   description = "Map of non-default partition table name → entity GUID of the corresponding newrelic_federated_logs_partition."
-  value       = {}
+  value = {
+    for k, v in newrelic_federated_logs_partition.this : k => v.id
+  }
 }
