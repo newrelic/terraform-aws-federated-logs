@@ -203,7 +203,8 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
   runtime_environment    = var.flink_runtime
   service_execution_role = aws_iam_role.flink_role.arn
 
-  application_mode = "STREAMING"
+  application_mode  = "STREAMING"
+  start_application = var.start_application
 
   application_configuration {
 
