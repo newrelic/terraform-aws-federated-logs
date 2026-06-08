@@ -50,21 +50,68 @@ resource "aws_s3_bucket_public_access_block" "flink_jar" {
   restrict_public_buckets = true
 }
 
+# HEAD the source JAR to get its ETag for change detection.
+data "http" "flink_jar_metadata" {
+  url    = local.flink_jar_source_url
+  method = "HEAD"
+
+  retry {
+    attempts     = 3
+    min_delay_ms = 1000
+    max_delay_ms = 5000
+  }
+
+  lifecycle {
+    postcondition {
+      condition     = !contains([401, 403], self.status_code)
+      error_message = "Access denied to ${local.flink_jar_source_url} (HTTP ${self.status_code}). Ensure the Terraform runner has outbound HTTPS access to S3 and is not blocked by a VPC endpoint policy."
+    }
+    postcondition {
+      condition     = self.status_code != 404
+      error_message = "JAR not found at ${local.flink_jar_source_url} (HTTP 404). Verify that version '${var.flink_iceberg_commit_worker_version}' exists in the nr-downloads-main bucket."
+    }
+    postcondition {
+      condition     = contains([200, 401, 403, 404], self.status_code)
+      error_message = "Unexpected error fetching JAR metadata from ${local.flink_jar_source_url} (HTTP ${self.status_code})."
+    }
+  }
+}
+
 # Download the JAR from the public HTTPS endpoint into the module's .terraform/tmp dir;
 # bypasses the VPC gateway endpoint that blocks cross-region S3 calls.
 # Python keeps this OS-agnostic (macOS / Linux / Windows / CI).
 resource "null_resource" "flink_jar_fetch" {
   triggers = {
-    url = local.flink_jar_source_url
+    url  = local.flink_jar_source_url
+    etag = data.http.flink_jar_metadata.response_headers["Etag"]
   }
 
   provisioner "local-exec" {
     interpreter = ["python3", "-c"]
     command     = <<-PY
-      import pathlib, urllib.request
+      import pathlib, urllib.request, urllib.error, socket, time, sys
       dest = pathlib.Path("${local.flink_jar_local_path}")
       dest.parent.mkdir(parents=True, exist_ok=True)
-      urllib.request.urlretrieve("${local.flink_jar_source_url}", dest)
+      url = "${local.flink_jar_source_url}"
+      socket.setdefaulttimeout(6
+      for attempt in range(3):
+          try:
+              urllib.request.urlretrieve(url, dest)
+              if dest.stat().st_size > 0:
+                  sys.exit(0)
+              raise RuntimeError("Downloaded file is empty")
+          except urllib.error.HTTPError as e:
+              if e.code < 500:
+                  sys.exit(f"ERROR: {url} returned HTTP {e.code} (not retryable)")
+              if attempt < 2:
+                  time.sleep(5)
+              else:
+                  sys.exit(f"ERROR: Failed to download {url} after 3 attempts: HTTP {e.code}")
+          except Exception as e:
+              if attempt < 2:
+                  time.sleep(5)
+              else:
+                  sys.exit(f"ERROR: Failed to download {url} after 3 attempts: {e}")
     PY
   }
 
@@ -76,6 +123,7 @@ resource "aws_s3_object" "flink_jar" {
   bucket = aws_s3_bucket.flink_jar.id
   key    = local.flink_jar_dest_key
   source = local.flink_jar_local_path
+  etag   = data.http.flink_jar_metadata.response_headers["Etag"]
 
   depends_on = [
     null_resource.flink_jar_fetch,
@@ -85,21 +133,7 @@ resource "aws_s3_object" "flink_jar" {
   ]
 }
 
-# Delete the local JAR after it has been uploaded successfully.
-# Triggers on etag, so it re-runs every time the upload changes.
-resource "null_resource" "flink_jar_cleanup" {
-  triggers = {
-    etag = aws_s3_object.flink_jar.etag
-  }
 
-  provisioner "local-exec" {
-    interpreter = ["python3", "-c"]
-    command     = <<-PY
-      import pathlib
-      pathlib.Path("${local.flink_jar_local_path}").unlink(missing_ok=True)
-    PY
-  }
-}
 
 output "flink_jar_bucket_name" {
   description = "Name of the S3 bucket created for Flink JAR storage."

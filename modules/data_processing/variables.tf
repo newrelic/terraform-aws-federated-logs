@@ -78,6 +78,11 @@ variable "flink_iceberg_commit_worker_version" {
   description = "Version of the flink-iceberg-commit-worker JAR to deploy (e.g. v1.0.0). Defaults to latest."
   type        = string
   default     = "latest"
+
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9._-]+$", var.flink_iceberg_commit_worker_version))
+    error_message = "Version must contain only alphanumeric characters, dots, hyphens, and underscores."
+  }
 }
 
 variable "flink_runtime" {
