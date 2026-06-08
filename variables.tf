@@ -147,7 +147,7 @@ variable "validation_config" {
 }
 
 variable "e2e_validation_config" {
-  description = "Configuration for the optional end-to-end validation module. When enabled=true, a null_resource runs scripts/e2e_test.py which POSTs a test log to the PCG endpoint and verifies it appears in New Relic via NRQL. Failure does not fail terraform apply. Secrets are supplied via the separate e2e_license_key and e2e_nr_api_key variables."
+  description = "Configuration for the optional end-to-end validation module. When enabled=true, a null_resource runs scripts/e2e_test.py which POSTs a test log to the PCG endpoint and verifies it appears in New Relic via NRQL. Failure does not fail terraform apply. Credentials (NEWRELIC_LICENSE_KEY, NEWRELIC_API_KEY) are read from the runner environment to keep them out of Terraform state."
   type = object({
     enabled        = optional(bool, false)
     pcg_endpoint   = optional(string, "")
@@ -156,18 +156,4 @@ variable "e2e_validation_config" {
     nr_region      = optional(string, "us")
   })
   default = {}
-}
-
-variable "e2e_license_key" {
-  description = "New Relic license/ingest key used by the E2E validation module to write a test log through PCG. Required when e2e_validation_config.enabled is true."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "e2e_nr_api_key" {
-  description = "New Relic User API key (NRAK-...) used by the E2E validation module to run the NRQL read-back query. Required when e2e_validation_config.enabled is true."
-  type        = string
-  sensitive   = true
-  default     = ""
 }
