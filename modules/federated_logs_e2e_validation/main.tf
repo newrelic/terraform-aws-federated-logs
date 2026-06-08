@@ -17,6 +17,8 @@ resource "null_resource" "e2e_validation" {
       E2E_MAX_RETRIES           = var.max_retries
       E2E_RETRY_DELAY           = var.retry_delay
       E2E_INITIAL_READ_WAIT     = var.initial_read_wait
+      E2E_READ_MAX_RETRIES      = var.read_max_retries
+      E2E_READ_RETRY_DELAY      = var.read_retry_delay
     }
   }
 }

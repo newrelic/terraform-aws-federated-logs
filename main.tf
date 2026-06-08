@@ -53,6 +53,8 @@ module "e2e_validation" {
   max_retries       = var.e2e_validation_config.max_retries
   retry_delay       = var.e2e_validation_config.retry_delay
   initial_read_wait = var.e2e_validation_config.initial_read_wait
+  read_max_retries  = var.e2e_validation_config.read_max_retries
+  read_retry_delay  = var.e2e_validation_config.read_retry_delay
 
   depends_on = [module.setup, module.role, module.partition]
 }

@@ -138,6 +138,8 @@ variable "e2e_validation_config" {
     max_retries       = optional(number, 3)
     retry_delay       = optional(number, 5)
     initial_read_wait = optional(number, 30)
+    read_max_retries  = optional(number, 5)
+    read_retry_delay  = optional(number, 15)
   })
   default = {}
 

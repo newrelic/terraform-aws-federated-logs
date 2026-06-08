@@ -29,19 +29,31 @@ variable "test_payload" {
 }
 
 variable "max_retries" {
-  description = "Maximum number of retry attempts for transient HTTP errors."
+  description = "Maximum number of retry attempts for transient HTTP errors (5xx / connection failures) on health, write, and mutation calls."
   type        = number
   default     = 3
 }
 
 variable "retry_delay" {
-  description = "Seconds to wait between retry attempts."
+  description = "Seconds to wait between transient HTTP retry attempts."
   type        = number
   default     = 5
 }
 
 variable "initial_read_wait" {
-  description = "Seconds to wait after writing before querying New Relic for the test log."
+  description = "Seconds to wait after writing before the first NRQL read attempt."
   type        = number
   default     = 30
+}
+
+variable "read_max_retries" {
+  description = "Maximum number of NRQL read attempts when the test log has not yet appeared in New Relic. Each attempt is separated by read_retry_delay seconds."
+  type        = number
+  default     = 5
+}
+
+variable "read_retry_delay" {
+  description = "Seconds to wait between NRQL read attempts when polling for the test log to surface."
+  type        = number
+  default     = 15
 }

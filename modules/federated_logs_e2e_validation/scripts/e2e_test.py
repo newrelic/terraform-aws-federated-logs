@@ -34,6 +34,12 @@ MAX_RETRIES = int(os.environ.get("E2E_MAX_RETRIES", 3))
 RETRY_DELAY = int(os.environ.get("E2E_RETRY_DELAY", 5))
 INITIAL_READ_WAIT = int(os.environ.get("E2E_INITIAL_READ_WAIT", 30))
 
+# Used to wait for the test log to surface in NRQL.
+# Distinct from the HTTP retry because the failure mode is ingestion
+# latency (200 OK with empty results), not a transient error.
+READ_MAX_RETRIES = int(os.environ.get("E2E_READ_MAX_RETRIES", 5))
+READ_RETRY_DELAY = int(os.environ.get("E2E_READ_RETRY_DELAY", 15))
+
 NR_GRAPHQL_ENDPOINTS = {
     "us":      "https://api.newrelic.com/graphql",
     "eu":      "https://api.eu.newrelic.com/graphql",
@@ -203,45 +209,51 @@ def query_new_relic(account_id, api_key, partition, test_uuid, graphql_url):
         "API-Key": api_key,
     }
 
-    status, response_body = http_post(
-        graphql_url, headers, {"query": graphql_query}
-    )
+    response_body = ""
+    for attempt in range(1, READ_MAX_RETRIES + 1):
+        status, response_body = http_post(
+            graphql_url, headers, {"query": graphql_query}
+        )
 
-    try:
-        data = json.loads(response_body)
-    except json.JSONDecodeError:
-        warn("Invalid JSON response from New Relic")
-        return False, 0, response_body, nrql, {
-            "error": "Unable to query the test log",
-            "description": "Please check troubleshooting docs",
-        }
+        try:
+            data = json.loads(response_body)
+        except json.JSONDecodeError:
+            warn("Invalid JSON response from New Relic")
+            return False, 0, response_body, nrql, {
+                "error": "Unable to query the test log",
+                "description": "Please check troubleshooting docs",
+            }
 
-    # Check for GraphQL errors
-    errors = data.get("errors", [])
-    if errors:
-        warn(f"New Relic API error: {errors[0].get('message', 'Unknown')}")
-        return False, 0, response_body, nrql, {
-            "error": "Unable to query the test log",
-            "description": "Please check troubleshooting docs",
-        }
+        # Check for GraphQL errors
+        errors = data.get("errors", [])
+        if errors:
+            warn(f"New Relic API error: {errors[0].get('message', 'Unknown')}")
+            return False, 0, response_body, nrql, {
+                "error": "Unable to query the test log",
+                "description": "Please check troubleshooting docs",
+            }
 
-    # Extract results
-    try:
-        results = data["data"]["actor"]["account"]["nrql"]["results"]
-        log_count = len(results)
-    except (KeyError, IndexError, TypeError):
-        warn("Unexpected response structure from New Relic")
-        return False, 0, response_body, nrql, {
-            "error": "Unable to query the test log",
-            "description": "Please check troubleshooting docs",
-        }
+        try:
+            results = data["data"]["actor"]["account"]["nrql"]["results"]
+            log_count = len(results)
+        except (KeyError, IndexError, TypeError):
+            warn("Unexpected response structure from New Relic")
+            return False, 0, response_body, nrql, {
+                "error": "Unable to query the test log",
+                "description": "Please check troubleshooting docs",
+            }
 
-    info(f"Found {log_count} matching log(s)")
+        info(f"Attempt {attempt}/{READ_MAX_RETRIES}: found {log_count} matching log(s)")
 
-    if log_count >= 1:
-        return True, log_count, results[0], nrql, None
+        if log_count >= 1:
+            return True, log_count, results[0], nrql, None
 
-    return False, log_count, response_body, nrql, {
+        # Empty result — log probably hasn't ingested yet. Poll and retry.
+        if attempt < READ_MAX_RETRIES:
+            warn(f"Log not yet visible, retrying in {READ_RETRY_DELAY}s...")
+            time.sleep(READ_RETRY_DELAY)
+
+    return False, 0, response_body, nrql, {
         "error": "Unable to query the test log",
         "description": "Please check troubleshooting docs",
     }

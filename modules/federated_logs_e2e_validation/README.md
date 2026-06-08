@@ -68,7 +68,11 @@ python3 modules/federated_logs_e2e_validation/scripts/e2e_test.py \
   --nr-api-key    "$NEWRELIC_API_KEY"
 ```
 
-All flags also accept environment variables: `PCG_ENDPOINT`, `NR_ACCOUNT_ID`, `NR_REGION`. The script also honors `NR_FEDERATEDLOGS_SETUP_ID`, `NR_STAGING`, `NR_GRAPHQL_URL`, `TEST_PAYLOAD`, and retry-tuning vars (`E2E_WRITE_MAX_RETRIES`, `E2E_WRITE_RETRY_DELAY`, `E2E_READ_MAX_RETRIES`, `E2E_READ_RETRY_DELAY`, `E2E_INITIAL_READ_WAIT`) for ad-hoc debugging runs.
+All flags also accept environment variables: `PCG_ENDPOINT`, `NR_ACCOUNT_ID`, `NR_REGION`. The script also honors `NR_FEDERATEDLOGS_SETUP_ID`, `NR_GRAPHQL_URL`, `TEST_PAYLOAD`, and the following retry-tuning vars for ad-hoc debugging runs:
+
+- `E2E_MAX_RETRIES` / `E2E_RETRY_DELAY` — transient HTTP retries (5xx / connection failures) for health, write, and mutation calls.
+- `E2E_READ_MAX_RETRIES` / `E2E_READ_RETRY_DELAY` — NRQL read polling when the test log has not yet appeared in New Relic.
+- `E2E_INITIAL_READ_WAIT` — seconds to wait after writing before the first NRQL read attempt.
 
 Exit code is `0` on PASS, `1` on FAIL.
 

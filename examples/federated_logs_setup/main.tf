@@ -90,8 +90,10 @@ module "federated_logs" {
     test_payload  = jsonencode({ message = "federated-logs e2e test", level = "info" })
 
     # Optional tuning — defaults shown:
-    # max_retries       = 3
+    # max_retries       = 3   # transient HTTP retries (5xx / connection)
     # retry_delay       = 5
     # initial_read_wait = 30
+    # read_max_retries  = 5   # NRQL read polls while the log ingests
+    # read_retry_delay  = 15
   }
 }
