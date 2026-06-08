@@ -88,30 +88,44 @@ resource "null_resource" "flink_jar_fetch" {
 
   provisioner "local-exec" {
     interpreter = ["python3", "-c"]
-    command     = <<-PY
-      import pathlib, urllib.request, urllib.error, socket, time, sys
-      dest = pathlib.Path("${local.flink_jar_local_path}")
+    environment = {
+      FLINK_JAR_URL  = local.flink_jar_source_url
+      FLINK_JAR_DEST = local.flink_jar_local_path
+    }
+    command = <<-PY
+      import os, pathlib, urllib.request, urllib.error, socket, time, sys
+      MAX_NO_RETRY = 3
+      RETRY_DELAY_SECONDS = 5
+      SOCKET_TIMEOUT_SECONDS = 60
+      dest = pathlib.Path(os.environ["FLINK_JAR_DEST"])
       dest.parent.mkdir(parents=True, exist_ok=True)
-      url = "${local.flink_jar_source_url}"
-      socket.setdefaulttimeout(6
-      for attempt in range(3):
+      url = os.environ["FLINK_JAR_URL"]
+      socket.setdefaulttimeout(SOCKET_TIMEOUT_SECONDS)
+      for attempt in range(MAX_NO_RETRY):
           try:
               urllib.request.urlretrieve(url, dest)
+              if not dest.exists():
+                  raise RuntimeError("Downloaded file does not exist")
               if dest.stat().st_size > 0:
                   sys.exit(0)
               raise RuntimeError("Downloaded file is empty")
           except urllib.error.HTTPError as e:
               if e.code < 500:
                   sys.exit(f"ERROR: {url} returned HTTP {e.code} (not retryable)")
-              if attempt < 2:
-                  time.sleep(5)
+              if attempt < MAX_NO_RETRY - 1:
+                  time.sleep(RETRY_DELAY_SECONDS)
               else:
-                  sys.exit(f"ERROR: Failed to download {url} after 3 attempts: HTTP {e.code}")
+                  sys.exit(f"ERROR: Failed to download {url} after {MAX_NO_RETRY} attempts: HTTP {e.code}")
+          except urllib.error.URLError as e:
+              if attempt < MAX_NO_RETRY - 1:
+                  time.sleep(RETRY_DELAY_SECONDS)
+              else:
+                  sys.exit(f"ERROR: Failed to download {url} after {MAX_NO_RETRY} attempts: {e.reason}")
           except Exception as e:
-              if attempt < 2:
-                  time.sleep(5)
+              if attempt < MAX_NO_RETRY - 1:
+                  time.sleep(RETRY_DELAY_SECONDS)
               else:
-                  sys.exit(f"ERROR: Failed to download {url} after 3 attempts: {e}")
+                  sys.exit(f"ERROR: Failed to download {url} after {MAX_NO_RETRY} attempts: {e}")
     PY
   }
 
