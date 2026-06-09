@@ -22,14 +22,14 @@ module "federated_logs" {
     }
     optimizer_configuration = {
       orphan_file_deletion = {
-        orphan_file_retention_period_in_days = 1
-        run_rate_in_hours                    = 3
+        orphan_file_retention_period_in_days = 3
+        run_rate_in_hours                    = 24
       }
       snapshot_retention = {
-        snapshot_retention_period_in_days = 1
-        number_of_snapshots_to_retain     = 1
-        clean_expired_files               = true
-        run_rate_in_hours                 = 3
+        snapshot_retention_period_in_days = 5
+        number_of_snapshots_to_retain     = 2
+        clean_expired_files               = false
+        run_rate_in_hours                 = 24
       }
       compaction = {
         strategy              = "binpack"
