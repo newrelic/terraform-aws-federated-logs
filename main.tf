@@ -54,15 +54,3 @@ module "validation" {
   enable_permission_checks = var.validation_config.enable_permission_checks
   enable_oidc_validation   = var.validation_config.enable_oidc_validation
 }
-
-module "e2e_validation" {
-  count  = var.e2e_validation_config.enabled ? 1 : 0
-  source = "./modules/federated_logs_e2e_validation"
-
-  pcg_endpoint  = var.e2e_validation_config.pcg_endpoint
-  nr_account_id = var.e2e_validation_config.nr_account_id
-  nr_region     = var.e2e_validation_config.nr_region
-  setup_id      = module.role.setup_id
-
-  depends_on = [module.setup, module.role, module.partition]
-}
