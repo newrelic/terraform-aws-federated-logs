@@ -123,8 +123,8 @@ resource "aws_iam_role_policy" "flink_role_policy" {
           "s3:ListBucket",
         ]
         Resource = [
-          "arn:aws:s3:::${var.flink_jar_bucket}",
-          "arn:aws:s3:::${var.flink_jar_bucket}/*",
+          aws_s3_bucket.flink_jar.arn,
+          "${aws_s3_bucket.flink_jar.arn}/*",
         ]
       },
       # SQS: consume Iceberg file-creation events
@@ -149,7 +149,7 @@ resource "aws_iam_role_policy" "flink_role_policy" {
           "logs:PutLogEvents",
           "logs:DescribeLogStreams",
         ]
-        Resource = ["arn:aws:logs:${data.aws_region.current.id}:*:log-group:/aws/kinesis-analytics/*"]
+        Resource = ["arn:aws:logs:${data.aws_region.current.region}:*:log-group:/aws/kinesis-analytics/*"]
       },
       # CloudWatch Metrics: emit application-level metrics
       {
@@ -203,14 +203,15 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
   runtime_environment    = var.flink_runtime
   service_execution_role = aws_iam_role.flink_role.arn
 
-  application_mode = "STREAMING"
+  application_mode  = "STREAMING"
+  start_application = var.start_application
 
   application_configuration {
 
     application_code_configuration {
       code_content {
         s3_content_location {
-          bucket_arn = "arn:aws:s3:::${var.flink_jar_bucket}"
+          bucket_arn = aws_s3_bucket.flink_jar.arn
           file_key   = local.flink_jar_dest_key
         }
       }
@@ -248,10 +249,10 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
         property_group_id = "FlinkApplicationProperties"
 
         property_map = {
-          "aws.region" = data.aws_region.current.id
+          "aws.region" = data.aws_region.current.region
 
           "sqs.queue.url"  = aws_sqs_queue.iceberg_file_events.url
-          "sqs.region"     = data.aws_region.current.id
+          "sqs.region"     = data.aws_region.current.region
           "sqs.batch.size" = tostring(var.sqs_batch_size)
 
           "iceberg.catalog.type"            = "glue"
@@ -292,7 +293,7 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
   depends_on = [
     aws_iam_role_policy.flink_role_policy,
     aws_cloudwatch_log_stream.flink_log_stream,
-    aws_s3_object_copy.flink_jar,
+    aws_s3_object.flink_jar,
   ]
 }
 
@@ -377,33 +378,58 @@ resource "aws_sqs_queue_redrive_allow_policy" "iceberg_dlq_allow" {
 }
 
 
-# ── NGEP: AWS Connection Entity + Relationship ────────────────────────────────
-# 1. Creates an AWS Connection Entity storing the base role ARN as credential.
-# 2. Creates a HAS_FED_LOGS_BASE_ROLE relationship from fleet_entity_guid → AWS Connection Entity.
+# ── NGEP: AWS Connection Entity and Relationship ─────────────────────────────
+# 1. newrelic_aws_connection — entity + tags
+# 2. null_resource            — Python script that only creates the
+#    HAS_FED_LOGS_BASE_ROLE relationship.
+resource "newrelic_aws_connection" "fleet_ingest" {
+  name        = "${local.naming_prefix}-aws-connection"
+  description = var.fleet_ingest_connection_description
 
-# TODO we will change this to use new relic providers directly.
-resource "null_resource" "aws_connection_entity" {
+  scope_type = "ORGANIZATION"
+  scope_id   = var.newrelic_org_id
+
+  credential {
+    assume_role {
+      role_arn = aws_iam_role.base_role.arn
+    }
+  }
+
+  tag {
+    key    = "fleet_entity_guid"
+    values = [var.fleet_entity_guid]
+  }
+  tag {
+    key    = "auth_mode"
+    values = [local.auth_mode]
+  }
+  tag {
+    key    = "sqs_queue_arn"
+    values = [aws_sqs_queue.iceberg_file_events.arn]
+  }
+  tag {
+    key    = "flink_base_role_arn"
+    values = [aws_iam_role.flink_role.arn]
+  }
+}
+
+resource "null_resource" "fleet_relationship" {
   triggers = {
-    role_arn          = aws_iam_role.base_role.arn
-    nr_org_id         = var.newrelic_org_id
     fleet_entity_guid = var.fleet_entity_guid
-    entity_name       = "${local.naming_prefix}-aws-connection"
+    connection_id     = newrelic_aws_connection.fleet_ingest.id
     nr_endpoint       = local.nr_graphql_endpoint
-    auth_mode         = local.auth_mode
     sqs_queue_arn     = aws_sqs_queue.iceberg_file_events.arn
   }
 
   provisioner "local-exec" {
     environment = {
-      ROLE_ARN          = aws_iam_role.base_role.arn
-      ENTITY_NAME       = "${local.naming_prefix}-aws-connection"
-      NR_ORG_ID         = var.newrelic_org_id
       FLEET_ENTITY_GUID = var.fleet_entity_guid
+      CONNECTION_ID     = newrelic_aws_connection.fleet_ingest.id
       NR_ENDPOINT       = local.nr_graphql_endpoint
-      AUTH_MODE         = local.auth_mode
       SQS_QUEUE_ARN     = aws_sqs_queue.iceberg_file_events.arn
     }
-    command = "python3 ${path.module}/scripts/create_aws_connection.py"
+    command = "python3 ${path.module}/scripts/create_relationship.py"
   }
 
+  depends_on = [newrelic_aws_connection.fleet_ingest]
 }

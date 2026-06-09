@@ -22,3 +22,9 @@ output "glue_optimizer_failures_alarm_name" {
   description = "Name of the CloudWatch alarm that fires on any Glue Iceberg optimizer failure in this setup."
   value       = aws_cloudwatch_metric_alarm.glue_optimizer_failures.alarm_name
 }
+  
+output "partition_ids" {
+  description = "Map of non-default partition table name → entity GUID of the corresponding newrelic_federated_logs_partition."
+  value = {
+    for k, v in newrelic_federated_logs_partition.this : k => v.id
+}

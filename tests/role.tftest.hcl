@@ -14,24 +14,35 @@
 #
 # =============================================================================
 
-# Mock the external provider to avoid requiring NEWRELIC_API_KEY in CI
+# Mock the external provider to avoid requiring NEW_RELIC_API_KEY in CI
 # Note: AWS provider is NOT mocked here because role tests use "command = apply"
 # and need real AWS resources (IAM roles/policies) to be created in CI.
 mock_provider "external" {
   mock_data "external" {
     defaults = {
       result = {
-        role_arn      = "arn:aws:iam::123456789012:role/mock-role"
-        sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:mock-queue"
+        role_arn                = "arn:aws:iam::123456789012:role/mock-role"
+        base_role_connection_id = "mock-connection-guid"
+        sqs_queue_arn           = "arn:aws:sqs:us-east-1:123456789012:mock-queue"
+        flink_base_role_arn     = "arn:aws:iam::123456789012:role/mock-flink-base-role"
       }
     }
   }
 }
 
+# Mock New Relic provider (account_id is required)
+mock_provider "newrelic" {}
+
+provider "aws" {
+  region = "us-east-1"
+}
+
 # Shared test variables
 variables {
-  fleet_entity_guid = "test-fleet-entity-guid"
-  newrelic_region   = "US"
+  fleet_entity_guid   = "test-fleet-entity-guid"
+  newrelic_account_id = 12345678
+  newrelic_org_id     = "test-nr-org-id"
+  newrelic_region     = "US"
 }
 
 # =============================================================================
@@ -71,18 +82,9 @@ run "test_role_naming_conventions" {
     s3_bucket_name       = run.setup_for_naming_test.s3_bucket_name
     glue_catalog_db_name = run.setup_for_naming_test.glue_catalog_db_name
     fleet_entity_guid    = var.fleet_entity_guid
+    newrelic_account_id  = var.newrelic_account_id
+    newrelic_org_id      = var.newrelic_org_id
     newrelic_region      = var.newrelic_region
-  }
-
-  # Mock the NGEP fetch — no NR API call needed
-  override_data {
-    target = data.external.base_role
-    values = {
-      result = {
-        role_arn      = "arn:aws:iam::123456789012:role/newrelic-fed-logs-fleet-test-base"
-        sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:mock-queue"
-      }
-    }
   }
 
   # Skip pcg-writer role creation: its trust policy principal (an IAM role ARN)
@@ -264,18 +266,9 @@ run "test_module_wiring" {
     s3_bucket_name       = run.setup_for_wiring_test.s3_bucket_name
     glue_catalog_db_name = run.setup_for_wiring_test.glue_catalog_db_name
     fleet_entity_guid    = var.fleet_entity_guid
+    newrelic_account_id  = var.newrelic_account_id
+    newrelic_org_id      = var.newrelic_org_id
     newrelic_region      = var.newrelic_region
-  }
-
-  # Mock the NGEP fetch — no NR API call needed
-  override_data {
-    target = data.external.base_role
-    values = {
-      result = {
-        role_arn      = "arn:aws:iam::123456789012:role/newrelic-fed-logs-fleet-test-base"
-        sqs_queue_arn = "arn:aws:sqs:us-east-1:123456789012:mock-queue"
-      }
-    }
   }
 
   # Skip pcg-writer role creation: trust policy principal is mocked, AWS would

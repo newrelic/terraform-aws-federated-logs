@@ -44,23 +44,30 @@ variable "clusters" {
 }
 
 variable "fleet_entity_guid" {
-  description = "NGEP entity GUID of the fleet (e.g. FederatedLogsDataProcessingEntity). A relationship of type HAS_FED_LOGS_BASE_ROLE will be created from this entity to the AWS Connection Entity."
+  description = "NGEP entity GUID of the fleet."
   type        = string
 }
 
 variable "newrelic_org_id" {
-  description = "New Relic organization ID (GUID) used to scope NGEP entities at the ORGANIZATION level."
+  description = "New Relic organization ID"
   type        = string
 }
 
+
 variable "newrelic_region" {
-  description = "New Relic region: 'US', 'EU', or 'STAGING'."
+  description = "New Relic region"
   type        = string
   default     = "US"
   validation {
     condition     = contains(["US", "EU", "STAGING"], var.newrelic_region)
     error_message = "newrelic_region must be 'US', 'EU', or 'STAGING'."
   }
+}
+
+variable "fleet_ingest_connection_description" {
+  description = "Optional description for the fleet-level newrelic_aws_connection wrapping the PCG base role."
+  type        = string
+  default     = null
 }
 
 # =============================================================================
@@ -71,11 +78,11 @@ variable "flink_iceberg_commit_worker_version" {
   description = "Version of the flink-iceberg-commit-worker JAR to deploy (e.g. v1.0.0). Defaults to latest."
   type        = string
   default     = "latest"
-}
 
-variable "flink_jar_bucket" {
-  description = "S3 bucket in customer's AWS account where the Flink JAR will be copied. The Flink application will read the JAR from this bucket."
-  type        = string
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9._-]+$", var.flink_iceberg_commit_worker_version))
+    error_message = "Version must contain only alphanumeric characters, dots, hyphens, and underscores."
+  }
 }
 
 variable "flink_runtime" {
@@ -110,6 +117,12 @@ variable "checkpoint_interval_ms" {
 
 variable "snapshots_enabled" {
   description = "Whether Flink application snapshots are enabled."
+  type        = bool
+  default     = true
+}
+
+variable "start_application" {
+  description = "Whether to start the Flink application immediately after creation. When true, Terraform transitions the app from READY to RUNNING. Requires kinesisanalyticsv2:StartApplication on the deploying role."
   type        = bool
   default     = true
 }
