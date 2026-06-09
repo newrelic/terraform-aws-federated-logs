@@ -35,6 +35,10 @@ jobs:
             chore
             docs
             refactor
+            update
+            Update
+          headerPattern: '^(\w*)(?:\(([\w$.\-*/ ]*)\))?:? (.*)$'
+          headerPatternCorrespondence: type, scope, subject
 
   # ──────────────────────────────────────────────────────────────
   # Terraform Validate
