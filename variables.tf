@@ -133,7 +133,6 @@ variable "e2e_validation_config" {
     pcg_endpoint      = optional(string, "")
     nr_account_id     = optional(string, "")
     nr_region         = optional(string, "us")
-    setup_id          = optional(string, "")
     test_payload      = optional(string, "")
     max_retries       = optional(number, 3)
     retry_delay       = optional(number, 5)
@@ -149,7 +148,7 @@ variable "e2e_validation_config" {
       var.e2e_validation_config.nr_account_id != "" &&
       var.e2e_validation_config.test_payload != ""
     )
-    error_message = "When e2e_validation_config.enabled is true, pcg_endpoint, nr_account_id, setup_id, and test_payload must all be provided."
+    error_message = "When e2e_validation_config.enabled is true, pcg_endpoint, nr_account_id, and test_payload must all be provided."
   }
 }
 

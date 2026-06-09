@@ -8,7 +8,7 @@ It wraps `scripts/e2e_test.py`, which runs the following steps:
 2. **Write** — POSTs a test log payload (with a unique `e2e_test_id` UUID) to `<pcg_endpoint>/v1/logs`.
 3. **Wait** — pauses for PCG buffering + downstream ingestion.
 4. **Read** — polls NRQL via the New Relic GraphQL API until the UUID appears (or retries are exhausted).
-5. **Report** — calls the `federatedLogsUpdateSetup` GraphQL mutation to set the setup health status to `HEALTHY` (with the NRQL query and matched log as the message) or `UNHEALTHY` (with a structured error object). This step is skipped when `setup_id` is empty.
+5. **Report** — calls the `federatedLogsUpdateSetup` GraphQL mutation on every terminal path to set the setup health status to `HEALTHY` (with the NRQL query and matched log as the message) or `UNHEALTHY` (with a structured error object).
 
 On any failure the script returns a structured error object:
 
@@ -83,7 +83,7 @@ Exit code is `0` on PASS, `1` on FAIL.
 | `pcg_endpoint` | PCG base URL (the script appends `/health/status` and `/v1/logs` automatically). | `string` | yes | – |
 | `nr_account_id` | New Relic account ID for the NRQL read-back. | `string` | yes | – |
 | `nr_region` | `us` or `eu`. | `string` | no | `"us"` |
-| `setup_id` | Federated logs setup entity GUID. When set, the script calls `federatedLogsUpdateSetup` to report `HEALTHY`/`UNHEALTHY` status. | `string` | no | `""` |
+| `setup_id` | Federated logs setup entity GUID, used by the script to call `federatedLogsUpdateSetup` and report `HEALTHY`/`UNHEALTHY` status. Wired automatically from `module.role.setup_id` in the root module. | `string` | yes | – |
 
 > **Credentials** (`NEWRELIC_LICENSE_KEY`, `NEWRELIC_API_KEY`) are read from the runner environment — not Terraform inputs — to keep them out of Terraform state.
 
@@ -108,7 +108,7 @@ Exit code is `0` on PASS, `1` on FAIL.
 | 8 | Missing required inputs | `[FAIL] Missing required inputs:` | 1 |
 | 9 | Malformed `TEST_PAYLOAD` | `[FAIL] --payload is not valid JSON` | 1 |
 
-When `setup_id` is provided, the `federatedLogsUpdateSetup` mutation is called after every outcome — `HEALTHY` on pass, `UNHEALTHY` with the error object on any failure.
+The `federatedLogsUpdateSetup` mutation is called after every outcome — `HEALTHY` on pass, `UNHEALTHY` with the error object on any failure.
 
 In Terraform, exit `1` is swallowed by `on_failure = continue` — the apply is unaffected; the PASS/FAIL is visible in the provisioner output.
 
