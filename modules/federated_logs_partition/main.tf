@@ -12,7 +12,7 @@ resource "aws_glue_catalog_table" "iceberg_table" {
   name          = each.key
   database_name = var.glue_catalog_db_name
   region        = data.aws_region.current.region
-  table_type    = "ICEBERG"
+  table_type    = "EXTERNAL_TABLE"
 
   lifecycle {
     ignore_changes = [
