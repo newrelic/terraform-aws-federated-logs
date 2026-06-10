@@ -293,7 +293,7 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
   depends_on = [
     aws_iam_role_policy.flink_role_policy,
     aws_cloudwatch_log_stream.flink_log_stream,
-    aws_s3_object_copy.flink_jar,
+    aws_s3_object.flink_jar,
   ]
 }
 
