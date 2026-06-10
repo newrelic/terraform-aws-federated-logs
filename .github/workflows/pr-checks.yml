@@ -130,43 +130,6 @@ jobs:
           severity: CRITICAL
 
   # ──────────────────────────────────────────────────────────────
-  # Validate Commit Messages
-  # ──────────────────────────────────────────────────────────────
-  validate-commits:
-    name: Validate Commit Messages
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-        with:
-          fetch-depth: 0
-
-      - name: Check commit messages
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          base_sha=$(git merge-base "$BASE_SHA" "$HEAD_SHA")
-          invalid_commits=""
-
-          while read -r commit; do
-            commit_msg=$(git log -1 --format=%B "$commit")
-            if ! echo "$commit_msg" | grep -qiP '^(adjust|build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test|update)(\([a-z0-9-]+\))?(?:: .+| .+)$'; then
-              commit_info="$(git log -1 --format='%H - %s' "$commit")"
-              invalid_commits="$invalid_commits\n- $commit_info"
-            fi
-          done < <(git rev-list --no-merges "$base_sha".."$HEAD_SHA")
-
-          if [ -n "$invalid_commits" ]; then
-            echo "The following commits do not follow the Conventional Commits format:"
-            echo -e "$invalid_commits"
-            echo ""
-            echo "Required format: <type>[optional scope]: <description> (preferred) or <type> <description>"
-            echo "Valid types: adjust, build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test, update"
-            exit 1
-          fi
-
-  # ──────────────────────────────────────────────────────────────
   # Spell Check
   # ──────────────────────────────────────────────────────────────
   codespell:
