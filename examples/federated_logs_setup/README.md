@@ -30,7 +30,7 @@ export NEW_RELIC_API_KEY="your-new-relic-api-key"
 | `newrelic_account_id` | New Relic account ID | `number` | yes |
 | `setup_name` | Name for this log setup (3–26 lowercase alphanumeric, hyphens allowed) | `string` | yes |
 | `newrelic_region` | New Relic region: 'US', 'EU', or 'STAGING' | `string` | no (default: `"US"`) |
-| `data_retention_enabled` | Enable Glue job to delete old data based on per-table retention_in_days | `bool` | no (default: `false`) |
+| `data_retention_enabled` | Enable Glue job to delete old data based on per-table retention_in_days | `bool` | no (default: `true`) |
 | `default_table_setting` | Settings for the primary table (retention, table parameters, optimizer config) | `object` | no |
 | `partition_tables` | Map of additional partition tables with per-table overrides | `map(object)` | no |
 

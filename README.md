@@ -135,7 +135,7 @@ These are read directly from the environment and are never stored in Terraform s
 | `newrelic_account_id` | New Relic account ID | `number` | yes |
 | `newrelic_region` | New Relic region: 'US', 'EU', or 'STAGING' | `string` | no (default: `"US"`) |
 | `region` | AWS region where resources will be created. If not set, uses the provider's configured region | `string` | no |
-| `data_retention_enabled` | Enable data retention feature (creates Glue job to delete old data based on per-table retention_in_days) | `bool` | no (default: `false`) |
+| `data_retention_enabled` | Enable data retention feature (creates Glue job to delete old data based on per-table retention_in_days) | `bool` | no (default: `true`) |
 | `default_table_setting` | Settings for the primary federated log table (retention, table parameters, optimizer config) | `object` | no |
 | `partition_tables` | Map of additional partition tables, each can override retention, table parameters, optimizer config, routing expression, and description | `map(object)` | no |
 | `setup_description` | Optional description for the newrelic_federated_logs_setup resource | `string` | no |
