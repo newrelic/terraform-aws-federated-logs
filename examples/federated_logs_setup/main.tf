@@ -83,11 +83,9 @@ module "federated_logs" {
   # Secrets (NEWRELIC_LICENSE_KEY, NEWRELIC_API_KEY) must be exported in the
   # shell environment before running terraform apply.
   e2e_validation_config = {
-    enabled       = true
-    pcg_endpoint  = "https://pcg.example.com"
-    nr_account_id = "1234567"
-    nr_region     = "us" # "us" (default), "eu", or "staging"
-    test_payload  = jsonencode({ message = "federated-logs e2e test", level = "info" })
+    enabled      = true
+    pcg_endpoint = "https://pcg.example.com"
+    test_payload = jsonencode({ message = "federated-logs e2e test", level = "info" })
 
     # Optional tuning — defaults shown:
     # max_retries       = 3   # transient HTTP retries (5xx / connection)

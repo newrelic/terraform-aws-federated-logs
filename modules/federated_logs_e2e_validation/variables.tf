@@ -5,16 +5,16 @@ variable "pcg_endpoint" {
 
 variable "nr_account_id" {
   description = "New Relic account ID used to run the NRQL read-back query."
-  type        = string
+  type        = number
 }
 
 variable "nr_region" {
-  description = "New Relic region for the GraphQL read-back query. One of: us, eu, staging."
+  description = "New Relic region for the GraphQL read-back query. One of: US, EU, STAGING."
   type        = string
-  default     = "us"
+  default     = "US"
   validation {
-    condition     = contains(["us", "eu", "staging"], var.nr_region)
-    error_message = "nr_region must be one of: us, eu, staging."
+    condition     = contains(["US", "EU", "STAGING"], var.nr_region)
+    error_message = "nr_region must be one of: US, EU, STAGING."
   }
 }
 

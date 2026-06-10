@@ -41,14 +41,14 @@ READ_MAX_RETRIES = int(os.environ.get("E2E_READ_MAX_RETRIES", 5))
 READ_RETRY_DELAY = int(os.environ.get("E2E_READ_RETRY_DELAY", 15))
 
 NR_GRAPHQL_ENDPOINTS = {
-    "us":      "https://api.newrelic.com/graphql",
-    "eu":      "https://api.eu.newrelic.com/graphql",
-    "staging": "https://staging-api.newrelic.com/graphql",
+    "US":      "https://api.newrelic.com/graphql",
+    "EU":      "https://api.eu.newrelic.com/graphql",
+    "STAGING": "https://staging-api.newrelic.com/graphql",
 }
 
 
 def get_graphql_url(region):
-    url = NR_GRAPHQL_ENDPOINTS.get(region.lower())
+    url = NR_GRAPHQL_ENDPOINTS.get(region)
     if url is None:
         fail_msg(f"No GraphQL endpoint for region='{region}'")
         sys.exit(1)
@@ -347,9 +347,9 @@ def main():
     )
     parser.add_argument(
         "--nr-region",
-        default=os.environ.get("NR_REGION", "us"),
-        choices=["us", "eu", "staging"],
-        help="New Relic region (default: us)",
+        default=os.environ.get("NR_REGION", "US"),
+        choices=["US", "EU", "STAGING"],
+        help="New Relic region (default: US)",
     )
     parser.add_argument(
         "--setup-id",

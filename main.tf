@@ -46,8 +46,8 @@ module "e2e_validation" {
   source = "./modules/federated_logs_e2e_validation"
 
   pcg_endpoint      = var.e2e_validation_config.pcg_endpoint
-  nr_account_id     = var.e2e_validation_config.nr_account_id
-  nr_region         = var.e2e_validation_config.nr_region
+  nr_account_id     = var.newrelic_account_id
+  nr_region         = var.newrelic_region
   setup_id          = module.role.setup_id
   test_payload      = var.e2e_validation_config.test_payload
   max_retries       = var.e2e_validation_config.max_retries

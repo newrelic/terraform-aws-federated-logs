@@ -42,10 +42,8 @@ module "federated_logs" {
   clusters   = { ... }
 
   e2e_validation_config = {
-    enabled       = true
-    pcg_endpoint  = "https://pcg.example.com"
-    nr_account_id = "1234567"
-    # nr_region   = "us"  # or "eu"
+    enabled      = true
+    pcg_endpoint = "https://pcg.example.com"
   }
 }
 ```
@@ -81,8 +79,8 @@ Exit code is `0` on PASS, `1` on FAIL.
 | Name | Description | Type | Required | Default |
 |------|-------------|------|----------|---------|
 | `pcg_endpoint` | PCG base URL (the script appends `/health/status` and `/v1/logs` automatically). | `string` | yes | – |
-| `nr_account_id` | New Relic account ID for the NRQL read-back. | `string` | yes | – |
-| `nr_region` | `us` or `eu`. | `string` | no | `"us"` |
+| `nr_account_id` | New Relic account ID for the NRQL read-back. | `number` | yes | – |
+| `nr_region` | `US`, `EU`, or `STAGING`. | `string` | no | `"US"` |
 | `setup_id` | Federated logs setup entity GUID, used by the script to call `federatedLogsUpdateSetup` and report `HEALTHY`/`UNHEALTHY` status. Wired automatically from `module.role.setup_id` in the root module. | `string` | yes | – |
 
 > **Credentials** (`NEWRELIC_LICENSE_KEY`, `NEWRELIC_API_KEY`) are read from the runner environment — not Terraform inputs — to keep them out of Terraform state.
