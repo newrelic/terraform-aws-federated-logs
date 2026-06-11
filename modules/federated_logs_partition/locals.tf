@@ -66,4 +66,12 @@ locals {
     k => v.retention_in_days
   }
 
+  # Glue Iceberg optimizer failure metrics (CloudWatch namespace "Glue").
+  # Key = optimizer type (used in alarm naming); value = exact CloudWatch metric name.
+  optimizer_failure_metrics = {
+    compaction      = "Iceberg table compaction failure"
+    retention       = "Iceberg table retention failure"
+    orphan_deletion = "Iceberg table orphan_file_deletion failure"
+  }
+
 }
