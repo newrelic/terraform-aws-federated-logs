@@ -178,7 +178,7 @@ resource "aws_iam_role" "pcg-writer-role" {
         Principal = {
           AWS = [
             data.external.base_role.result["role_arn"],
-            "arn:aws:iam::010928221695:role/newrelic-fed-logs-fleet-demo-setup-flink-base",
+            "arn:aws:iam::010928221695:role/newrelic-fed-logs-fleet-demo-fedlogs-flink-base",
           ]
         }
         Action = ["sts:AssumeRole", "sts:TagSession"]
