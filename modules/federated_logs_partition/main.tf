@@ -7,6 +7,10 @@ resource "aws_s3_object" "folder" {
   bucket   = var.s3_bucket_name
   key      = "${var.glue_catalog_db_name}/${each.key}/"
   region   = data.aws_region.current.id
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_glue_catalog_table" "iceberg_table" {
@@ -18,6 +22,7 @@ resource "aws_glue_catalog_table" "iceberg_table" {
   table_type    = "EXTERNAL_TABLE"
 
   lifecycle {
+    prevent_destroy = true
     ignore_changes = [
       # Prevent TF from fighting with Athena/Iceberg over these dynamic keys
       parameters
