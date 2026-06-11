@@ -36,6 +36,11 @@ locals {
     "write.target-file-size-bytes"               = "26214400" # 25 MB
     "write.metadata.delete-after-commit.enabled" = "true"
     "write.metadata.previous-versions-max"       = "10"
+
+    # Manifest hygiene — reduces manifest count growth on high-write tables.
+    "commit.manifest-merge.enabled"      = "true"
+    "commit.manifest.target-size-bytes"  = "8388608" # 8 MB
+    "commit.manifest.min-count-to-merge" = "10"
   }
 
   # For each table: defaults ← user params (user wins on overlap)
