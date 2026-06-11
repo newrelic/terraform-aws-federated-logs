@@ -57,3 +57,37 @@ variable "read_retry_delay" {
   type        = number
   default     = 15
 }
+
+# =============================================================================
+# Lambda + VPC + Secrets configuration
+# =============================================================================
+
+variable "vpc_config" {
+  description = "VPC subnets and security groups the validation Lambda will be attached to."
+  type = object({
+    subnet_ids         = list(string)
+    security_group_ids = list(string)
+  })
+
+  validation {
+    condition     = length(var.vpc_config.subnet_ids) > 0 && length(var.vpc_config.security_group_ids) > 0
+    error_message = "vpc_config.subnet_ids and vpc_config.security_group_ids must each have at least one entry."
+  }
+}
+
+variable "lambda_timeout" {
+  description = "Lambda function timeout in seconds. Default 180 covers the worst case: cold start (~5s) + health (~2s) + write (~2s) + initial_read_wait (30s) + read_max_retries × read_retry_delay (75s) + mutation (~2s) ≈ 120s, with headroom."
+  type        = number
+  default     = 180
+
+  validation {
+    condition     = var.lambda_timeout >= 60 && var.lambda_timeout <= 900
+    error_message = "lambda_timeout must be between 60 and 900 seconds."
+  }
+}
+
+variable "lambda_memory_size" {
+  description = "Lambda function memory size in MB. 256 is sufficient for boto3 + the script's stdlib HTTP calls."
+  type        = number
+  default     = 256
+}
