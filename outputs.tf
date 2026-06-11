@@ -33,11 +33,6 @@ output "iceberg_tables" {
   value       = module.partition.all_tables
 }
 
-output "clusters" {
-  description = "Cluster configurations passed to the module"
-  value       = var.clusters
-}
-
 output "validation_summary" {
   description = "Validation module status. Any failures appear as warnings in terraform plan output."
   value       = var.validation_config.enabled ? module.validation[0].validation_summary : "Validation not enabled. Set validation_config = { enabled = true } to activate."

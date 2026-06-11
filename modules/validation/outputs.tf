@@ -7,8 +7,3 @@ output "permission_checks_enabled" {
   description = "Whether IAM policy simulation checks were enabled"
   value       = var.enable_permission_checks
 }
-
-output "oidc_validation_enabled" {
-  description = "Whether OIDC provider existence checks were enabled"
-  value       = var.enable_oidc_validation
-}
