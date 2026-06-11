@@ -140,7 +140,7 @@ check "glue_role_can_access_glue" {
 
 data "aws_iam_principal_policy_simulation" "glue_role_cloudwatch" {
   count             = var.enable_permission_checks ? 1 : 0
-  action_names      = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
+  action_names      = ["logs:CreateLogGroup"]
   policy_source_arn = var.glue_service_role_arn
   resource_arns     = ["arn:aws:logs:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:log-group:/aws-glue/*"]
 }
