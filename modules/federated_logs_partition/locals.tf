@@ -30,6 +30,22 @@ locals {
     local.sanitized_partition_tables
   )
 
+  # Schema name mapping — used by Iceberg readers to resolve case-sensitive
+  # field names when data files lack embedded field IDs (the common case for
+  # Parquet written by non-Iceberg-aware writers like PCG). Without this,
+  # Glue Catalog's lowercased column view (e.g. `messageid`) can mask the
+  # canonical case (`messageId`) declared in the Iceberg schema.
+  #
+  # Field IDs MUST match the `id` values in the schema block in main.tf.
+  # When a new field is added there, append a corresponding entry here.
+  iceberg_schema_name_mapping = jsonencode([
+    { "field-id" = 1, "names" = ["logtype"] },
+    { "field-id" = 2, "names" = ["message"] },
+    { "field-id" = 3, "names" = ["timestamp"] },
+    { "field-id" = 4, "names" = ["guid"] },
+    { "field-id" = 5, "names" = ["messageId"] },
+  ])
+
   # Parameters you always want set — user values override these
   default_iceberg_params = {
     "format"                                     = "parquet"
@@ -41,6 +57,9 @@ locals {
     "commit.manifest-merge.enabled"      = "true"
     "commit.manifest.target-size-bytes"  = "8388608" # 8 MB
     "commit.manifest.min-count-to-merge" = "10"
+
+    # Case-sensitive name → field-ID mapping for data files without field IDs.
+    "schema.name-mapping.default" = local.iceberg_schema_name_mapping
   }
 
   # For each table: defaults ← user params (user wins on overlap)
