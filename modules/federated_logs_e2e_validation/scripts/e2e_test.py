@@ -109,7 +109,7 @@ def http_post(url, headers, body):
 
 # ── Step 1: Check PCG health ──────────────────────────────────
 def check_pcg_health(base_endpoint):
-    url = base_endpoint.rstrip("/") + "/health/status"
+    url = f"http://{base_endpoint}:13133/health/status"
     info("")
     info("Step 1: Checking PCG health...")
     info(f"Health endpoint: {url}")
@@ -154,7 +154,7 @@ def check_pcg_health(base_endpoint):
 
 # ── Step 2: Send payload to PCG ───────────────────────────────
 def send_to_pcg(base_endpoint, license_key, payload):
-    endpoint = base_endpoint.rstrip("/") + "/v1/logs"
+    endpoint = f"http://{base_endpoint}:80/log/v1"
     info("")
     info("Step 2: Sending test payload to PCG endpoint...")
     info(f"Logs endpoint: {endpoint}")
@@ -393,7 +393,7 @@ def main():
     info("Federated Logs E2E Test")
     info("──────────────────────────────────────────────────")
     info(f"PCG Endpoint:  {args.pcg_endpoint}")
-    info(f"Partition:     Log_Federated")
+    info(f"Partition:     Log_federated")
     info(f"Test UUID:     {test_uuid}")
     info(f"NR Account:    {args.nr_account_id}")
     info(f"NR Region:     {args.nr_region}")
@@ -435,7 +435,7 @@ def main():
 
     # Step 4: Query New Relic
     success, count, last_response, nrql, read_error = query_new_relic(
-        args.nr_account_id, args.nr_api_key, "Log_Federated", test_uuid, graphql_url
+        args.nr_account_id, args.nr_api_key, "Log_federated", test_uuid, graphql_url
     )
 
     # Results
