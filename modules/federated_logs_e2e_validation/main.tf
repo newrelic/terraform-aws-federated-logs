@@ -138,11 +138,6 @@ resource "aws_lambda_function" "e2e_validation" {
 
 # =============================================================================
 # Invocation
-#
-# Re-runs only when validation inputs (or the script source) change. To force
-# an on-demand re-run without changing inputs:
-#
-# terraform apply -replace='module.federated_logs.module.e2e_validation[0].aws_lambda_invocation.e2e_validation'
 # =============================================================================
 
 resource "aws_lambda_invocation" "e2e_validation" {
@@ -157,9 +152,7 @@ resource "aws_lambda_invocation" "e2e_validation" {
   ]
 
   triggers = {
-    setup_id     = var.setup_id
-    pcg_endpoint = var.pcg_endpoint
-    source_hash  = data.archive_file.e2e_lambda.output_base64sha256
+    always_run = timestamp()
   }
 
   input = jsonencode({
@@ -176,10 +169,4 @@ resource "aws_lambda_invocation" "e2e_validation" {
     read_max_retries       = var.read_max_retries
     read_retry_delay       = var.read_retry_delay
   })
-
-  lifecycle {
-    # Re-fire is governed by the triggers map above; ignore drift on
-    # the invocation result itself (it changes every time).
-    ignore_changes = [input]
-  }
 }
