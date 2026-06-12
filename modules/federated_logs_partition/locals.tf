@@ -36,6 +36,11 @@ locals {
     "write.target-file-size-bytes"               = "26214400" # 25 MB
     "write.metadata.delete-after-commit.enabled" = "true"
     "write.metadata.previous-versions-max"       = "10"
+
+    # Manifest hygiene — reduces manifest count growth on high-write tables.
+    "commit.manifest-merge.enabled"      = "true"
+    "commit.manifest.target-size-bytes"  = "8388608" # 8 MB
+    "commit.manifest.min-count-to-merge" = "10"
   }
 
   # For each table: defaults ← user params (user wins on overlap)
@@ -64,6 +69,14 @@ locals {
   table_retention_days = {
     for k, v in local.all_tables :
     k => v.retention_in_days
+  }
+
+  # Glue Iceberg optimizer failure metrics (CloudWatch namespace "Glue").
+  # Key = optimizer type (used in alarm naming); value = exact CloudWatch metric name.
+  optimizer_failure_metrics = {
+    compaction      = "Iceberg table compaction failure"
+    retention       = "Iceberg table retention failure"
+    orphan_deletion = "Iceberg table orphan_file_deletion failure"
   }
 
 }
