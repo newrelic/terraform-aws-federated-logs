@@ -31,22 +31,20 @@ locals {
   )
 
   # Seed schema name-mapping for the 5 statically-declared schema fields.
-  # Used by Iceberg readers to resolve case-sensitive field names when data
-  # files lack embedded field IDs — the common case for Parquet written by
-  # non-Iceberg-aware writers like PCG. Without this, Glue Catalog's
-  # lowercased column view (e.g. `messageid`) can mask the canonical case
-  # (`messageId`) declared in the Iceberg schema.
+  # Iceberg readers fall back to name-based field resolution when data
+  # files lack embedded field IDs in their Parquet metadata. Without this
+  # property, Glue Catalog's lowercased column view (e.g. `messageid`)
+  # can mask the canonical case (`messageId`) declared in the Iceberg
+  # schema, leading to case-mismatch errors at read time.
   #
-  # SCOPE: this list mirrors ONLY the 5 fields declared in the schema block
-  # in main.tf and is applied once at table creation. Field IDs and names
-  # MUST stay in sync with that block — if you add, remove, or rename a
-  # field there, mirror the change here.
+  # SCOPE: this list mirrors ONLY the 5 fields declared in the schema
+  # block in main.tf and is applied once at table creation. Field IDs
+  # and names MUST stay in sync with that block — if you add, remove,
+  # or rename a field there, mirror the change here.
   #
-  # Runtime schema evolution (new attributes the gateway emits) is handled
-  # by flink-iceberg-commit-worker's SchemaEvolutionHandler, which calls
-  # Iceberg's UpdateSchema.addColumn(...).commit() — Iceberg auto-extends
-  # this name-mapping property in place. Don't try to enumerate runtime
-  # fields here; they're not Terraform-managed.
+  # Runtime schema additions (columns added later via Iceberg's
+  # UpdateSchema API) auto-extend this property in place via Iceberg
+  # core, so only the seed fields are Terraform-managed.
   iceberg_schema_name_mapping = jsonencode([
     { "field-id" = 1, "names" = ["logtype"] },
     { "field-id" = 2, "names" = ["message"] },

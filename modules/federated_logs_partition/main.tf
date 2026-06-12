@@ -40,10 +40,9 @@ resource "aws_glue_catalog_table" "iceberg_table" {
         # files without embedded field IDs. KEEP THE TWO IN SYNC — any
         # add / remove / rename here needs the same change in locals.tf.
         #
-        # Additional fields the gateway emits at runtime are added by
-        # flink-iceberg-commit-worker via Iceberg's UpdateSchema API; the
-        # commit worker auto-extends the name-mapping property in place,
-        # so runtime fields are NOT Terraform-managed.
+        # Runtime schema additions via Iceberg's UpdateSchema API
+        # auto-extend the name-mapping property in place, so only the
+        # seed fields below are Terraform-managed.
         schema {
           schema_id = 0
           type      = "struct"
