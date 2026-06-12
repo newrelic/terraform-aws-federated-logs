@@ -19,4 +19,14 @@ locals {
     for account_id in local.all_allowed_account_ids :
     "arn:aws:events:*:${account_id}:rule/newrelic-fed-logs-*-iceberg-file-created"
   ]
+
+  # Map of cluster name → OIDC ARN, populated only when:
+  #   1. var.validate_oidc_providers is true (opt-in), and
+  #   2. auth_mode is "irsa" (Pod Identity clusters don't use OIDC providers).
+  # Used by the oidc_providers_exist check in validation.tf.
+  oidc_arns_to_validate = (
+    var.validate_oidc_providers && local.auth_mode == "irsa"
+    ) ? {
+    for k, v in var.clusters : k => v.oidc_provider_arn
+  } : {}
 }

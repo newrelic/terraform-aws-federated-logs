@@ -15,7 +15,12 @@ module "data_processing" {
       k8s_namespace            = "federated-logs"
       auth_mode                = "irsa" # "irsa" or "pod_identity"
       k8s_service_account_name = "pcg-writer-sa"
-      oidc_provider_arn        = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.us-east-2.amazonaws.com/id/EXAMPLE"
+      oidc_provider_arn        = "arn:aws:iam::864899866645:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/DEADBEEFDEADBEEFDEADBEEFDEADBEEF"
     }
   }
+
+  # Optional: verify each IRSA cluster's oidc_provider_arn exists in the AWS account.
+  # Requires iam:GetOpenIDConnectProvider on the deploy role. Skipped automatically
+  # for Pod Identity clusters.
+  # validate_oidc_providers = false
 }

@@ -79,6 +79,15 @@ module "federated_logs" {
     }
   }
 
+  # Post-deploy validation (optional)
+  # Validates resource existence, IAM trust policies, and permission boundaries.
+  # Creates no resources — only check blocks.
+  # Enable on demand:  terraform plan -var="enable_validation=true"
+  validation_config = {
+    enabled                  = var.enable_validation
+    enable_permission_checks = true
+  }
+
   # Optional: run an end-to-end validation after apply.
   #
   # The validation deploys an AWS Lambda inside your VPC that:

@@ -27,3 +27,8 @@ output "iceberg_tables" {
   description = "Map of created Iceberg table names and ARNs"
   value       = module.federated_logs.iceberg_tables
 }
+
+output "validation_summary" {
+  description = "Post-deploy validation status"
+  value       = module.federated_logs.validation_summary
+}
