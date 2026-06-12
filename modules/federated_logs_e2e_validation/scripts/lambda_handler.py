@@ -4,6 +4,7 @@ Lambda entry point for the federated-logs E2E validation.
 import json
 import os
 import subprocess
+import sys
 import boto3
 from botocore.exceptions import ClientError
 
@@ -78,6 +79,13 @@ def handler(event, context):
             "stdout": "",
             "stderr": "",
         }
+
+    # Surface the child script's output to CloudWatch (blocking run, so this
+    # appears once the script finishes; the payload still carries it too).
+    if result.stdout:
+        print(result.stdout)
+    if result.stderr:
+        print(result.stderr, file=sys.stderr)
 
     return {
         "status": "PASS" if result.returncode == 0 else "FAIL",

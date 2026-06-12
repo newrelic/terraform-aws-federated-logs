@@ -109,7 +109,7 @@ def http_post(url, headers, body):
 
 # ── Step 1: Check PCG health ──────────────────────────────────
 def check_pcg_health(base_endpoint):
-    url = f"http://{base_endpoint}:13133/health/status"
+    url = f"{base_endpoint}:13133/health/status"
     info("")
     info("Step 1: Checking PCG health...")
     info(f"Health endpoint: {url}")
@@ -154,7 +154,7 @@ def check_pcg_health(base_endpoint):
 
 # ── Step 2: Send payload to PCG ───────────────────────────────
 def send_to_pcg(base_endpoint, license_key, payload):
-    endpoint = f"http://{base_endpoint}:80/log/v1"
+    endpoint = f"{base_endpoint}:80/log/v1"
     info("")
     info("Step 2: Sending test payload to PCG endpoint...")
     info(f"Logs endpoint: {endpoint}")
