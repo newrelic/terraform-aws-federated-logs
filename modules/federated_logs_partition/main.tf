@@ -34,6 +34,15 @@ resource "aws_glue_catalog_table" "iceberg_table" {
 
         properties = local.resolved_table_params[each.key]
 
+        # Seed schema for the table. Fields and IDs declared here are
+        # mirrored in `local.iceberg_schema_name_mapping` (locals.tf) so
+        # that Iceberg readers can resolve case-sensitive names from data
+        # files without embedded field IDs. KEEP THE TWO IN SYNC — any
+        # add / remove / rename here needs the same change in locals.tf.
+        #
+        # Runtime schema additions via Iceberg's UpdateSchema API
+        # auto-extend the name-mapping property in place, so only the
+        # seed fields below are Terraform-managed.
         schema {
           schema_id = 0
           type      = "struct"
