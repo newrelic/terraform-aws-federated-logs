@@ -2,7 +2,7 @@ locals {
 
   setup_naming_prefix = "newrelic_fed_logs_${var.setup_name}"
 
-  default_partition_name = "Log_federated"
+  default_partition_name = "Log_Federated"
 
   max_table_name_length = 255
 
