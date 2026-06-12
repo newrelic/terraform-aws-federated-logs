@@ -114,5 +114,5 @@ In Terraform, exit `1` is swallowed by `on_failure = continue` — the apply is 
 
 - Credentials are passed through the runner environment (not Terraform `environment {}`) to avoid leaking into Terraform state or command-line logs.
 - The `triggers = { always_run = timestamp() }` means this null_resource always shows a change in plan when enabled. That is intentional — the point is to re-verify the path on every apply.
-- The partition queried is always `Log_Federated` (hardcoded in the script).
+- The partition queried is always `Log_federated` (hardcoded in the script).
 
