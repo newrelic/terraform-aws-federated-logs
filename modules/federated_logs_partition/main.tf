@@ -6,7 +6,7 @@ resource "aws_s3_object" "folder" {
   for_each = local.all_tables
   bucket   = var.s3_bucket_name
   key      = "${var.glue_catalog_db_name}/${each.key}/"
-  region   = data.aws_region.current.id
+  region   = data.aws_region.current.region
 }
 
 resource "aws_glue_catalog_table" "iceberg_table" {
@@ -14,7 +14,7 @@ resource "aws_glue_catalog_table" "iceberg_table" {
 
   name          = each.key
   database_name = var.glue_catalog_db_name
-  region        = data.aws_region.current.id
+  region        = data.aws_region.current.region
   table_type    = "EXTERNAL_TABLE"
 
   lifecycle {
