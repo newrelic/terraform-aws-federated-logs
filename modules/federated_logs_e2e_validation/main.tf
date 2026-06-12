@@ -2,7 +2,15 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 locals {
-  function_name = "newrelic-fed-logs-${var.setup_id == "" ? "e2e" : substr(replace(var.setup_id, "/[^a-zA-Z0-9]/", ""), 0, 16)}-validation"
+  # Max 12 chars so total resource names stay within AWS limits
+  # (IAM role name_prefix has a 38-char ceiling).
+  setup_id_short = var.setup_id == "" ? "default" : substr(
+    replace(var.setup_id, "/[^a-zA-Z0-9]/", ""),
+    0,
+    12,
+  )
+
+  function_name = "nr-fed-logs-e2e-${local.setup_id_short}"
 }
 
 data "external" "nr_credentials" {
