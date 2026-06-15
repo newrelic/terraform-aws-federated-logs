@@ -2,13 +2,9 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 locals {
-  # Max 12 chars so total resource names stay within AWS limits
-  # (IAM role name_prefix has a 38-char ceiling).
-  setup_id_short = var.setup_id == "" ? "default" : substr(
-    replace(var.setup_id, "/[^a-zA-Z0-9]/", ""),
-    0,
-    12,
-  )
+  # A short, UNIQUE id derived from setup_id, used to name the Lambda, secrets,
+  # and IAM role for this setup.
+  setup_id_short = var.setup_id == "" ? "default" : substr(md5(var.setup_id), 0, 12)
 
   function_name = "nr-fed-logs-e2e-${local.setup_id_short}"
 }

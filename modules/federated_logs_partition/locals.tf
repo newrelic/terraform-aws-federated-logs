@@ -17,12 +17,12 @@ locals {
   }
 
   # NR (NGEP) partition names — decoupled from Glue table names.
-  # Keyed by the sanitized Glue table name; value is the NR-side partition name (Log_<sanitized-suffix>).
+  # Keyed by the sanitized Glue table name; value is the NR-side partition name
   # Default partition is named "Log_federated" inline by the setup resource.
   nr_partition_names = {
     for raw_key, _ in var.partition_tables :
     substr(replace(lower("${local.setup_naming_prefix}_${raw_key}"), "/[^a-z0-9_]/", "_"), 0, local.max_table_name_length)
-    => substr("Log_${replace(lower(raw_key), "/[^a-z0-9_]/", "_")}", 0, local.max_table_name_length)
+    => raw_key
   }
 
   all_tables = merge(
