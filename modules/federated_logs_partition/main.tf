@@ -80,9 +80,16 @@ EOF
 EOF
           }
           fields {
+            # NOTE: required=false because PCG never writes messageId as a
+            # top-level column. Per the LPC-replication CDD, messageId is
+            # generated into attributes["messageId"] by the add_message_id
+            # OTEL transform and surfaced via NRDB's attributes-blob read
+            # path. Declaring it as required=true here previously caused
+            # Glue Iceberg compaction to fail with "Missing required field"
+            # because the parquet column is never present.
             id       = 5
             name     = "messageId"
-            required = true
+            required = false
             type     = <<EOF
 "string"
 EOF
