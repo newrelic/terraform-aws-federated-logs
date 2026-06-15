@@ -2,11 +2,12 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 locals {
-  # A short, UNIQUE id derived from setup_id, used to name the Lambda, secrets,
-  # and IAM role for this setup.
-  setup_id_short = var.setup_id == "" ? "default" : substr(md5(var.setup_id), 0, 12)
+  setup_name_short = trimsuffix(substr(var.setup_name, 0, 10), "-")
+  setup_id_hash    = var.setup_id == "" ? "default0" : substr(sha256(var.setup_id), 0, 8)
 
-  function_name = "nr-fed-logs-e2e-${local.setup_id_short}"
+  # Used for the Lambda function name, IAM role name_prefix, and as
+  # the prefix for the two Secrets Manager secret names.
+  function_name = "nr-fed-logs-e2e-${local.setup_name_short}-${local.setup_id_hash}"
 }
 
 data "external" "nr_credentials" {

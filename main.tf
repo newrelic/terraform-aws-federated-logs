@@ -45,6 +45,7 @@ module "e2e_validation" {
   count  = var.e2e_validation_config.enabled ? 1 : 0
   source = "./modules/federated_logs_e2e_validation"
 
+  setup_name    = var.setup_name
   pcg_endpoint  = var.e2e_validation_config.pcg_endpoint
   nr_account_id = var.newrelic_account_id
   nr_region     = var.newrelic_region

@@ -1,3 +1,8 @@
+variable "setup_name" {
+  description = "Federated logs setup name from the parent module. Used as a readable prefix in the names of AWS resources (Lambda, IAM role, Secrets Manager secrets) so they're easy to identify when multiple setups exist in the same account. First 10 chars are used; combined with an 8-char hash of setup_id for uniqueness."
+  type        = string
+}
+
 variable "pcg_endpoint" {
   description = "PCG ingest endpoint URL to POST the test log payload to."
   type        = string
