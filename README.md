@@ -53,7 +53,8 @@ module "federated_logs" {
   default_table_setting = {
     retention_in_days = 30
     table_parameters = {
-      "write.target-file-size-bytes"               = "26214400" # 25 MB
+      "write.parquet.compression-codec"            = "zstd"
+      "write.target-file-size-bytes"               = "67108864" # 64 MB
       "write.metadata.delete-after-commit.enabled" = "true"
       "write.metadata.previous-versions-max"       = "10"
     }
