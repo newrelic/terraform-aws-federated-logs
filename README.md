@@ -140,6 +140,7 @@ These are read directly from the environment and are never stored in Terraform s
 | `partition_tables` | Map of additional partition tables, each can override retention, table parameters, optimizer config, routing expression, and description | `map(object)` | no |
 | `setup_description` | Optional description for the newrelic_federated_logs_setup resource | `string` | no |
 | `query_connection_description` | Optional description for the per-setup newrelic_aws_connection wrapping the reader role | `string` | no |
+| `validation_config` | Post-apply validation settings: `enabled` (default `false`), `enable_permission_checks` (default `true`) | `object` | no |
 
 ## Outputs
 
@@ -155,6 +156,7 @@ These are read directly from the environment and are never stored in Terraform s
 | `newrelic_federated_logs_setup_id` | ID of the newrelic_federated_logs_setup created for this AWS module |
 | `newrelic_default_partition_id` | ID of the default partition created alongside the federated logs setup |
 | `newrelic_query_connection_id` | ID of the per-setup newrelic_aws_connection wrapping the reader role |
+| `validation_summary` | Validation results (only when `validation_config.enabled = true`) |
 
 ## Examples
 

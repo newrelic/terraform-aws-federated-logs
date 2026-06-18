@@ -186,3 +186,13 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# =============================================================================
+# VALIDATION (optional, opt-in)
+# =============================================================================
+
+variable "validate_oidc_providers" {
+  description = "Verify that each IRSA cluster's oidc_provider_arn exists in the AWS account. Requires iam:GetOpenIDConnectProvider on the deploy role."
+  type        = bool
+  default     = false
+}
