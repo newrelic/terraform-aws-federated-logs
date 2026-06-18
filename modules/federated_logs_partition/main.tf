@@ -79,21 +79,18 @@ EOF
 "string"
 EOF
           }
-          fields {
-            # NOTE: required=false because PCG never writes messageId as a
-            # top-level column. Per the LPC-replication CDD, messageId is
-            # generated into attributes["messageId"] by the add_message_id
-            # OTEL transform and surfaced via NRDB's attributes-blob read
-            # path. Declaring it as required=true here previously caused
-            # Glue Iceberg compaction to fail with "Missing required field"
-            # because the parquet column is never present.
-            id       = 5
-            name     = "messageId"
-            required = false
-            type     = <<EOF
-"string"
-EOF
-          }
+          # NOTE: messageId is intentionally NOT declared as a static field
+          # here. PCG generates messageId into attributes["messageId"] via
+          # the add_message_id OTEL transform; it's never written as a
+          # top-level column. Pre-declaring it (as field-id 5 in previous
+          # versions of this module) created a dead column that, once Glue
+          # Catalog lower-cased it to `messageid`, collided with the
+          # `messageId` column Iceberg added at runtime when PCG started
+          # writing the attribute. The collision surfaced as
+          # `Multiple entries with same key: messageid=N:messageId:varchar`
+          # on Athena/Trino reads. Dropping the static declaration lets PCG
+          # (or any other writer) own the field at runtime, and Iceberg
+          # auto-extends `schema.name-mapping.default` for it.
         }
 
         partition_spec {

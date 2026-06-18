@@ -30,17 +30,17 @@ locals {
     local.sanitized_partition_tables
   )
 
-  # Seed schema name-mapping for the 5 statically-declared schema fields.
+  # Seed schema name-mapping for the statically-declared schema fields.
   # Iceberg readers fall back to name-based field resolution when data
   # files lack embedded field IDs in their Parquet metadata. Without this
-  # property, Glue Catalog's lowercased column view (e.g. `messageid`)
-  # can mask the canonical case (`messageId`) declared in the Iceberg
-  # schema, leading to case-mismatch errors at read time.
+  # property, Glue Catalog's lowercased column view can mask the canonical
+  # case declared in the Iceberg schema, leading to case-mismatch errors
+  # at read time.
   #
-  # SCOPE: this list mirrors ONLY the 5 fields declared in the schema
-  # block in main.tf and is applied once at table creation. Field IDs
-  # and names MUST stay in sync with that block — if you add, remove,
-  # or rename a field there, mirror the change here.
+  # SCOPE: this list mirrors ONLY the fields declared in the schema block
+  # in main.tf and is applied once at table creation. Field IDs and names
+  # MUST stay in sync with that block — if you add, remove, or rename a
+  # field there, mirror the change here.
   #
   # Runtime schema additions (columns added later via Iceberg's
   # UpdateSchema API) auto-extend this property in place via Iceberg
@@ -50,7 +50,6 @@ locals {
     { "field-id" = 2, "names" = ["message"] },
     { "field-id" = 3, "names" = ["timestamp"] },
     { "field-id" = 4, "names" = ["guid"] },
-    { "field-id" = 5, "names" = ["messageId"] },
   ])
 
   # Parameters you always want set — user values override these
