@@ -6,7 +6,7 @@ resource "aws_s3_object" "folder" {
   for_each = local.all_tables
   bucket   = var.s3_bucket_name
   key      = "${var.glue_catalog_db_name}/${each.key}/"
-  region   = data.aws_region.current.id
+  region   = data.aws_region.current.region
 
   lifecycle {
     prevent_destroy = true
@@ -18,8 +18,8 @@ resource "aws_glue_catalog_table" "iceberg_table" {
 
   name          = each.key
   database_name = var.glue_catalog_db_name
-  region        = data.aws_region.current.id
-  table_type    = "ICEBERG"
+  region        = data.aws_region.current.region
+  table_type    = "EXTERNAL_TABLE"
 
   lifecycle {
     prevent_destroy = true
@@ -39,6 +39,15 @@ resource "aws_glue_catalog_table" "iceberg_table" {
 
         properties = local.resolved_table_params[each.key]
 
+        # Seed schema for the table. Fields and IDs declared here are
+        # mirrored in `local.iceberg_schema_name_mapping` (locals.tf) so
+        # that Iceberg readers can resolve case-sensitive names from data
+        # files without embedded field IDs. KEEP THE TWO IN SYNC — any
+        # add / remove / rename here needs the same change in locals.tf.
+        #
+        # Runtime schema additions via Iceberg's UpdateSchema API
+        # auto-extend the name-mapping property in place, so only the
+        # seed fields below are Terraform-managed.
         schema {
           schema_id = 0
           type      = "struct"
@@ -76,9 +85,16 @@ EOF
 EOF
           }
           fields {
+            # NOTE: required=false because PCG never writes messageId as a
+            # top-level column. Per the LPC-replication CDD, messageId is
+            # generated into attributes["messageId"] by the add_message_id
+            # OTEL transform and surfaced via NRDB's attributes-blob read
+            # path. Declaring it as required=true here previously caused
+            # Glue Iceberg compaction to fail with "Missing required field"
+            # because the parquet column is never present.
             id       = 5
             name     = "messageId"
-            required = true
+            required = false
             type     = <<EOF
 "string"
 EOF

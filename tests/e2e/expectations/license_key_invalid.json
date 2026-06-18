@@ -1,0 +1,35 @@
+[
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/health/status"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"healthy\": true}"
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/v1/logs"
+    },
+    "httpResponse": {
+      "statusCode": 403,
+      "body": "Forbidden"
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/graphql",
+      "body": { "type": "STRING", "string": "federatedLogsUpdateSetup", "subString": true }
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": { "Content-Type": ["application/json"] },
+      "body": "{\"data\":{\"federatedLogsUpdateSetup\":{\"setup\":{\"id\":\"mock-setup-id\"}}}}"
+    }
+  }
+]

@@ -78,4 +78,36 @@ module "federated_logs" {
       }
     }
   }
+
+  # Optional: run an end-to-end validation after apply.
+  #
+  # The validation deploys an AWS Lambda inside your VPC that:
+  #   1. POSTs a synthetic log to your PCG endpoint
+  #   2. Polls NRDB for the log via NRQL
+  #   3. Reports HEALTHY/UNHEALTHY back to NR via the
+  #      federatedLogsUpdateSetup mutation
+  e2e_validation_config = {
+    enabled      = true
+    pcg_endpoint = "https://pcg.example.com"
+    test_payload = jsonencode({ message = "federated-logs e2e test", level = "info" })
+
+    # Replace these with the actual IDs from your VPC. Subnets must have a
+    # private route to PCG and outbound internet access (typically via NAT)
+    # to reach api.newrelic.com.
+    vpc_config = {
+      subnet_ids         = ["subnet-0a1b2c3d4e5f60718", "subnet-0a1b2c3d4e5f60719"]
+      security_group_ids = ["sg-0a1b2c3d4e5f60710"]
+    }
+
+    # Optional Lambda tuning — defaults shown:
+    # lambda_timeout     = 180  # seconds; covers cold start + script worst-case
+    # lambda_memory_size = 256  # MB
+
+    # Optional script tuning — defaults shown:
+    # max_retries       = 3   # transient HTTP retries (5xx / connection)
+    # retry_delay       = 5
+    # initial_read_wait = 30
+    # read_max_retries  = 5   # NRQL read polls while the log ingests
+    # read_retry_delay  = 15
+  }
 }

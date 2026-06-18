@@ -126,3 +126,37 @@ variable "partition_tables" {
   default = {}
 }
 
+variable "e2e_validation_config" {
+  description = "Configuration for the optional end-to-end validation. When enabled=true, deploys an AWS Lambda inside the customer's VPC that POSTs a synthetic log to PCG, polls NRDB for the log, and reports HEALTHY/UNHEALTHY back to New Relic via the federatedLogsUpdateSetup mutation. Credentials are sourced from NEW_RELIC_LICENSE_KEY and NEW_RELIC_API_KEY env vars on the runner — the module reads them and writes them into Secrets Manager automatically (the values transit Terraform state during apply; use an encrypted backend like S3+KMS or Terraform Cloud to mitigate)."
+  type = object({
+    enabled      = optional(bool, false)
+    pcg_endpoint = optional(string, "")
+    test_payload = optional(string, "")
+
+    vpc_config = optional(object({
+      subnet_ids         = list(string)
+      security_group_ids = list(string)
+    }))
+
+    lambda_timeout     = optional(number, 180)
+    lambda_memory_size = optional(number, 256)
+
+    # Script retry/poll knobs (script defaults apply when omitted).
+    max_retries       = optional(number, 3)
+    retry_delay       = optional(number, 5)
+    initial_read_wait = optional(number, 30)
+    read_max_retries  = optional(number, 5)
+    read_retry_delay  = optional(number, 15)
+  })
+  default = {}
+
+  validation {
+    condition = !var.e2e_validation_config.enabled || (
+      var.e2e_validation_config.pcg_endpoint != "" &&
+      var.e2e_validation_config.test_payload != "" &&
+      var.e2e_validation_config.vpc_config != null
+    )
+    error_message = "When e2e_validation_config.enabled is true, pcg_endpoint, test_payload, and vpc_config must all be provided."
+  }
+}
+

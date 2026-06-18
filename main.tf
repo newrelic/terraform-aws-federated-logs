@@ -40,3 +40,27 @@ module "partition" {
   data_retention_enabled = var.data_retention_enabled
   newrelic_account_id    = var.newrelic_account_id
 }
+
+module "e2e_validation" {
+  count  = var.e2e_validation_config.enabled ? 1 : 0
+  source = "./modules/federated_logs_e2e_validation"
+
+  pcg_endpoint  = var.e2e_validation_config.pcg_endpoint
+  nr_account_id = var.newrelic_account_id
+  nr_region     = var.newrelic_region
+  setup_id      = module.role.setup_id
+  test_payload  = var.e2e_validation_config.test_payload
+
+  vpc_config         = var.e2e_validation_config.vpc_config
+  lambda_timeout     = var.e2e_validation_config.lambda_timeout
+  lambda_memory_size = var.e2e_validation_config.lambda_memory_size
+
+  # Retry/poll tunables — defaults sized for typical ingestion latency.
+  max_retries       = var.e2e_validation_config.max_retries
+  retry_delay       = var.e2e_validation_config.retry_delay
+  initial_read_wait = var.e2e_validation_config.initial_read_wait
+  read_max_retries  = var.e2e_validation_config.read_max_retries
+  read_retry_delay  = var.e2e_validation_config.read_retry_delay
+
+  depends_on = [module.setup, module.role, module.partition]
+}

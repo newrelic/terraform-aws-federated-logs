@@ -17,12 +17,12 @@ locals {
   }
 
   # NR (NGEP) partition names — decoupled from Glue table names.
-  # Keyed by the sanitized Glue table name; value is the NR-side partition name (Log_<sanitized-suffix>).
+  # Keyed by the sanitized Glue table name; value is the NR-side partition name
   # Default partition is named "Log_federated" inline by the setup resource.
   nr_partition_names = {
     for raw_key, _ in var.partition_tables :
     substr(replace(lower("${local.setup_naming_prefix}_${raw_key}"), "/[^a-z0-9_]/", "_"), 0, local.max_table_name_length)
-    => substr("Log_${replace(lower(raw_key), "/[^a-z0-9_]/", "_")}", 0, local.max_table_name_length)
+    => raw_key
   }
 
   all_tables = merge(
@@ -30,12 +30,43 @@ locals {
     local.sanitized_partition_tables
   )
 
+  # Seed schema name-mapping for the 5 statically-declared schema fields.
+  # Iceberg readers fall back to name-based field resolution when data
+  # files lack embedded field IDs in their Parquet metadata. Without this
+  # property, Glue Catalog's lowercased column view (e.g. `messageid`)
+  # can mask the canonical case (`messageId`) declared in the Iceberg
+  # schema, leading to case-mismatch errors at read time.
+  #
+  # SCOPE: this list mirrors ONLY the 5 fields declared in the schema
+  # block in main.tf and is applied once at table creation. Field IDs
+  # and names MUST stay in sync with that block — if you add, remove,
+  # or rename a field there, mirror the change here.
+  #
+  # Runtime schema additions (columns added later via Iceberg's
+  # UpdateSchema API) auto-extend this property in place via Iceberg
+  # core, so only the seed fields are Terraform-managed.
+  iceberg_schema_name_mapping = jsonencode([
+    { "field-id" = 1, "names" = ["logtype"] },
+    { "field-id" = 2, "names" = ["message"] },
+    { "field-id" = 3, "names" = ["timestamp"] },
+    { "field-id" = 4, "names" = ["guid"] },
+    { "field-id" = 5, "names" = ["messageId"] },
+  ])
+
   # Parameters you always want set — user values override these
   default_iceberg_params = {
     "format"                                     = "parquet"
     "write.target-file-size-bytes"               = "26214400" # 25 MB
     "write.metadata.delete-after-commit.enabled" = "true"
     "write.metadata.previous-versions-max"       = "10"
+
+    # Manifest hygiene — reduces manifest count growth on high-write tables.
+    "commit.manifest-merge.enabled"      = "true"
+    "commit.manifest.target-size-bytes"  = "8388608" # 8 MB
+    "commit.manifest.min-count-to-merge" = "10"
+
+    # Case-sensitive name → field-ID mapping for data files without field IDs.
+    "schema.name-mapping.default" = local.iceberg_schema_name_mapping
   }
 
   # For each table: defaults ← user params (user wins on overlap)
@@ -64,6 +95,14 @@ locals {
   table_retention_days = {
     for k, v in local.all_tables :
     k => v.retention_in_days
+  }
+
+  # Glue Iceberg optimizer failure metrics (CloudWatch namespace "Glue").
+  # Key = optimizer type (used in alarm naming); value = exact CloudWatch metric name.
+  optimizer_failure_metrics = {
+    compaction      = "Iceberg table compaction failure"
+    retention       = "Iceberg table retention failure"
+    orphan_deletion = "Iceberg table orphan_file_deletion failure"
   }
 
 }
