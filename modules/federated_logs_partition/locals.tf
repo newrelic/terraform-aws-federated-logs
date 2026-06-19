@@ -60,6 +60,12 @@ locals {
     "write.metadata.delete-after-commit.enabled" = "true"
     "write.metadata.previous-versions-max"       = "10"
 
+    # Parquet writer tuning for the Glue compaction job. Enables row-group
+    # and page-level predicate pushdown in standard query engines.
+    "write.parquet.row-group-size-bytes" = "12582912" # 12 MB
+    "write.parquet.page-size-bytes"      = "1048576"  # 1 MB
+    "write.parquet.page-version"         = "v2"
+
     # Manifest hygiene — reduces manifest count growth on high-write tables.
     "commit.manifest-merge.enabled"      = "true"
     "commit.manifest.target-size-bytes"  = "8388608" # 8 MB
