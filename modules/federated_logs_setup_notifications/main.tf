@@ -5,14 +5,18 @@
 data "aws_caller_identity" "current" {}
 
 locals {
+  # The 5th colon-segment of any SQS ARN is the account ID hosting the queue
+  # (arn:aws:sqs:<region>:<account-id>:<queue-name>). The notifications module
+  # already receives this ARN via var.sqs_queue_arn (sourced from the NGEP
+  # entity tagged by data_processing), so cross-account topology can be
+  # inferred without asking the customer to declare it.
+  target_account_id = split(":", var.sqs_queue_arn)[4]
+
   # Cross-account delivery is needed when the target SQS queue lives in a
   # different account from the EventBridge rule. AWS requires a role_arn on
   # the target in that case; same-account targets can rely solely on the
   # queue's resource policy.
-  cross_account_delivery = (
-    var.target_account_id != null &&
-    var.target_account_id != data.aws_caller_identity.current.account_id
-  )
+  cross_account_delivery = local.target_account_id != data.aws_caller_identity.current.account_id
 }
 
 # Enable EventBridge notifications on the bucket

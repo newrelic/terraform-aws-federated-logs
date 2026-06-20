@@ -18,12 +18,6 @@ variable "fleet_entity_guid" {
   type        = string
 }
 
-variable "target_account_id" {
-  description = "AWS account ID hosting the SQS queue when running in cross-account mode (i.e. this Terraform setup runs in a source account that is different from the data_processing account). When set and different from the current account, the notifications module creates an IAM role for EventBridge to assume so it can deliver to the cross-account queue. Leave null for single-account deployments. The corresponding data_processing setup must list this account in its allowed_source_account_ids so the queue policy permits delivery."
-  type        = string
-  default     = null
-}
-
 variable "newrelic_org_id" {
   description = "New Relic organization ID."
   type        = string

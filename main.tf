@@ -25,7 +25,6 @@ module "notifications" {
   s3_bucket_id        = module.setup.s3_bucket_name
   pcg_writer_role_arn = module.role.pcg_writer_role_arn
   sqs_queue_arn       = module.role.sqs_queue_arn_from_ngep
-  target_account_id   = var.target_account_id
 }
 
 module "partition" {
