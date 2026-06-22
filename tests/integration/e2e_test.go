@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -65,6 +66,54 @@ func TestFederatedLogsE2E(t *testing.T) {
 			len(tables))
 	})
 
+	// ----- VALIDATION: setup + AWS connection outputs -----------------------
+	t.Run("validate_setup_and_aws_connection_outputs", func(t *testing.T) {
+		bucketName := terraform.Output(t, opts, "s3_bucket_name")
+		glueDBName := terraform.Output(t, opts, "glue_catalog_db_name")
+		setupID := terraform.Output(t, opts, "setup_id")
+		defaultPartitionID := terraform.Output(t, opts, "default_partition_id")
+		awsConnID := terraform.Output(t, opts, "aws_connection_id")
+		glueRoleARN := terraform.Output(t, opts, "glue_service_role_arn")
+
+		// S3 bucket name: lowercase + digits + hyphens, embeds setup_name.
+		bucketRe := regexp.MustCompile(`^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$`)
+		assert.Regexpf(t, bucketRe, bucketName,
+			"s3 bucket name %q doesn't match S3 naming rules", bucketName)
+		assert.Containsf(t, bucketName, setupName,
+			"s3 bucket name %q should embed setup_name %q", bucketName, setupName)
+
+		// Glue catalog DB name: lowercase + underscores; setup_name's hyphens
+		// become underscores.
+		underscoredSetupName := strings.ReplaceAll(setupName, "-", "_")
+		glueDBRe := regexp.MustCompile(`^[a-z0-9_]+$`)
+		assert.Regexpf(t, glueDBRe, glueDBName,
+			"glue db name %q should be lowercase + underscores only", glueDBName)
+		assert.Containsf(t, glueDBName, underscoredSetupName,
+			"glue db name %q should embed underscored setup_name %q",
+			glueDBName, underscoredSetupName)
+
+		// NR entity GUIDs: non-empty, and the three setup-side IDs must be distinct.
+		assert.NotEmptyf(t, setupID, "setup_id should be non-empty")
+		assert.NotEmptyf(t, defaultPartitionID, "default_partition_id should be non-empty")
+		assert.NotEmptyf(t, awsConnID, "aws_connection_id should be non-empty")
+		assert.NotEqualf(t, setupID, defaultPartitionID,
+			"setup_id and default_partition_id must be distinct entities")
+		assert.NotEqualf(t, setupID, awsConnID,
+			"setup_id and aws_connection_id must be distinct entities")
+
+		// Glue service role ARN
+		iamRoleRe := regexp.MustCompile(`^arn:aws:iam::\d{12}:role/.+$`)
+		assert.Regexpf(t, iamRoleRe, glueRoleARN,
+			"glue_service_role_arn %q is not a valid IAM role ARN", glueRoleARN)
+		assert.Containsf(t, glueRoleARN, setupName,
+			"glue_service_role_arn %q should embed setup_name %q", glueRoleARN, setupName)
+
+		customPartitionIDs := terraform.OutputMap(t, opts, "custom_partition_ids")
+		assert.Emptyf(t, customPartitionIDs,
+			"custom_partition_ids should be empty before any custom partitions are added, got %v",
+			customPartitionIDs)
+	})
+
 	// ----- SCENARIO 2: add custom tables -------------------------------------
 	t.Run("add_custom_tables", func(t *testing.T) {
 		opts.Vars["partition_tables"] = map[string]interface{}{
@@ -77,6 +126,15 @@ func TestFederatedLogsE2E(t *testing.T) {
 		tables := terraform.OutputMapOfObjects(t, opts, "all_tables")
 		require.Lenf(t, tables, 3,
 			"should have 3 tables (1 default + 2 custom), got %d", len(tables))
+
+		// custom_partition_ids: one GUID per custom table, all non-empty.
+		customPartitionIDs := terraform.OutputMap(t, opts, "custom_partition_ids")
+		assert.Lenf(t, customPartitionIDs, 2,
+			"custom_partition_ids should have 2 entries, got %d: %v",
+			len(customPartitionIDs), customPartitionIDs)
+		for k, v := range customPartitionIDs {
+			assert.NotEmptyf(t, v, "custom partition %q should have a non-empty GUID", k)
+		}
 	})
 
 	// ----- SCENARIO 3: table name sanitization -------------------------------
@@ -132,10 +190,18 @@ func TestFederatedLogsE2E(t *testing.T) {
 
 		tables := terraform.OutputMapOfObjects(t, opts, "all_tables")
 		require.Lenf(t, tables, 6, "should have 6 tables (1 default + 5 custom), got %d", len(tables))
+
+		// custom_partition_ids: 5 GUIDs, all non-empty.
+		customPartitionIDs := terraform.OutputMap(t, opts, "custom_partition_ids")
+		assert.Lenf(t, customPartitionIDs, 5,
+			"custom_partition_ids should have 5 entries, got %d", len(customPartitionIDs))
+		for k, v := range customPartitionIDs {
+			assert.NotEmptyf(t, v, "custom partition %q should have a non-empty GUID", k)
+		}
 	})
 
-	// ----- SCENARIO 5: removal blocked (partial) -----------------------------
-	t.Run("removal_blocked_partial", func(t *testing.T) {
+	// ----- SCENARIO 5: removal blocked by prevent_destroy --------------------
+	t.Run("removal_blocked", func(t *testing.T) {
 		opts.Vars["partition_tables"] = map[string]interface{}{
 			"app_logs":      map[string]interface{}{},
 			"security_logs": map[string]interface{}{},
@@ -148,18 +214,7 @@ func TestFederatedLogsE2E(t *testing.T) {
 			"error should mention prevent_destroy violation, got: %s", err.Error())
 	})
 
-	// ----- SCENARIO 6: removal blocked (full) --------------------------------
-	t.Run("removal_blocked_full", func(t *testing.T) {
-		opts.Vars["partition_tables"] = map[string]interface{}{}
-
-		_, err := terraform.ApplyE(t, opts)
-		require.Errorf(t, err,
-			"apply should fail because removing all custom partition tables hits prevent_destroy")
-		assert.Containsf(t, err.Error(), "Instance cannot be destroyed",
-			"error should mention prevent_destroy violation, got: %s", err.Error())
-	})
-
-	// ----- SCENARIO 7: custom default table setting --------------------------
+	// ----- SCENARIO 6: custom default table setting --------------------------
 	t.Run("custom_default_table_setting", func(t *testing.T) {
 		opts.Vars["partition_tables"] = map[string]interface{}{
 			"app_logs":            map[string]interface{}{},
@@ -180,6 +235,66 @@ func TestFederatedLogsE2E(t *testing.T) {
 		require.Lenf(t, tables, 6,
 			"should have 6 tables (1 customized default + 5 carried-forward custom), got %d",
 			len(tables))
+	})
+
+	// ----- SCENARIO 7: resource removed blocks -------
+	t.Run("decommission_via_removed_blocks", func(t *testing.T) {
+		mainTfPath := filepath.Join(opts.TerraformDir, "main.tf")
+		originalMain, err := os.ReadFile(mainTfPath)
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_ = os.WriteFile(mainTfPath, originalMain, 0644)
+		})
+
+		decommissionTf := `removed {
+		  from = module.setup.aws_s3_bucket.this
+		  lifecycle { destroy = false }
+		}
+		
+		removed {
+		  from = module.setup.aws_glue_catalog_database.this
+		  lifecycle { destroy = false }
+		}
+		
+		removed {
+		  from = module.partition.aws_s3_object.folder
+		  lifecycle { destroy = false }
+		}
+		
+		removed {
+		  from = module.partition.aws_glue_catalog_table.iceberg_table
+		  lifecycle { destroy = false }
+		}
+		`
+		require.NoError(t, os.WriteFile(mainTfPath, []byte(decommissionTf), 0644))
+
+		planArgs := terraform.FormatArgs(opts, "plan", "-no-color", "-input=false", "-lock=false")
+		out, err := terraform.RunTerraformCommandE(t, opts, planArgs...)
+		require.NoErrorf(t, err,
+			"terraform plan with whole-resource removed blocks should succeed; got:\n%s", out)
+
+		assert.NotContainsf(t, out, "Instance cannot be destroyed",
+			"plan should not hit prevent_destroy when removed blocks are used, got:\n%s", out)
+
+		for _, addr := range []string{
+			"aws_s3_bucket.this",
+			"aws_glue_catalog_database.this",
+			"aws_s3_object.folder",
+			"aws_glue_catalog_table.iceberg_table",
+		} {
+			assert.Containsf(t, out, addr,
+				"plan should reference %s as part of the decommission, got:\n%s", addr, out)
+		}
+	})
+
+	// ----- SCENARIO 8: destroy blocked by prevent_destroy ------------------
+	t.Run("destroy_blocked", func(t *testing.T) {
+		_, err := terraform.DestroyE(t, opts)
+		require.Errorf(t, err,
+			"terraform destroy should fail because storage resources have prevent_destroy")
+
+		assert.Containsf(t, err.Error(), "Instance cannot be destroyed",
+			"destroy error should mention prevent_destroy violation, got: %s", err.Error())
 	})
 }
 
