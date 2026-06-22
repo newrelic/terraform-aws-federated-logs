@@ -240,33 +240,39 @@ func TestFederatedLogsE2E(t *testing.T) {
 	// ----- SCENARIO 7: resource removed blocks -------
 	t.Run("decommission_via_removed_blocks", func(t *testing.T) {
 		mainTfPath := filepath.Join(opts.TerraformDir, "main.tf")
+		outputsTfPath := filepath.Join(opts.TerraformDir, "outputs.tf")
+
 		originalMain, err := os.ReadFile(mainTfPath)
+		require.NoError(t, err)
+		originalOutputs, err := os.ReadFile(outputsTfPath)
 		require.NoError(t, err)
 		t.Cleanup(func() {
 			_ = os.WriteFile(mainTfPath, originalMain, 0644)
+			_ = os.WriteFile(outputsTfPath, originalOutputs, 0644)
 		})
 
 		decommissionTf := `removed {
 		  from = module.setup.aws_s3_bucket.this
 		  lifecycle { destroy = false }
 		}
-		
+
 		removed {
 		  from = module.setup.aws_glue_catalog_database.this
 		  lifecycle { destroy = false }
 		}
-		
+
 		removed {
 		  from = module.partition.aws_s3_object.folder
 		  lifecycle { destroy = false }
 		}
-		
+
 		removed {
 		  from = module.partition.aws_glue_catalog_table.iceberg_table
 		  lifecycle { destroy = false }
 		}
 		`
 		require.NoError(t, os.WriteFile(mainTfPath, []byte(decommissionTf), 0644))
+		require.NoError(t, os.WriteFile(outputsTfPath, []byte(""), 0644))
 
 		planArgs := terraform.FormatArgs(opts, "plan", "-no-color", "-input=false", "-lock=false")
 		out, err := terraform.RunTerraformCommandE(t, opts, planArgs...)
