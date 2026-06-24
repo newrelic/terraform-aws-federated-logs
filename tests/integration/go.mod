@@ -1,6 +1,6 @@
 module github.com/newrelic/terraform-aws-federated-logs/tests/integration
 
-go 1.24.0
+go 1.25
 
 require (
 	github.com/gruntwork-io/terratest v0.54.0
