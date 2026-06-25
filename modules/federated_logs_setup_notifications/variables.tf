@@ -14,6 +14,6 @@ variable "pcg_writer_role_arn" {
 }
 
 variable "sqs_queue_arn" {
-  description = "ARN of the SQS queue to send EventBridge events to. Fetched from the role module via NGEP."
+  description = "ARN of the SQS queue to send EventBridge events to. Fetched from the role module via NGEP. The account portion of this ARN is also what the module uses to detect cross-account delivery — when it differs from the current AWS account, an IAM role is created for EventBridge to assume so it can deliver to the cross-account queue."
   type        = string
 }

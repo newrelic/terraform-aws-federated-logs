@@ -341,29 +341,60 @@ resource "aws_sqs_queue" "iceberg_file_events" {
 resource "aws_sqs_queue_policy" "iceberg_file_events_policy" {
   queue_url = aws_sqs_queue.iceberg_file_events.id
 
+  # Two statements cover the two delivery topologies EventBridge uses for SQS,
+  # each gated by condition keys that are actually populated on its path:
+  #
+  #   1. Same-account: EventBridge calls SQS as the events.amazonaws.com
+  #      service principal. EventBridge populates aws:SourceAccount and
+  #      aws:SourceArn on this call -- gate by those.
+  #
+  #   2. Cross-account: EventBridge has role_arn set on the target, assumes
+  #      the per-setup eb-to-sqs role in the source account, and calls SQS
+  #      from the role's STS session. EventBridge is no longer the caller,
+  #      the role is -- so aws:SourceAccount and aws:SourceArn are NOT
+  #      populated on this path. Gate instead by aws:PrincipalArn, which
+  #      IAM sets to the role's IAM ARN for any assumed-role session. The
+  #      ArnLike pattern restricts to the naming convention emitted by the
+  #      notifications module (newrelic-fed-logs-<setup>-eb-to-sqs) in
+  #      each account listed in var.allowed_source_account_ids. Statement
+  #      is omitted entirely when no cross-account sources are configured.
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "AllowEventBridgeToSendMessage"
-        Effect = "Allow"
-        Principal = {
-          Service = "events.amazonaws.com"
-        }
-        Action   = "sqs:SendMessage"
-        Resource = aws_sqs_queue.iceberg_file_events.arn
-        Condition = {
-          StringEquals = {
-            # Only allow events from the current account and explicitly allowed accounts
-            "aws:SourceAccount" = local.all_allowed_account_ids
+    Statement = concat(
+      [
+        {
+          Sid    = "AllowSameAccountEventBridgeService"
+          Effect = "Allow"
+          Principal = {
+            Service = "events.amazonaws.com"
           }
-          ArnLike = {
-            # Matches every per-setup EventBridge rule that follows the naming convention
-            "aws:SourceArn" = local.sqs_eventbridge_source_arn_patterns
+          Action   = "sqs:SendMessage"
+          Resource = aws_sqs_queue.iceberg_file_events.arn
+          Condition = {
+            StringEquals = {
+              "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+            }
+            ArnLike = {
+              "aws:SourceArn" = local.same_account_eventbridge_rule_arn_pattern
+            }
           }
         }
-      }
-    ]
+      ],
+      length(var.allowed_source_account_ids) > 0 ? [
+        {
+          Sid       = "AllowCrossAccountEventBridgeRoles"
+          Effect    = "Allow"
+          Principal = "*"
+          Action    = "sqs:SendMessage"
+          Resource  = aws_sqs_queue.iceberg_file_events.arn
+          Condition = {
+            ArnLike = {
+              "aws:PrincipalArn" = local.cross_account_eb_role_arn_patterns
+            }
+          }
+        }
+      ] : []
+    )
   })
 }
 

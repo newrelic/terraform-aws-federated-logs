@@ -2,11 +2,65 @@
 # S3 → EVENTBRIDGE NOTIFICATION
 # =============================================================================
 
+data "aws_caller_identity" "current" {}
+
+locals {
+  # The 5th colon-segment of any SQS ARN is the account ID hosting the queue
+  # (arn:aws:sqs:<region>:<account-id>:<queue-name>). The notifications module
+  # already receives this ARN via var.sqs_queue_arn (sourced from the NGEP
+  # entity tagged by data_processing), so cross-account topology can be
+  # inferred without asking the customer to declare it.
+  target_account_id = split(":", var.sqs_queue_arn)[4]
+
+  # Cross-account delivery is needed when the target SQS queue lives in a
+  # different account from the EventBridge rule. AWS requires a role_arn on
+  # the target in that case; same-account targets can rely solely on the
+  # queue's resource policy.
+  cross_account_delivery = local.target_account_id != data.aws_caller_identity.current.account_id
+}
+
 # Enable EventBridge notifications on the bucket
 # All S3 events are forwarded to the default event bus — the rule below filters them
 resource "aws_s3_bucket_notification" "this" {
   bucket      = var.s3_bucket_id
   eventbridge = true
+}
+
+# IAM role assumed by EventBridge to deliver events to a cross-account SQS queue.
+# Created only when target_account_id is set and differs from the current account.
+resource "aws_iam_role" "eventbridge_to_sqs" {
+  count = local.cross_account_delivery ? 1 : 0
+
+  name = "newrelic-fed-logs-${var.setup_name}-eb-to-sqs"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect    = "Allow"
+        Principal = { Service = "events.amazonaws.com" }
+        Action    = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "eventbridge_to_sqs" {
+  count = local.cross_account_delivery ? 1 : 0
+
+  name = "send-to-cross-account-sqs"
+  role = aws_iam_role.eventbridge_to_sqs[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "sqs:SendMessage"
+        Resource = var.sqs_queue_arn
+      }
+    ]
+  })
 }
 
 # EventBridge rule — matches pcg parquet file creation events in this bucket
@@ -41,6 +95,12 @@ resource "aws_cloudwatch_event_target" "iceberg_file_events_sqs" {
   rule      = aws_cloudwatch_event_rule.iceberg_file_events.name
   target_id = "sqs-target"
   arn       = var.sqs_queue_arn
+
+  # role_arn is REQUIRED by EventBridge when the target lives in another
+  # account. With it set, EventBridge calls SQS as the assumed role's
+  # session (in this account) — the target queue's policy must therefore
+  # trust this account, not the events.amazonaws.com service principal.
+  role_arn = local.cross_account_delivery ? aws_iam_role.eventbridge_to_sqs[0].arn : null
 
   input_transformer {
     input_paths = {
