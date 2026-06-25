@@ -4,14 +4,13 @@
 
 set -e
 
-# Regions to sweep. Defaults to AWS_REGION + us-west-2 (the region the Go integration test pins,
-# regardless of the workflow's AWS_REGION env). Override with TEST_REGIONS="r1,r2,...".
-DEFAULT_REGIONS="${AWS_REGION:-us-east-1} us-west-2"
-TEST_REGIONS_INPUT="${TEST_REGIONS:-$DEFAULT_REGIONS}"
-REGIONS=$(echo "$TEST_REGIONS_INPUT" | tr ',' ' ' | tr -s ' ' '\n' | awk 'NF && !seen[$0]++' | xargs)
+# Regions the integration test, add more here if
+# the test fixture starts targeting additional regions.
+# To add a region later, REGIONS="us-west-2 us-west-1"
+REGIONS="us-west-2"
 
 echo "Cleaning up test resources..."
-echo "Sweeping regions: $REGIONS"
+echo "Regions: $REGIONS"
 
 # ── Regional resources ──────────────────────────────────────────────────────
 for REGION in $REGIONS; do
