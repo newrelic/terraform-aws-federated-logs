@@ -1,7 +1,6 @@
 """
 Lambda entry point for the federated-logs E2E validation.
 """
-import json
 import os
 import subprocess
 import sys
@@ -17,10 +16,23 @@ def get_secret(secret_arn):
 
 
 def handler(event, context):
+    # ── Resolve secret ARNs from env ────────────────────────────
+    try:
+        license_key_secret_arn = os.environ["LICENSE_KEY_SECRET_ARN"]
+        api_key_secret_arn = os.environ["API_KEY_SECRET_ARN"]
+    except KeyError as e:
+        return {
+            "status": "FAIL",
+            "exit_code": 1,
+            "error": f"Missing required env var: {e}",
+            "stdout": "",
+            "stderr": "",
+        }
+
     # ── Fetch credentials from Secrets Manager ──────────────────
     try:
-        license_key = get_secret(event["license_key_secret_arn"])
-        api_key = get_secret(event["api_key_secret_arn"])
+        license_key = get_secret(license_key_secret_arn)
+        api_key = get_secret(api_key_secret_arn)
     except ClientError as e:
         return {
             "status": "FAIL",
@@ -29,35 +41,14 @@ def handler(event, context):
             "stdout": "",
             "stderr": "",
         }
-    except KeyError as e:
-        return {
-            "status": "FAIL",
-            "exit_code": 1,
-            "error": f"Missing required event field: {e}",
-            "stdout": "",
-            "stderr": "",
-        }
 
     # ── Build environment for the script ────────────────────────
     env = os.environ.copy()
-    env["PCG_ENDPOINT"] = str(event["pcg_endpoint"])
-    env["NR_ACCOUNT_ID"] = str(event["nr_account_id"])
-    env["NR_REGION"] = str(event.get("nr_region", "US"))
-    env["NR_FEDERATEDLOGS_SETUP_ID"] = str(event["setup_id"])
-    env["TEST_PAYLOAD"] = str(event.get("test_payload", '{"message":"federated-logs e2e test","level":"info"}'))
     env["NEW_RELIC_LICENSE_KEY"] = license_key
     env["NEW_RELIC_API_KEY"] = api_key
 
-    # Optional retry/poll knobs (script defaults apply when absent)
-    for tf_field, env_var in [
-        ("max_retries",       "E2E_MAX_RETRIES"),
-        ("retry_delay",       "E2E_RETRY_DELAY"),
-        ("initial_read_wait", "E2E_INITIAL_READ_WAIT"),
-        ("read_max_retries",  "E2E_READ_MAX_RETRIES"),
-        ("read_retry_delay",  "E2E_READ_RETRY_DELAY"),
-    ]:
-        if tf_field in event:
-            env[env_var] = str(event[tf_field])
+    if isinstance(event, dict) and event.get("test_payload"):
+        env["TEST_PAYLOAD"] = str(event["test_payload"])
 
     # ── Run the CLI script ──────────────────────────────────────
     script_path = os.path.join(os.path.dirname(__file__), "e2e_test.py")

@@ -15,7 +15,7 @@ output "execution_role_arn" {
 
 output "invocation_result" {
   description = "Result of the most recent Lambda invocation as a JSON string. Includes status (PASS/FAIL), exit_code, stdout, and stderr from the e2e script. Empty when validation runs for the first time and the invocation hasn't completed yet."
-  value       = aws_lambda_invocation.e2e_validation.result
+  value       = try(jsondecode(aws_lambda_invocation.e2e_validation.result).stdout, null)
 }
 
 output "invocation_status" {

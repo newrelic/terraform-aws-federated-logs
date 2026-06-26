@@ -27,3 +27,13 @@ output "iceberg_tables" {
   description = "Map of created Iceberg table names and ARNs"
   value       = module.federated_logs.iceberg_tables
 }
+
+output "e2e_validation_status" {
+  description = "Parsed PASS/FAIL status of the most recent e2e Lambda invocation. null when e2e_validation_config.enabled = false."
+  value       = module.federated_logs.e2e_validation_status
+}
+
+output "e2e_validation_result" {
+  description = "JSON result (status, exit_code, stdout, stderr) of the most recent e2e Lambda invocation. null when e2e_validation_config.enabled = false."
+  value       = module.federated_logs.e2e_validation_result
+}
