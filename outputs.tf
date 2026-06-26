@@ -47,3 +47,13 @@ output "newrelic_query_connection_id" {
   description = "ID of the per-setup newrelic_aws_connection wrapping the reader role. Used by the setup as query_connection_id."
   value       = module.role.query_connection_id
 }
+
+output "e2e_validation_status" {
+  description = "Parsed PASS/FAIL status of the most recent e2e Lambda invocation. null when e2e_validation_config.enabled = false."
+  value       = try(module.e2e_validation[0].invocation_status, null)
+}
+
+output "e2e_validation_result" {
+  description = "JSON result (status, exit_code, stdout, stderr) of the most recent e2e Lambda invocation. null when e2e_validation_config.enabled = false."
+  value       = try(module.e2e_validation[0].invocation_result, null)
+}
