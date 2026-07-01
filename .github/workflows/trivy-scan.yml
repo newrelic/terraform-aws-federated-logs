@@ -34,7 +34,7 @@ jobs:
           severity: CRITICAL,HIGH
           format: table
           output: trivy-results.txt
-          exit-code: "0"
+          exit-code: "1"
           ignore-unfixed: false
 
       - name: Publish results to job summary
@@ -59,3 +59,14 @@ jobs:
               echo "No vulnerabilities found."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Notify Slack on findings
+        if: failure() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        uses: slackapi/slack-github-action@37ebaef184d7626c5f204ab8d3baff4262dd30f0 # v1.27.0
+        with:
+          payload: |
+            {
+              "text": ":rotating_light: Trivy detected CRITICAL/HIGH findings in ${{ github.repository }} — ${{ matrix.scan.name }} scan on `${{ github.ref_name }}`\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_TRIVY_WEBHOOK_URL }}
