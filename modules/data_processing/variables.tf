@@ -133,6 +133,12 @@ variable "newrelic_metrics_endpoint" {
   default     = "https://metric-api.newrelic.com/metric/v1"
 }
 
+variable "enable_metrics" {
+  description = "Whether the Flink data-processing app reports pipeline metrics (iceberg.commit.*) to New Relic. Set to false to stop sending them. Reversible."
+  type        = bool
+  default     = true
+}
+
 variable "log_retention_days" {
   description = "CloudWatch log group retention in days."
   type        = number
