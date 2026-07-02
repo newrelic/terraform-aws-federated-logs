@@ -464,3 +464,39 @@ resource "null_resource" "fleet_relationship" {
 
   depends_on = [newrelic_aws_connection.fleet_ingest]
 }
+
+# =============================================================================
+# E2E VALIDATION (optional)
+#
+# Runs from the fleet/PCG account so the validation Lambda sits in a VPC that
+# can actually reach PCG. This is what makes cross-account validation possible:
+# the federated_logs setup account has no PCG-reachable VPC, but this account
+# does. setup_id and nr_account_id are supplied via the config object because
+# data_processing cannot derive them — they belong to the storage-account setup
+# (copy setup_id from that deploy's newrelic_federated_logs_setup_id output).
+# =============================================================================
+
+module "e2e_validation" {
+  count  = var.e2e_validation_config.enabled ? 1 : 0
+  source = "../federated_logs_e2e_validation"
+
+  pcg_endpoint  = var.e2e_validation_config.pcg_endpoint
+  nr_account_id = var.e2e_validation_config.nr_account_id
+  nr_region     = var.newrelic_region
+  setup_id      = var.e2e_validation_config.setup_id
+  test_payload  = var.e2e_validation_config.test_payload
+
+  vpc_config         = var.e2e_validation_config.vpc_config
+  lambda_timeout     = var.e2e_validation_config.lambda_timeout
+  lambda_memory_size = var.e2e_validation_config.lambda_memory_size
+
+  # Retry/poll tunables — defaults sized for typical ingestion latency.
+  max_retries       = var.e2e_validation_config.max_retries
+  retry_delay       = var.e2e_validation_config.retry_delay
+  initial_read_wait = var.e2e_validation_config.initial_read_wait
+  read_max_retries  = var.e2e_validation_config.read_max_retries
+  read_retry_delay  = var.e2e_validation_config.read_retry_delay
+
+  # The queue/Flink pipeline should exist before we prove data flows end-to-end.
+  depends_on = [aws_kinesisanalyticsv2_application.flink_iceberg_commit_worker]
+}

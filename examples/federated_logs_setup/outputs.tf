@@ -28,6 +28,11 @@ output "iceberg_tables" {
   value       = module.federated_logs.iceberg_tables
 }
 
+output "newrelic_federated_logs_setup_id" {
+  description = "Entity GUID of the federated logs setup. For cross-account, pass this as setup_id to the data_processing module's e2e_validation_config."
+  value       = module.federated_logs.newrelic_federated_logs_setup_id
+}
+
 output "e2e_validation_status" {
   description = "Parsed PASS/FAIL status of the most recent e2e Lambda invocation. null when e2e_validation_config.enabled = false."
   value       = module.federated_logs.e2e_validation_status

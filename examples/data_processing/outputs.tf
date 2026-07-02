@@ -8,3 +8,13 @@ output "base_role_name" {
   value       = module.data_processing.base_role_name
 }
 
+output "e2e_validation_status" {
+  description = "Parsed PASS/FAIL status of the most recent e2e Lambda invocation. null when e2e_validation_config.enabled = false."
+  value       = module.data_processing.e2e_validation_status
+}
+
+output "e2e_validation_result" {
+  description = "JSON result (status, exit_code, stdout, stderr) of the most recent e2e Lambda invocation. null when e2e_validation_config.enabled = false."
+  value       = module.data_processing.e2e_validation_result
+}
+
