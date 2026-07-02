@@ -178,6 +178,52 @@ variable "allowed_source_account_ids" {
 }
 
 # =============================================================================
+# E2E VALIDATION (optional)
+# =============================================================================
+
+variable "e2e_validation_config" {
+  description = "Configuration for the optional end-to-end validation, run from the data_processing (fleet/PCG) account. When enabled=true, deploys an AWS Lambda inside your VPC that POSTs a synthetic log to PCG, polls NRDB for the log, and reports HEALTHY/UNHEALTHY back to New Relic via the federatedLogsUpdateSetup mutation. Credentials are sourced from NEW_RELIC_LICENSE_KEY and NEW_RELIC_API_KEY env vars on the runner. Unlike the federated_logs setup module, data_processing cannot derive setup_id / nr_account_id (the setup lives in the storage account), so both must be supplied here — copy setup_id from the federated_logs deploy's newrelic_federated_logs_setup_id output. nr_region reuses this module's newrelic_region."
+  type = object({
+    enabled      = optional(bool, false)
+    pcg_endpoint = optional(string, "")
+    test_payload = optional(string, "")
+
+    # Cross-account: these cannot be derived here — the setup lives in the
+    # storage account. setup_id comes from the federated_logs apply output
+    # (newrelic_federated_logs_setup_id); nr_account_id is your NR account ID.
+    setup_id      = optional(string, "")
+    nr_account_id = optional(number)
+
+    vpc_config = optional(object({
+      subnet_ids         = list(string)
+      security_group_ids = list(string)
+    }))
+
+    lambda_timeout     = optional(number, 180)
+    lambda_memory_size = optional(number, 256)
+
+    # Script retry/poll knobs (script defaults apply when omitted).
+    max_retries       = optional(number, 3)
+    retry_delay       = optional(number, 5)
+    initial_read_wait = optional(number, 30)
+    read_max_retries  = optional(number, 5)
+    read_retry_delay  = optional(number, 15)
+  })
+  default = {}
+
+  validation {
+    condition = !var.e2e_validation_config.enabled || (
+      var.e2e_validation_config.pcg_endpoint != "" &&
+      var.e2e_validation_config.test_payload != "" &&
+      var.e2e_validation_config.vpc_config != null &&
+      var.e2e_validation_config.setup_id != "" &&
+      var.e2e_validation_config.nr_account_id != null
+    )
+    error_message = "When e2e_validation_config.enabled is true, pcg_endpoint, test_payload, vpc_config, setup_id, and nr_account_id must all be provided."
+  }
+}
+
+# =============================================================================
 # TAGS
 # =============================================================================
 
