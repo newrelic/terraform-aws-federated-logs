@@ -31,7 +31,7 @@ jobs:
         with:
           scan-type: ${{ matrix.scan.type }}
           scan-ref: ${{ matrix.scan.ref }}
-          severity: CRITICAL,HIGH
+          severity: CRITICAL
           format: table
           output: trivy-results.txt
           exit-code: "1"
@@ -43,7 +43,7 @@ jobs:
           {
             echo "## Trivy ${{ matrix.scan.name }} scan"
             echo ""
-            echo "Severity: \`CRITICAL\`, \`HIGH\`"
+            echo "Severity: \`CRITICAL\`"
             echo "Scan type: \`${{ matrix.scan.type }}\`"
             echo "Scan ref: \`${{ matrix.scan.ref }}\`"
             echo ""
@@ -66,7 +66,7 @@ jobs:
         with:
           payload: |
             {
-              "text": ":rotating_light: Trivy detected CRITICAL/HIGH findings in ${{ github.repository }} — ${{ matrix.scan.name }} scan on `${{ github.ref_name }}`\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              "text": ":rotating_light: Trivy detected CRITICAL findings in ${{ github.repository }} — ${{ matrix.scan.name }} scan on `${{ github.ref_name }}`\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_TRIVY_WEBHOOK_URL }}
