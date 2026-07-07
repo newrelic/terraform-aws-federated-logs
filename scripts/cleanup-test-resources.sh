@@ -12,6 +12,25 @@ REGIONS="us-west-2"
 echo "Cleaning up test resources..."
 echo "Regions: $REGIONS"
 
+# aws_cmd LABEL AWS_ARGS...
+# Prints "WARN: <LABEL> failed: <stderr>" on any other failure so orphans don't stay invisible.
+aws_cmd() {
+  local label="$1"; shift
+  local err rc=0
+  err=$("$@" 2>&1 >/dev/null) || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    case "$err" in
+      *NotFoundException*|*ResourceNotFound*|*NoSuchEntity*|*NoSuchBucket*|*NonExistentQueue*|*EntityNotFoundException*)
+        : # expected: resource already gone
+        ;;
+      *)
+        echo "    WARN: $label failed: $err"
+        ;;
+    esac
+  fi
+  return 0
+}
+
 # ── Regional resources ──────────────────────────────────────────────────────
 for REGION in $REGIONS; do
   echo ""
@@ -28,13 +47,13 @@ for REGION in $REGIONS; do
   while read -r app; do
     if [ -n "$app" ]; then
       echo "    Stopping Flink application: $app"
-      aws kinesisanalyticsv2 stop-application --region "$REGION" --application-name "$app" --force 2>/dev/null || true
+      aws_cmd "stop Flink app $app" aws kinesisanalyticsv2 stop-application --region "$REGION" --application-name "$app" --force
       create_ts=$(aws kinesisanalyticsv2 describe-application --region "$REGION" --application-name "$app" \
         --query 'ApplicationDetail.CreateTimestamp' --output text 2>/dev/null || true)
       if [ -n "$create_ts" ] && [ "$create_ts" != "None" ]; then
         echo "    Deleting Flink application: $app"
-        aws kinesisanalyticsv2 delete-application --region "$REGION" \
-          --application-name "$app" --create-timestamp "$create_ts" 2>/dev/null || true
+        aws_cmd "delete Flink app $app" aws kinesisanalyticsv2 delete-application --region "$REGION" \
+          --application-name "$app" --create-timestamp "$create_ts"
       fi
     fi
   done
@@ -50,10 +69,10 @@ for REGION in $REGIONS; do
         --query 'Targets[].Id' --output text 2>/dev/null | tr '\t' ' ')
       if [ -n "$target_ids" ]; then
         echo "    Removing targets for rule: $rule"
-        aws events remove-targets --region "$REGION" --rule "$rule" --ids $target_ids 2>/dev/null || true
+        aws_cmd "remove targets for rule $rule" aws events remove-targets --region "$REGION" --rule "$rule" --ids $target_ids
       fi
       echo "    Deleting EventBridge rule: $rule"
-      aws events delete-rule --region "$REGION" --name "$rule" 2>/dev/null || true
+      aws_cmd "delete EventBridge rule $rule" aws events delete-rule --region "$REGION" --name "$rule"
     fi
   done
 
@@ -66,7 +85,7 @@ for REGION in $REGIONS; do
     for a in $alarm_names; do
       echo "    Deleting alarm: $a"
     done
-    aws cloudwatch delete-alarms --region "$REGION" --alarm-names $alarm_names 2>/dev/null || true
+    aws_cmd "delete CloudWatch alarms" aws cloudwatch delete-alarms --region "$REGION" --alarm-names $alarm_names
   fi
 
   # 4. Glue triggers (data-retention scheduler). Trigger references the job, so
@@ -78,7 +97,7 @@ for REGION in $REGIONS; do
   while read -r trig; do
     if [ -n "$trig" ]; then
       echo "    Deleting Glue trigger: $trig"
-      aws glue delete-trigger --region "$REGION" --name "$trig" 2>/dev/null || true
+      aws_cmd "delete Glue trigger $trig" aws glue delete-trigger --region "$REGION" --name "$trig"
     fi
   done
 
@@ -90,7 +109,7 @@ for REGION in $REGIONS; do
   while read -r job; do
     if [ -n "$job" ]; then
       echo "    Deleting Glue job: $job"
-      aws glue delete-job --region "$REGION" --job-name "$job" 2>/dev/null || true
+      aws_cmd "delete Glue job $job" aws glue delete-job --region "$REGION" --job-name "$job"
     fi
   done
 
@@ -104,7 +123,7 @@ for REGION in $REGIONS; do
       case "$name" in
         *inttest*)
           echo "    Deleting SQS queue: $name"
-          aws sqs delete-queue --region "$REGION" --queue-url "$url" 2>/dev/null || true
+          aws_cmd "delete SQS queue $name" aws sqs delete-queue --region "$REGION" --queue-url "$url"
           ;;
       esac
     fi
@@ -120,7 +139,7 @@ for REGION in $REGIONS; do
         case "$lg" in
           *inttest*)
             echo "    Deleting log group: $lg"
-            aws logs delete-log-group --region "$REGION" --log-group-name "$lg" 2>/dev/null || true
+            aws_cmd "delete log group $lg" aws logs delete-log-group --region "$REGION" --log-group-name "$lg"
             ;;
         esac
       fi
@@ -140,10 +159,10 @@ for REGION in $REGIONS; do
       while read -r table; do
         if [ -n "$table" ]; then
           echo "      Deleting table: $table"
-          aws glue delete-table --region "$REGION" --database-name "$db" --name "$table" 2>/dev/null || true
+          aws_cmd "delete Glue table $db.$table" aws glue delete-table --region "$REGION" --database-name "$db" --name "$table"
         fi
       done
-      aws glue delete-database --region "$REGION" --name "$db" 2>/dev/null || true
+      aws_cmd "delete Glue database $db" aws glue delete-database --region "$REGION" --name "$db"
     fi
   done
 done
@@ -165,7 +184,7 @@ aws s3api list-buckets \
 while read -r bucket; do
   if [ -n "$bucket" ]; then
     echo "    Deleting bucket: $bucket"
-    aws s3 rb "s3://$bucket" --force 2>/dev/null || true
+    aws_cmd "remove S3 bucket $bucket" aws s3 rb "s3://$bucket" --force
   fi
 done
 
@@ -179,13 +198,13 @@ while read -r role; do
     echo "    Deleting IAM role: $role"
     for policy in $(aws iam list-attached-role-policies --role-name "$role" --query 'AttachedPolicies[].PolicyArn' --output text 2>/dev/null); do
       echo "      Detaching policy: $policy"
-      aws iam detach-role-policy --role-name "$role" --policy-arn "$policy" 2>/dev/null || true
+      aws_cmd "detach policy $policy from role $role" aws iam detach-role-policy --role-name "$role" --policy-arn "$policy"
     done
     for policy in $(aws iam list-role-policies --role-name "$role" --query 'PolicyNames[]' --output text 2>/dev/null); do
       echo "      Deleting inline policy: $policy"
-      aws iam delete-role-policy --role-name "$role" --policy-name "$policy" 2>/dev/null || true
+      aws_cmd "delete inline policy $policy on role $role" aws iam delete-role-policy --role-name "$role" --policy-name "$policy"
     done
-    aws iam delete-role --role-name "$role" 2>/dev/null || true
+    aws_cmd "delete IAM role $role" aws iam delete-role --role-name "$role"
   fi
 done
 
@@ -197,7 +216,7 @@ aws iam list-policies --scope Local \
 while read -r policy_arn; do
   if [ -n "$policy_arn" ]; then
     echo "    Deleting IAM policy: $policy_arn"
-    aws iam delete-policy --policy-arn "$policy_arn" 2>/dev/null || true
+    aws_cmd "delete IAM policy $policy_arn" aws iam delete-policy --policy-arn "$policy_arn"
   fi
 done
 
