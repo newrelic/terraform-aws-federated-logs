@@ -31,6 +31,28 @@ aws_cmd() {
   return 0
 }
 
+# purge_bucket_versions BUCKET
+# `aws s3 rb --force` only deletes current object versions; noncurrent versions
+# and delete markers survive, leaving versioned buckets stuck as BucketNotEmpty.
+# We explicitly enumerate + batch-delete both before calling rb. Loops until the
+# bucket is empty.
+purge_bucket_versions() {
+  local bucket="$1"
+  local batch count
+  for _ in $(seq 1 20); do
+    batch=$(aws s3api list-object-versions --bucket "$bucket" --max-items 1000 \
+      --output json 2>/dev/null | \
+      jq -c '{Objects: ((.Versions // []) + (.DeleteMarkers // [])) | map({Key, VersionId})}' 2>/dev/null)
+    count=$(echo "$batch" | jq '.Objects | length' 2>/dev/null)
+    if [ -z "$count" ] || [ "$count" -eq 0 ]; then
+      return 0
+    fi
+    aws_cmd "purge $count versions from $bucket" \
+      aws s3api delete-objects --bucket "$bucket" --delete "$batch"
+  done
+  echo "    WARN: gave up purging $bucket after 20 iterations; s3 rb will likely fail"
+}
+
 # ── Regional resources ──────────────────────────────────────────────────────
 for REGION in $REGIONS; do
   echo ""
@@ -48,12 +70,24 @@ for REGION in $REGIONS; do
     if [ -n "$app" ]; then
       echo "    Stopping Flink application: $app"
       aws_cmd "stop Flink app $app" aws kinesisanalyticsv2 stop-application --region "$REGION" --application-name "$app" --force
-      create_ts=$(aws kinesisanalyticsv2 describe-application --region "$REGION" --application-name "$app" \
-        --query 'ApplicationDetail.CreateTimestamp' --output text 2>/dev/null || true)
-      if [ -n "$create_ts" ] && [ "$create_ts" != "None" ]; then
+      # Poll until the app leaves STOPPING/FORCE_STOPPING.
+      status=""; create_ts=""
+      for _ in $(seq 1 12); do
+        read -r status create_ts <<< "$(aws kinesisanalyticsv2 describe-application --region "$REGION" --application-name "$app" \
+          --query '[ApplicationDetail.ApplicationStatus, ApplicationDetail.CreateTimestamp]' \
+          --output text 2>/dev/null || echo "")"
+        case "$status" in
+          READY) break ;;
+          "")    break ;;  # app not found — already gone
+          *)     sleep 5 ;;
+        esac
+      done
+      if [ "$status" = "READY" ] && [ -n "$create_ts" ] && [ "$create_ts" != "None" ]; then
         echo "    Deleting Flink application: $app"
         aws_cmd "delete Flink app $app" aws kinesisanalyticsv2 delete-application --region "$REGION" \
           --application-name "$app" --create-timestamp "$create_ts"
+      elif [ -n "$status" ]; then
+        echo "    Flink app $app still in '$status' after 60s; skipping delete (next sweep will retry)"
       fi
     fi
   done
@@ -184,6 +218,9 @@ aws s3api list-buckets \
 while read -r bucket; do
   if [ -n "$bucket" ]; then
     echo "    Deleting bucket: $bucket"
+    # Purge all versions + delete markers first — required for versioned buckets
+    # (e.g. the flink-jar bucket). No-op for non-versioned buckets.
+    purge_bucket_versions "$bucket"
     aws_cmd "remove S3 bucket $bucket" aws s3 rb "s3://$bucket" --force
   fi
 done
