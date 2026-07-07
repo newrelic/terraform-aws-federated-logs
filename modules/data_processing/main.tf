@@ -273,6 +273,7 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
 
           "newrelic.license.key"          = data.external.license_key.result.license_key
           "newrelic.metrics.api.endpoint" = var.newrelic_metrics_endpoint
+          "newrelic.metrics.enabled"      = tostring(var.enable_metrics)
         }
       }
     }
