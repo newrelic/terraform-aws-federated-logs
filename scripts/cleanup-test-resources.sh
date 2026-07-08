@@ -9,8 +9,13 @@ set -e
 # To add a region later, REGIONS="us-west-2 us-west-1"
 REGIONS="us-west-2"
 
+NEWRELIC_FED_LOGS_NAME_PREFIX="newrelic-fed-logs-"
+NEWRELIC_FED_LOGS_NAME_PREFIX_UNDERSCORE="newrelic_fed_logs_"
+INTEGRATION_TEST_MARKER="inttest"
+
 echo "Cleaning up test resources..."
 echo "Regions: $REGIONS"
+echo "Filter: names starting with '${NEWRELIC_FED_LOGS_NAME_PREFIX}' or '${NEWRELIC_FED_LOGS_NAME_PREFIX_UNDERSCORE}' AND containing '${INTEGRATION_TEST_MARKER}'"
 
 # aws_cmd LABEL AWS_ARGS...
 # Prints "WARN: <LABEL> failed: <stderr>" on any other failure so orphans don't stay invisible.
@@ -29,6 +34,15 @@ aws_cmd() {
     esac
   fi
   return 0
+}
+
+report_count() {
+  local label="$1" count="$2"
+  if [ "$count" -eq 0 ]; then
+    echo "    No ${label} found"
+  else
+    echo "    Processed ${count} ${label}"
+  fi
 }
 
 # purge_bucket_versions BUCKET
@@ -63,11 +77,10 @@ for REGION in $REGIONS; do
   #    them first. A RUNNING app refuses delete — force-stop it, then delete by
   #    create-timestamp.
   echo "  Deleting Flink applications..."
-  aws kinesisanalyticsv2 list-applications --region "$REGION" \
-    --query "ApplicationSummaries[?starts_with(ApplicationName, 'newrelic-fed-logs-') && contains(ApplicationName, 'inttest')].ApplicationName" \
-    --output text 2>/dev/null | tr '\t' '\n' | \
+  count=0
   while read -r app; do
     if [ -n "$app" ]; then
+      count=$((count + 1))
       echo "    Stopping Flink application: $app"
       aws_cmd "stop Flink app $app" aws kinesisanalyticsv2 stop-application --region "$REGION" --application-name "$app" --force
       # Poll until the app leaves STOPPING/FORCE_STOPPING.
@@ -90,15 +103,17 @@ for REGION in $REGIONS; do
         echo "    Flink app $app still in '$status' after 60s; skipping delete (next sweep will retry)"
       fi
     fi
-  done
+  done < <(aws kinesisanalyticsv2 list-applications --region "$REGION" \
+    --query "ApplicationSummaries[?starts_with(ApplicationName, '${NEWRELIC_FED_LOGS_NAME_PREFIX}') && contains(ApplicationName, '${INTEGRATION_TEST_MARKER}')].ApplicationName" \
+    --output text 2>/dev/null | tr '\t' '\n')
+  report_count "Flink application(s)" "$count"
 
   # 2. EventBridge rules. Targets must be removed before the rule can be deleted.
   echo "  Deleting EventBridge rules..."
-  aws events list-rules --region "$REGION" \
-    --query "Rules[?starts_with(Name, 'newrelic-fed-logs-') && contains(Name, 'inttest')].Name" \
-    --output text 2>/dev/null | tr '\t' '\n' | \
+  count=0
   while read -r rule; do
     if [ -n "$rule" ]; then
+      count=$((count + 1))
       target_ids=$(aws events list-targets-by-rule --region "$REGION" --rule "$rule" \
         --query 'Targets[].Id' --output text 2>/dev/null | tr '\t' ' ')
       if [ -n "$target_ids" ]; then
@@ -108,97 +123,115 @@ for REGION in $REGIONS; do
       echo "    Deleting EventBridge rule: $rule"
       aws_cmd "delete EventBridge rule $rule" aws events delete-rule --region "$REGION" --name "$rule"
     fi
-  done
+  done < <(aws events list-rules --region "$REGION" \
+    --query "Rules[?starts_with(Name, '${NEWRELIC_FED_LOGS_NAME_PREFIX}') && contains(Name, '${INTEGRATION_TEST_MARKER}')].Name" \
+    --output text 2>/dev/null | tr '\t' '\n')
+  report_count "EventBridge rule(s)" "$count"
 
   # 3. CloudWatch metric alarms. One per partition table × 3 optimizer types.
   echo "  Deleting CloudWatch alarms..."
   alarm_names=$(aws cloudwatch describe-alarms --region "$REGION" \
-    --query "MetricAlarms[?starts_with(AlarmName, 'newrelic_fed_logs_') && contains(AlarmName, 'inttest')].AlarmName" \
+    --query "MetricAlarms[?starts_with(AlarmName, '${NEWRELIC_FED_LOGS_NAME_PREFIX_UNDERSCORE}') && contains(AlarmName, '${INTEGRATION_TEST_MARKER}')].AlarmName" \
     --output text 2>/dev/null | tr '\t' ' ')
+  count=0
   if [ -n "$alarm_names" ]; then
     for a in $alarm_names; do
+      count=$((count + 1))
       echo "    Deleting alarm: $a"
     done
     aws_cmd "delete CloudWatch alarms" aws cloudwatch delete-alarms --region "$REGION" --alarm-names $alarm_names
   fi
+  report_count "CloudWatch alarm(s)" "$count"
 
   # 4. Glue triggers (data-retention scheduler). Trigger references the job, so
   #    delete the trigger first to allow the job to drop cleanly.
   echo "  Deleting Glue triggers..."
-  aws glue list-triggers --region "$REGION" \
-    --query "TriggerNames[?starts_with(@, 'newrelic_fed_logs_') && contains(@, 'inttest')]" \
-    --output text 2>/dev/null | tr '\t' '\n' | \
+  count=0
   while read -r trig; do
     if [ -n "$trig" ]; then
+      count=$((count + 1))
       echo "    Deleting Glue trigger: $trig"
       aws_cmd "delete Glue trigger $trig" aws glue delete-trigger --region "$REGION" --name "$trig"
     fi
-  done
+  done < <(aws glue list-triggers --region "$REGION" \
+    --query "TriggerNames[?starts_with(@, '${NEWRELIC_FED_LOGS_NAME_PREFIX_UNDERSCORE}') && contains(@, '${INTEGRATION_TEST_MARKER}')]" \
+    --output text 2>/dev/null | tr '\t' '\n')
+  report_count "Glue trigger(s)" "$count"
 
   # 5. Glue jobs (data-retention Spark ETL).
   echo "  Deleting Glue jobs..."
-  aws glue list-jobs --region "$REGION" \
-    --query "JobNames[?starts_with(@, 'newrelic_fed_logs_') && contains(@, 'inttest')]" \
-    --output text 2>/dev/null | tr '\t' '\n' | \
+  count=0
   while read -r job; do
     if [ -n "$job" ]; then
+      count=$((count + 1))
       echo "    Deleting Glue job: $job"
       aws_cmd "delete Glue job $job" aws glue delete-job --region "$REGION" --job-name "$job"
     fi
-  done
+  done < <(aws glue list-jobs --region "$REGION" \
+    --query "JobNames[?starts_with(@, '${NEWRELIC_FED_LOGS_NAME_PREFIX_UNDERSCORE}') && contains(@, '${INTEGRATION_TEST_MARKER}')]" \
+    --output text 2>/dev/null | tr '\t' '\n')
+  report_count "Glue job(s)" "$count"
 
   # 6. SQS queues.
   echo "  Deleting SQS queues..."
-  aws sqs list-queues --region "$REGION" --queue-name-prefix "newrelic-fed-logs-" \
-    --query 'QueueUrls[]' --output text 2>/dev/null | tr '\t' '\n' | \
+  count=0
   while read -r url; do
     if [ -n "$url" ]; then
       name=$(basename "$url")
       case "$name" in
-        *inttest*)
+        *"$INTEGRATION_TEST_MARKER"*)
+          count=$((count + 1))
           echo "    Deleting SQS queue: $name"
           aws_cmd "delete SQS queue $name" aws sqs delete-queue --region "$REGION" --queue-url "$url"
           ;;
       esac
     fi
-  done
+  done < <(aws sqs list-queues --region "$REGION" --queue-name-prefix "$NEWRELIC_FED_LOGS_NAME_PREFIX" \
+    --query 'QueueUrls[]' --output text 2>/dev/null | tr '\t' '\n')
+  report_count "SQS queue(s)" "$count"
 
   # 7. CloudWatch log groups. Two known prefixes: Flink app + Glue retention job.
   echo "  Deleting CloudWatch log groups..."
-  for lg_prefix in /aws/kinesis-analytics/newrelic-fed-logs- /aws-glue/jobs/newrelic_fed_logs_; do
-    aws logs describe-log-groups --region "$REGION" --log-group-name-prefix "$lg_prefix" \
-      --query 'logGroups[].logGroupName' --output text 2>/dev/null | tr '\t' '\n' | \
+  count=0
+  for lg_prefix in "/aws/kinesis-analytics/${NEWRELIC_FED_LOGS_NAME_PREFIX}" "/aws-glue/jobs/${NEWRELIC_FED_LOGS_NAME_PREFIX_UNDERSCORE}"; do
     while read -r lg; do
       if [ -n "$lg" ]; then
         case "$lg" in
-          *inttest*)
+          *"$INTEGRATION_TEST_MARKER"*)
+            count=$((count + 1))
             echo "    Deleting log group: $lg"
             aws_cmd "delete log group $lg" aws logs delete-log-group --region "$REGION" --log-group-name "$lg"
             ;;
         esac
       fi
-    done
+    done < <(aws logs describe-log-groups --region "$REGION" --log-group-name-prefix "$lg_prefix" \
+      --query 'logGroups[].logGroupName' --output text 2>/dev/null | tr '\t' '\n')
   done
+  report_count "CloudWatch log group(s)" "$count"
 
   # 8. Glue catalog databases.
   echo "  Deleting Glue databases..."
-  aws glue get-databases --region "$REGION" \
-    --query "DatabaseList[?starts_with(Name, 'newrelic_fed_logs_') && contains(Name, 'inttest')].Name" \
-    --output text 2>/dev/null | tr '\t' '\n' | \
+  count=0
   while read -r db; do
     if [ -n "$db" ]; then
+      count=$((count + 1))
       echo "    Deleting Glue database: $db"
-      aws glue get-tables --region "$REGION" --database-name "$db" \
-        --query 'TableList[].Name' --output text 2>/dev/null | tr '\t' '\n' | \
+      table_count=0
       while read -r table; do
         if [ -n "$table" ]; then
+          table_count=$((table_count + 1))
           echo "      Deleting table: $table"
           aws_cmd "delete Glue table $db.$table" aws glue delete-table --region "$REGION" --database-name "$db" --name "$table"
         fi
-      done
+      done < <(aws glue get-tables --region "$REGION" --database-name "$db" \
+        --query 'TableList[].Name' --output text 2>/dev/null | tr '\t' '\n')
+      report_count "table(s) in $db" "$table_count"
       aws_cmd "delete Glue database $db" aws glue delete-database --region "$REGION" --name "$db"
     fi
-  done
+  done < <(aws glue get-databases --region "$REGION" \
+    --query "DatabaseList[?starts_with(Name, '${NEWRELIC_FED_LOGS_NAME_PREFIX_UNDERSCORE}') && contains(Name, '${INTEGRATION_TEST_MARKER}')].Name" \
+    --output text 2>/dev/null | tr '\t' '\n')
+  report_count "Glue database(s)" "$count"
 done
 
 # ── Global resources ────────────────────────────────────────────────────────
@@ -212,26 +245,27 @@ echo "==> Global resources"
 #    drops the bucket; this also covers aws_s3_object children (Flink JAR,
 #    partition folder markers, retention scripts).
 echo "  Deleting S3 buckets..."
-aws s3api list-buckets \
-  --query "Buckets[?starts_with(Name, 'newrelic-fed-logs-') && contains(Name, 'inttest')].Name" \
-  --output text 2>/dev/null | tr '\t' '\n' | \
+count=0
 while read -r bucket; do
   if [ -n "$bucket" ]; then
+    count=$((count + 1))
     echo "    Deleting bucket: $bucket"
     # Purge all versions + delete markers first — required for versioned buckets
     # (e.g. the flink-jar bucket). No-op for non-versioned buckets.
     purge_bucket_versions "$bucket"
     aws_cmd "remove S3 bucket $bucket" aws s3 rb "s3://$bucket" --force
   fi
-done
+done < <(aws s3api list-buckets \
+  --query "Buckets[?starts_with(Name, '${NEWRELIC_FED_LOGS_NAME_PREFIX}') && contains(Name, '${INTEGRATION_TEST_MARKER}')].Name" \
+  --output text 2>/dev/null | tr '\t' '\n')
+report_count "S3 bucket(s)" "$count"
 
 # 10. IAM roles. Detach managed policies + delete inline policies before delete.
 echo "  Deleting IAM roles..."
-aws iam list-roles \
-  --query "Roles[?starts_with(RoleName, 'newrelic-fed-logs-') && contains(RoleName, 'inttest')].RoleName" \
-  --output text 2>/dev/null | tr '\t' '\n' | \
+count=0
 while read -r role; do
   if [ -n "$role" ]; then
+    count=$((count + 1))
     echo "    Deleting IAM role: $role"
     for policy in $(aws iam list-attached-role-policies --role-name "$role" --query 'AttachedPolicies[].PolicyArn' --output text 2>/dev/null); do
       echo "      Detaching policy: $policy"
@@ -243,19 +277,24 @@ while read -r role; do
     done
     aws_cmd "delete IAM role $role" aws iam delete-role --role-name "$role"
   fi
-done
+done < <(aws iam list-roles \
+  --query "Roles[?starts_with(RoleName, '${NEWRELIC_FED_LOGS_NAME_PREFIX}') && contains(RoleName, '${INTEGRATION_TEST_MARKER}')].RoleName" \
+  --output text 2>/dev/null | tr '\t' '\n')
+report_count "IAM role(s)" "$count"
 
 # 11. IAM customer-managed policies.
 echo "  Deleting IAM policies..."
-aws iam list-policies --scope Local \
-  --query "Policies[?starts_with(PolicyName, 'newrelic-fed-logs-') && contains(PolicyName, 'inttest')].Arn" \
-  --output text 2>/dev/null | tr '\t' '\n' | \
+count=0
 while read -r policy_arn; do
   if [ -n "$policy_arn" ]; then
+    count=$((count + 1))
     echo "    Deleting IAM policy: $policy_arn"
     aws_cmd "delete IAM policy $policy_arn" aws iam delete-policy --policy-arn "$policy_arn"
   fi
-done
+done < <(aws iam list-policies --scope Local \
+  --query "Policies[?starts_with(PolicyName, '${NEWRELIC_FED_LOGS_NAME_PREFIX}') && contains(PolicyName, '${INTEGRATION_TEST_MARKER}')].Arn" \
+  --output text 2>/dev/null | tr '\t' '\n')
+report_count "IAM policy(ies)" "$count"
 
 echo ""
 echo "Cleanup completed!"
