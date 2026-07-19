@@ -117,8 +117,8 @@ func TestFederatedLogsE2E(t *testing.T) {
 	// ----- SCENARIO 2: add custom tables -------------------------------------
 	t.Run("add_custom_tables", func(t *testing.T) {
 		opts.Vars["partition_tables"] = map[string]interface{}{
-			"app_logs":      map[string]interface{}{},
-			"security_logs": map[string]interface{}{},
+			"Log_app":      map[string]interface{}{},
+			"Log_security": map[string]interface{}{},
 		}
 
 		terraform.Apply(t, opts)
@@ -140,10 +140,10 @@ func TestFederatedLogsE2E(t *testing.T) {
 	// ----- SCENARIO 3: table name sanitization -------------------------------
 	t.Run("table_name_sanitization", func(t *testing.T) {
 		opts.Vars["partition_tables"] = map[string]interface{}{
-			"app_logs":       map[string]interface{}{},
-			"security_logs":  map[string]interface{}{},
-			"My-App.Logs":    map[string]interface{}{}, // hyphen + dot
-			"UPPERCASE_NAME": map[string]interface{}{}, // uppercase
+			"Log_app":       map[string]interface{}{},
+			"Log_security":  map[string]interface{}{},
+			"Log_My-App.Logs":    map[string]interface{}{}, // hyphen + dot
+			"Log_UPPERCASE": map[string]interface{}{}, // uppercase
 		}
 
 		terraform.Apply(t, opts)
@@ -163,11 +163,11 @@ func TestFederatedLogsE2E(t *testing.T) {
 	// ----- SCENARIO 4: custom optimizer config -------------------------------
 	t.Run("custom_optimizer_config", func(t *testing.T) {
 		opts.Vars["partition_tables"] = map[string]interface{}{
-			"app_logs":       map[string]interface{}{},
-			"security_logs":  map[string]interface{}{},
-			"My-App.Logs":    map[string]interface{}{},
-			"UPPERCASE_NAME": map[string]interface{}{},
-			"custom_config_table": map[string]interface{}{
+			"Log_app":       map[string]interface{}{},
+			"Log_security":  map[string]interface{}{},
+			"Log_My-App.Logs":    map[string]interface{}{},
+			"Log_UPPERCASE": map[string]interface{}{},
+			"Log_custom_config": map[string]interface{}{
 				"table_parameters": map[string]interface{}{
 					"custom_param": "custom_value",
 				},
@@ -203,8 +203,8 @@ func TestFederatedLogsE2E(t *testing.T) {
 	// ----- SCENARIO 5: removal blocked by prevent_destroy --------------------
 	t.Run("removal_blocked", func(t *testing.T) {
 		opts.Vars["partition_tables"] = map[string]interface{}{
-			"app_logs":      map[string]interface{}{},
-			"security_logs": map[string]interface{}{},
+			"Log_app":      map[string]interface{}{},
+			"Log_security": map[string]interface{}{},
 		}
 
 		_, err := terraform.ApplyE(t, opts)
@@ -217,11 +217,11 @@ func TestFederatedLogsE2E(t *testing.T) {
 	// ----- SCENARIO 6: custom default table setting --------------------------
 	t.Run("custom_default_table_setting", func(t *testing.T) {
 		opts.Vars["partition_tables"] = map[string]interface{}{
-			"app_logs":            map[string]interface{}{},
-			"security_logs":       map[string]interface{}{},
-			"My-App.Logs":         map[string]interface{}{},
-			"UPPERCASE_NAME":      map[string]interface{}{},
-			"custom_config_table": map[string]interface{}{},
+			"Log_app":            map[string]interface{}{},
+			"Log_security":       map[string]interface{}{},
+			"Log_My-App.Logs":         map[string]interface{}{},
+			"Log_UPPERCASE":      map[string]interface{}{},
+			"Log_custom_config": map[string]interface{}{},
 		}
 		opts.Vars["default_table_setting"] = map[string]interface{}{
 			"table_parameters": map[string]interface{}{
