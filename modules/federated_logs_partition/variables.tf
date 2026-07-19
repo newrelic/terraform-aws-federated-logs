@@ -100,6 +100,11 @@ variable "partition_tables" {
     condition     = !contains([for k in keys(var.partition_tables) : lower(k)], "log_federated")
     error_message = "The table name 'Log_Federated' (case-insensitive) is reserved for the default table. Use default_table_setting to configure it."
   }
+
+  validation {
+    condition     = alltrue([for k in keys(var.partition_tables) : startswith(k, "Log_")])
+    error_message = "All partition table names must start with 'Log_' (e.g., 'Log_my_partition')."
+  }
 }
 
 variable "setup_name" {
