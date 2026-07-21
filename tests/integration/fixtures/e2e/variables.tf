@@ -87,4 +87,9 @@ variable "partition_tables" {
     }), {})
   }))
   default = {}
+
+  validation {
+    condition     = alltrue([for k in keys(var.partition_tables) : startswith(k, "Log_")])
+    error_message = "All partition table names must start with 'Log_' (e.g., 'Log_my_partition')."
+  }
 }

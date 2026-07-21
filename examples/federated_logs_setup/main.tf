@@ -41,10 +41,10 @@ module "federated_logs" {
   }
 
   partition_tables = {
-    "application_log" = {
+    "Log_application" = {
       retention_in_days = 5
     },
-    "security_log" = {
+    "Log_security" = {
       retention_in_days = 10
       optimizer_configuration = {
         orphan_file_deletion = {
@@ -64,14 +64,14 @@ module "federated_logs" {
         }
       }
     },
-    "audit_log" = {
+    "Log_audit" = {
       table_parameters = {
         "write.target-file-size-bytes"               = "52428800" # 50 MB
         "write.metadata.delete-after-commit.enabled" = "false"
         "write.metadata.previous-versions-max"       = "5"
       }
     },
-    "network_log" = {
+    "Log_network" = {
       table_parameters = {
         "write.parquet.page-row-limit"    = "20000"
         "write.parquet.compression-codec" = "snappy"
