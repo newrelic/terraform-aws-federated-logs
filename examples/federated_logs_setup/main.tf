@@ -16,7 +16,8 @@ module "federated_logs" {
   default_table_setting = {
     retention_in_days = 30
     table_parameters = {
-      "write.target-file-size-bytes"               = "26214400" # 25 MB
+      "write.parquet.compression-codec"            = "zstd"
+      "write.target-file-size-bytes"               = "67108864" # 64 MB
       "write.metadata.delete-after-commit.enabled" = "true"
       "write.metadata.previous-versions-max"       = "10"
     }
@@ -26,10 +27,10 @@ module "federated_logs" {
         run_rate_in_hours                    = 24
       }
       snapshot_retention = {
-        snapshot_retention_period_in_days = 5
-        number_of_snapshots_to_retain     = 2
+        snapshot_retention_period_in_days = 1
+        number_of_snapshots_to_retain     = 1
         clean_expired_files               = false
-        run_rate_in_hours                 = 24
+        run_rate_in_hours                 = 3
       }
       compaction = {
         strategy              = "binpack"
@@ -40,10 +41,10 @@ module "federated_logs" {
   }
 
   partition_tables = {
-    "application_log" = {
+    "Log_application" = {
       retention_in_days = 5
     },
-    "security_log" = {
+    "Log_security" = {
       retention_in_days = 10
       optimizer_configuration = {
         orphan_file_deletion = {
@@ -51,10 +52,10 @@ module "federated_logs" {
           run_rate_in_hours                    = 24
         }
         snapshot_retention = {
-          snapshot_retention_period_in_days = 5
-          number_of_snapshots_to_retain     = 2
+          snapshot_retention_period_in_days = 1
+          number_of_snapshots_to_retain     = 1
           clean_expired_files               = false
-          run_rate_in_hours                 = 24
+          run_rate_in_hours                 = 3
         }
         compaction = {
           strategy              = "binpack"
@@ -63,14 +64,14 @@ module "federated_logs" {
         }
       }
     },
-    "audit_log" = {
+    "Log_audit" = {
       table_parameters = {
         "write.target-file-size-bytes"               = "52428800" # 50 MB
         "write.metadata.delete-after-commit.enabled" = "false"
         "write.metadata.previous-versions-max"       = "5"
       }
     },
-    "network_log" = {
+    "Log_network" = {
       table_parameters = {
         "write.parquet.page-row-limit"    = "20000"
         "write.parquet.compression-codec" = "snappy"

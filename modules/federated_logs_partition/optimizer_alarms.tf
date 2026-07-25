@@ -18,6 +18,6 @@ resource "aws_cloudwatch_metric_alarm" "glue_optimizer_failures" {
     return_data = true
     period      = 300
     label       = "Glue Iceberg ${each.key} failures"
-    expression  = "SELECT SUM(\"${each.value}\") FROM SCHEMA(\"Glue\", DATABASE_NAME, TABLE_NAME) WHERE DATABASE_NAME = '${var.glue_catalog_db_name}'"
+    expression  = "SELECT SUM(\"${each.value}\") FROM SCHEMA(\"AWS/Glue\", DATABASE_NAME, TABLE_NAME) WHERE DATABASE_NAME = '${var.glue_catalog_db_name}'"
   }
 }

@@ -71,3 +71,17 @@ output "cloudwatch_log_group_name" {
   description = "Name of the CloudWatch log group for Flink."
   value       = aws_cloudwatch_log_group.flink_log_group.name
 }
+
+# =============================================================================
+# E2E VALIDATION OUTPUTS
+# =============================================================================
+
+output "e2e_validation_status" {
+  description = "Parsed PASS/FAIL status of the most recent e2e Lambda invocation. null when e2e_validation_config.enabled = false."
+  value       = try(module.e2e_validation[0].invocation_status, null)
+}
+
+output "e2e_validation_result" {
+  description = "JSON result (status, exit_code, stdout, stderr) of the most recent e2e Lambda invocation. null when e2e_validation_config.enabled = false."
+  value       = try(module.e2e_validation[0].invocation_result, null)
+}

@@ -273,6 +273,7 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
 
           "newrelic.license.key"          = data.external.license_key.result.license_key
           "newrelic.metrics.api.endpoint" = var.newrelic_metrics_endpoint
+          "newrelic.metrics.enabled"      = tostring(var.enable_metrics)
         }
       }
     }
@@ -341,29 +342,60 @@ resource "aws_sqs_queue" "iceberg_file_events" {
 resource "aws_sqs_queue_policy" "iceberg_file_events_policy" {
   queue_url = aws_sqs_queue.iceberg_file_events.id
 
+  # Two statements cover the two delivery topologies EventBridge uses for SQS,
+  # each gated by condition keys that are actually populated on its path:
+  #
+  #   1. Same-account: EventBridge calls SQS as the events.amazonaws.com
+  #      service principal. EventBridge populates aws:SourceAccount and
+  #      aws:SourceArn on this call -- gate by those.
+  #
+  #   2. Cross-account: EventBridge has role_arn set on the target, assumes
+  #      the per-setup eb-to-sqs role in the source account, and calls SQS
+  #      from the role's STS session. EventBridge is no longer the caller,
+  #      the role is -- so aws:SourceAccount and aws:SourceArn are NOT
+  #      populated on this path. Gate instead by aws:PrincipalArn, which
+  #      IAM sets to the role's IAM ARN for any assumed-role session. The
+  #      ArnLike pattern restricts to the naming convention emitted by the
+  #      notifications module (newrelic-fed-logs-<setup>-eb-to-sqs) in
+  #      each account listed in var.allowed_source_account_ids. Statement
+  #      is omitted entirely when no cross-account sources are configured.
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "AllowEventBridgeToSendMessage"
-        Effect = "Allow"
-        Principal = {
-          Service = "events.amazonaws.com"
-        }
-        Action   = "sqs:SendMessage"
-        Resource = aws_sqs_queue.iceberg_file_events.arn
-        Condition = {
-          StringEquals = {
-            # Only allow events from the current account and explicitly allowed accounts
-            "aws:SourceAccount" = local.all_allowed_account_ids
+    Statement = concat(
+      [
+        {
+          Sid    = "AllowSameAccountEventBridgeService"
+          Effect = "Allow"
+          Principal = {
+            Service = "events.amazonaws.com"
           }
-          ArnLike = {
-            # Matches every per-setup EventBridge rule that follows the naming convention
-            "aws:SourceArn" = local.sqs_eventbridge_source_arn_patterns
+          Action   = "sqs:SendMessage"
+          Resource = aws_sqs_queue.iceberg_file_events.arn
+          Condition = {
+            StringEquals = {
+              "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+            }
+            ArnLike = {
+              "aws:SourceArn" = local.same_account_eventbridge_rule_arn_pattern
+            }
           }
         }
-      }
-    ]
+      ],
+      length(var.allowed_source_account_ids) > 0 ? [
+        {
+          Sid       = "AllowCrossAccountEventBridgeRoles"
+          Effect    = "Allow"
+          Principal = "*"
+          Action    = "sqs:SendMessage"
+          Resource  = aws_sqs_queue.iceberg_file_events.arn
+          Condition = {
+            ArnLike = {
+              "aws:PrincipalArn" = local.cross_account_eb_role_arn_patterns
+            }
+          }
+        }
+      ] : []
+    )
   })
 }
 
@@ -432,4 +464,40 @@ resource "null_resource" "fleet_relationship" {
   }
 
   depends_on = [newrelic_aws_connection.fleet_ingest]
+}
+
+# =============================================================================
+# E2E VALIDATION (optional)
+#
+# Runs from the fleet/PCG account so the validation Lambda sits in a VPC that
+# can actually reach PCG. This is what makes cross-account validation possible:
+# the federated_logs setup account has no PCG-reachable VPC, but this account
+# does. setup_id and nr_account_id are supplied via the config object because
+# data_processing cannot derive them — they belong to the storage-account setup
+# (copy setup_id from that deploy's newrelic_federated_logs_setup_id output).
+# =============================================================================
+
+module "e2e_validation" {
+  count  = var.e2e_validation_config.enabled ? 1 : 0
+  source = "../federated_logs_e2e_validation"
+
+  pcg_endpoint  = var.e2e_validation_config.pcg_endpoint
+  nr_account_id = var.e2e_validation_config.nr_account_id
+  nr_region     = var.newrelic_region
+  setup_id      = var.e2e_validation_config.setup_id
+  test_payload  = var.e2e_validation_config.test_payload
+
+  vpc_config         = var.e2e_validation_config.vpc_config
+  lambda_timeout     = var.e2e_validation_config.lambda_timeout
+  lambda_memory_size = var.e2e_validation_config.lambda_memory_size
+
+  # Retry/poll tunables — defaults sized for typical ingestion latency.
+  max_retries       = var.e2e_validation_config.max_retries
+  retry_delay       = var.e2e_validation_config.retry_delay
+  initial_read_wait = var.e2e_validation_config.initial_read_wait
+  read_max_retries  = var.e2e_validation_config.read_max_retries
+  read_retry_delay  = var.e2e_validation_config.read_retry_delay
+
+  # The queue/Flink pipeline should exist before we prove data flows end-to-end.
+  depends_on = [aws_kinesisanalyticsv2_application.flink_iceberg_commit_worker]
 }

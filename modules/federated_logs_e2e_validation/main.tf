@@ -2,13 +2,9 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 locals {
-  # Max 12 chars so total resource names stay within AWS limits
-  # (IAM role name_prefix has a 38-char ceiling).
-  setup_id_short = var.setup_id == "" ? "default" : substr(
-    replace(var.setup_id, "/[^a-zA-Z0-9]/", ""),
-    0,
-    12,
-  )
+  # A short, UNIQUE id derived from setup_id, used to name the Lambda, secrets,
+  # and IAM role for this setup.
+  setup_id_short = var.setup_id == "" ? "default" : substr(md5(var.setup_id), 0, 12)
 
   function_name = "nr-fed-logs-e2e-${local.setup_id_short}"
 }
@@ -129,6 +125,22 @@ resource "aws_lambda_function" "e2e_validation" {
     security_group_ids = var.vpc_config.security_group_ids
   }
 
+  environment {
+    variables = {
+      PCG_ENDPOINT              = var.pcg_endpoint
+      NR_ACCOUNT_ID             = tostring(var.nr_account_id)
+      NR_REGION                 = var.nr_region
+      NR_FEDERATEDLOGS_SETUP_ID = var.setup_id
+      LICENSE_KEY_SECRET_ARN    = aws_secretsmanager_secret.license_key.arn
+      API_KEY_SECRET_ARN        = aws_secretsmanager_secret.api_key.arn
+      E2E_MAX_RETRIES           = tostring(var.max_retries)
+      E2E_RETRY_DELAY           = tostring(var.retry_delay)
+      E2E_INITIAL_READ_WAIT     = tostring(var.initial_read_wait)
+      E2E_READ_MAX_RETRIES      = tostring(var.read_max_retries)
+      E2E_READ_RETRY_DELAY      = tostring(var.read_retry_delay)
+    }
+  }
+
   depends_on = [
     aws_iam_role_policy_attachment.e2e_lambda_basic,
     aws_iam_role_policy_attachment.e2e_lambda_vpc,
@@ -156,17 +168,6 @@ resource "aws_lambda_invocation" "e2e_validation" {
   }
 
   input = jsonencode({
-    pcg_endpoint           = var.pcg_endpoint
-    nr_account_id          = var.nr_account_id
-    nr_region              = var.nr_region
-    setup_id               = var.setup_id
-    test_payload           = var.test_payload
-    license_key_secret_arn = aws_secretsmanager_secret.license_key.arn
-    api_key_secret_arn     = aws_secretsmanager_secret.api_key.arn
-    max_retries            = var.max_retries
-    retry_delay            = var.retry_delay
-    initial_read_wait      = var.initial_read_wait
-    read_max_retries       = var.read_max_retries
-    read_retry_delay       = var.read_retry_delay
+    test_payload = var.test_payload
   })
 }

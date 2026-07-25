@@ -6,7 +6,11 @@ resource "aws_s3_object" "folder" {
   for_each = local.all_tables
   bucket   = var.s3_bucket_name
   key      = "${var.glue_catalog_db_name}/${each.key}/"
-  region   = data.aws_region.current.id
+  region   = data.aws_region.current.region
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_glue_catalog_table" "iceberg_table" {
@@ -14,10 +18,11 @@ resource "aws_glue_catalog_table" "iceberg_table" {
 
   name          = each.key
   database_name = var.glue_catalog_db_name
-  region        = data.aws_region.current.id
+  region        = data.aws_region.current.region
   table_type    = "EXTERNAL_TABLE"
 
   lifecycle {
+    prevent_destroy = true
     ignore_changes = [
       # Prevent TF from fighting with Athena/Iceberg over these dynamic keys
       parameters
@@ -34,6 +39,15 @@ resource "aws_glue_catalog_table" "iceberg_table" {
 
         properties = local.resolved_table_params[each.key]
 
+        # Seed schema for the table. Fields and IDs declared here are
+        # mirrored in `local.iceberg_schema_name_mapping` (locals.tf) so
+        # that Iceberg readers can resolve case-sensitive names from data
+        # files without embedded field IDs. KEEP THE TWO IN SYNC — any
+        # add / remove / rename here needs the same change in locals.tf.
+        #
+        # Runtime schema additions via Iceberg's UpdateSchema API
+        # auto-extend the name-mapping property in place, so only the
+        # seed fields below are Terraform-managed.
         schema {
           schema_id = 0
           type      = "struct"
@@ -70,14 +84,18 @@ EOF
 "string"
 EOF
           }
-          fields {
-            id       = 5
-            name     = "messageId"
-            required = true
-            type     = <<EOF
-"string"
-EOF
-          }
+          # NOTE: messageId is intentionally NOT declared as a static field
+          # here. PCG generates messageId into attributes["messageId"] via
+          # the add_message_id OTEL transform; it's never written as a
+          # top-level column. Pre-declaring it (as field-id 5 in previous
+          # versions of this module) created a dead column that, once Glue
+          # Catalog lower-cased it to `messageid`, collided with the
+          # `messageId` column Iceberg added at runtime when PCG started
+          # writing the attribute. The collision surfaced as
+          # `Multiple entries with same key: messageid=N:messageId:varchar`
+          # on Athena/Trino reads. Dropping the static declaration lets PCG
+          # (or any other writer) own the field at runtime, and Iceberg
+          # auto-extends `schema.name-mapping.default` for it.
         }
 
         partition_spec {

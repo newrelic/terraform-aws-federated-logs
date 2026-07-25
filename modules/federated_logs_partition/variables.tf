@@ -25,10 +25,10 @@ variable "glue_service_role_arn" {
 #     orphan_file_retention_period_in_days = 3
 #     run_rate_in_hours                    = 24
 #   snapshot_retention:
-#     snapshot_retention_period_in_days    = 5
-#     number_of_snapshots_to_retain        = 2
+#     snapshot_retention_period_in_days    = 1
+#     number_of_snapshots_to_retain        = 1
 #     clean_expired_files                  = false
-#     run_rate_in_hours                    = 24
+#     run_rate_in_hours                    = 3
 #   compaction:
 #     strategy                             = "binpack"
 #     min_input_files                      = 5
@@ -52,10 +52,10 @@ variable "default_table_setting" {
         run_rate_in_hours                    = optional(number, 24)
       }), {})
       snapshot_retention = optional(object({
-        snapshot_retention_period_in_days = optional(number, 5)
-        number_of_snapshots_to_retain     = optional(number, 2)
+        snapshot_retention_period_in_days = optional(number, 1)
+        number_of_snapshots_to_retain     = optional(number, 1)
         clean_expired_files               = optional(bool, false)
-        run_rate_in_hours                 = optional(number, 24)
+        run_rate_in_hours                 = optional(number, 3)
       }), {})
 
       compaction = optional(object({
@@ -82,10 +82,10 @@ variable "partition_tables" {
         run_rate_in_hours                    = optional(number, 24)
       }), {})
       snapshot_retention = optional(object({
-        snapshot_retention_period_in_days = optional(number, 5)
-        number_of_snapshots_to_retain     = optional(number, 2)
+        snapshot_retention_period_in_days = optional(number, 1)
+        number_of_snapshots_to_retain     = optional(number, 1)
         clean_expired_files               = optional(bool, false)
-        run_rate_in_hours                 = optional(number, 24)
+        run_rate_in_hours                 = optional(number, 3)
       }), {})
       compaction = optional(object({
         strategy              = optional(string, "binpack")
@@ -99,6 +99,11 @@ variable "partition_tables" {
   validation {
     condition     = !contains([for k in keys(var.partition_tables) : lower(k)], "log_federated")
     error_message = "The table name 'Log_Federated' (case-insensitive) is reserved for the default table. Use default_table_setting to configure it."
+  }
+
+  validation {
+    condition     = alltrue([for k in keys(var.partition_tables) : startswith(k, "Log_")])
+    error_message = "All partition table names must start with 'Log_' (e.g., 'Log_my_partition')."
   }
 }
 
