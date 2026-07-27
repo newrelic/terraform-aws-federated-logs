@@ -142,6 +142,7 @@ These are read directly from the environment and are never stored in Terraform s
 | `setup_description` | Optional description for the newrelic_federated_logs_setup resource | `string` | no |
 | `query_connection_description` | Optional description for the per-setup newrelic_aws_connection wrapping the reader role | `string` | no |
 | `validation_config` | Post-apply validation settings: `enabled` (default `false`), `enable_permission_checks` (default `true`) | `object` | no |
+| `e2e_validation_config` | End-to-end validation settings. When `enabled = true`, deploys a Lambda inside the customer VPC that POSTs a synthetic log to PCG and polls NRDB to verify the full write-read path. Required fields when enabled: `pcg_endpoint`, `test_payload`, `vpc_config` (`subnet_ids`, `security_group_ids`). | `object` | no |
 
 ## Outputs
 
@@ -158,6 +159,8 @@ These are read directly from the environment and are never stored in Terraform s
 | `newrelic_default_partition_id` | ID of the default partition created alongside the federated logs setup |
 | `newrelic_query_connection_id` | ID of the per-setup newrelic_aws_connection wrapping the reader role |
 | `validation_summary` | Validation results (only when `validation_config.enabled = true`) |
+| `e2e_validation_status` | `PASS` or `FAIL` from the most recent e2e Lambda invocation. `null` when `e2e_validation_config.enabled = false`. |
+| `e2e_validation_result` | JSON object `{status, exit_code, stdout, stderr}` from the most recent e2e Lambda invocation. `null` when `e2e_validation_config.enabled = false`. |
 
 ## Examples
 
