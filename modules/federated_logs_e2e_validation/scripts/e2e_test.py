@@ -39,6 +39,7 @@ INITIAL_READ_WAIT = int(os.environ.get("E2E_INITIAL_READ_WAIT", 30))
 # latency (200 OK with empty results), not a transient error.
 READ_MAX_RETRIES = int(os.environ.get("E2E_READ_MAX_RETRIES", 5))
 READ_RETRY_DELAY = int(os.environ.get("E2E_READ_RETRY_DELAY", 15))
+NRQL_TIMEOUT = int(os.environ.get("E2E_NRQL_TIMEOUT", 120))
 
 NR_GRAPHQL_ENDPOINTS = {
     "US":      "https://api.newrelic.com/graphql",
@@ -200,8 +201,8 @@ def query_new_relic(account_id, api_key, partition, test_uuid, graphql_url):
     )
 
     graphql_query = (
-        "{ actor { account(id: %s) { nrql(query: \"%s\") { results } } } }"
-        % (account_id, nrql)
+        "{ actor { account(id: %s) { nrql(query: \"%s\", timeout: %s) { results } } } }"
+        % (account_id, nrql, NRQL_TIMEOUT)
     )
 
     headers = {
@@ -218,30 +219,30 @@ def query_new_relic(account_id, api_key, partition, test_uuid, graphql_url):
         try:
             data = json.loads(response_body)
         except json.JSONDecodeError:
-            warn("Invalid JSON response from New Relic")
-            return False, 0, response_body, nrql, {
-                "error": "Unable to query the test log",
-                "description": "Please check troubleshooting docs",
-            }
+            warn(f"Attempt {attempt}/{READ_MAX_RETRIES}: Invalid JSON response from New Relic")
+            if attempt < READ_MAX_RETRIES:
+                warn(f"Retrying in {READ_RETRY_DELAY}s...")
+                time.sleep(READ_RETRY_DELAY)
+            continue
 
         # Check for GraphQL errors
         errors = data.get("errors", [])
         if errors:
-            warn(f"New Relic API error: {errors[0].get('message', 'Unknown')}")
-            return False, 0, response_body, nrql, {
-                "error": "Unable to query the test log",
-                "description": "Please check troubleshooting docs",
-            }
+            warn(f"Attempt {attempt}/{READ_MAX_RETRIES}: New Relic API error: {errors[0].get('message', 'Unknown')}")
+            if attempt < READ_MAX_RETRIES:
+                warn(f"Retrying in {READ_RETRY_DELAY}s...")
+                time.sleep(READ_RETRY_DELAY)
+            continue
 
         try:
             results = data["data"]["actor"]["account"]["nrql"]["results"]
             log_count = len(results)
         except (KeyError, IndexError, TypeError):
-            warn("Unexpected response structure from New Relic")
-            return False, 0, response_body, nrql, {
-                "error": "Unable to query the test log",
-                "description": "Please check troubleshooting docs",
-            }
+            warn(f"Attempt {attempt}/{READ_MAX_RETRIES}: Unexpected response structure from New Relic")
+            if attempt < READ_MAX_RETRIES:
+                warn(f"Retrying in {READ_RETRY_DELAY}s...")
+                time.sleep(READ_RETRY_DELAY)
+            continue
 
         info(f"Attempt {attempt}/{READ_MAX_RETRIES}: found {log_count} matching log(s)")
 
