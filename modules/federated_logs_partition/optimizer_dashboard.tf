@@ -1,10 +1,6 @@
 # CloudWatch Dashboard — Glue Iceberg Optimizer Health
 #
 # One dashboard per setup, scoped to this setup's Glue database.
-# Layout: title → Compaction section → Retention section → Orphan File Deletion section.
-#
-# NOTE: CloudWatch Metrics Insights allows only ONE SELECT expression per widget.
-# Every widget below has exactly one SELECT expression.
 
 locals {
   # Reusable Metrics Insights fragment: schema + database filter.
