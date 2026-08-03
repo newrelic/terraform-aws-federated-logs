@@ -3,11 +3,8 @@
 # One dashboard per setup, scoped to this setup's Glue database.
 
 locals {
-  # Reusable Metrics Insights fragment: schema + database filter.
-  # Every expression appends its own SELECT prefix in front of this.
-  glue_metrics_query = "FROM SCHEMA(\"AWS/Glue\", DATABASE_NAME, TABLE_NAME) WHERE DATABASE_NAME = '${var.glue_catalog_db_name}'"
-
-  # Helper: build a SUM expression for a named metric.
+  # Build a SUM(SEARCH(...)) metric math expression aggregated across all tables
+  # in this setup's Glue database.
   metric_sum_expressions = {
     for m in [
       "Iceberg table compaction success",
@@ -15,27 +12,24 @@ locals {
       "Iceberg table compaction number of files compacted",
       "Iceberg table compaction number of bytes compacted",
       "Iceberg table compaction number of DPU allocated to job",
-      "Iceberg table compaction duration of job (Hours)",
       "Iceberg table retention success",
       "Iceberg table retention failure",
       "Iceberg table retention number of data files deleted",
       "Iceberg table retention number of manifest files deleted",
       "Iceberg table retention number of manifest lists deleted",
-      "Iceberg table retention duration of job (Hours)",
       "Iceberg table orphan_file_deletion success",
       "Iceberg table orphan_file_deletion failure",
       "Iceberg table orphan_file_deletion number of orphan files deleted",
-      "Iceberg table orphan_file_deletion duration of job (Hours)",
-    ] : m => "SELECT SUM(\"${m}\") ${local.glue_metrics_query}"
+    ] : m => "SUM(SEARCH('{AWS/Glue,DATABASE_NAME,TABLE_NAME} \"${m}\" DATABASE_NAME=\"${var.glue_catalog_db_name}\"', 'Sum', 3600))"
   }
 
-  # Average variant — used for duration metrics (avg across concurrent table runs).
+  # Average variant for duration metrics.
   metric_avg_expressions = {
     for m in [
       "Iceberg table compaction duration of job (Hours)",
       "Iceberg table retention duration of job (Hours)",
       "Iceberg table orphan_file_deletion duration of job (Hours)",
-    ] : m => "SELECT AVG(\"${m}\") ${local.glue_metrics_query}"
+    ] : m => "AVG(SEARCH('{AWS/Glue,DATABASE_NAME,TABLE_NAME} \"${m}\" DATABASE_NAME=\"${var.glue_catalog_db_name}\"', 'Average', 3600))"
   }
 }
 
@@ -70,7 +64,6 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
           markdown = "## Compaction\nMerges many small Parquet files into fewer large ones to keep queries fast."
         }
       },
-      # Row: runs + DPU
       {
         type   = "metric"
         x      = 0
@@ -78,12 +71,12 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
         width  = 8
         height = 6
         properties = {
-          title  = "Compaction — Successful Runs"
+          title  = "Compaction — Runs"
           region = data.aws_region.current.region
           view   = "timeSeries"
-          period = 3600
           metrics = [
-            [{ expression = local.metric_sum_expressions["Iceberg table compaction success"], id = "m", label = "Success", color = "#2ca02c" }],
+            [{ expression = local.metric_sum_expressions["Iceberg table compaction success"], id = "s", label = "Success", color = "#2ca02c" }],
+            [{ expression = local.metric_sum_expressions["Iceberg table compaction failure"], id = "f", label = "Failure", color = "#d62728" }],
           ]
         }
       },
@@ -94,43 +87,9 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
         width  = 8
         height = 6
         properties = {
-          title  = "Compaction — Failed Runs"
-          region = data.aws_region.current.region
-          view   = "timeSeries"
-          period = 3600
-          metrics = [
-            [{ expression = local.metric_sum_expressions["Iceberg table compaction failure"], id = "m", label = "Failure", color = "#d62728" }],
-          ]
-        }
-      },
-      {
-        type   = "metric"
-        x      = 16
-        y      = 5
-        width  = 8
-        height = 6
-        properties = {
-          title  = "Compaction — DPU Allocated"
-          region = data.aws_region.current.region
-          view   = "timeSeries"
-          period = 3600
-          metrics = [
-            [{ expression = local.metric_sum_expressions["Iceberg table compaction number of DPU allocated to job"], id = "m", label = "DPUs" }],
-          ]
-        }
-      },
-      # Row: file/byte stats + duration
-      {
-        type   = "metric"
-        x      = 0
-        y      = 11
-        width  = 8
-        height = 6
-        properties = {
           title  = "Compaction — Files Compacted"
           region = data.aws_region.current.region
           view   = "timeSeries"
-          period = 3600
           metrics = [
             [{ expression = local.metric_sum_expressions["Iceberg table compaction number of files compacted"], id = "m", label = "Files compacted" }],
           ]
@@ -138,15 +97,14 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
       },
       {
         type   = "metric"
-        x      = 8
-        y      = 11
+        x      = 16
+        y      = 5
         width  = 8
         height = 6
         properties = {
           title  = "Compaction — Bytes Compacted"
           region = data.aws_region.current.region
           view   = "timeSeries"
-          period = 3600
           metrics = [
             [{ expression = local.metric_sum_expressions["Iceberg table compaction number of bytes compacted"], id = "m", label = "Bytes compacted" }],
           ]
@@ -154,7 +112,22 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
       },
       {
         type   = "metric"
-        x      = 16
+        x      = 0
+        y      = 11
+        width  = 8
+        height = 6
+        properties = {
+          title  = "Compaction — DPU Allocated"
+          region = data.aws_region.current.region
+          view   = "timeSeries"
+          metrics = [
+            [{ expression = local.metric_sum_expressions["Iceberg table compaction number of DPU allocated to job"], id = "m", label = "DPUs" }],
+          ]
+        }
+      },
+      {
+        type   = "metric"
+        x      = 8
         y      = 11
         width  = 8
         height = 6
@@ -162,7 +135,6 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
           title  = "Compaction — Avg Job Duration (hours)"
           region = data.aws_region.current.region
           view   = "timeSeries"
-          period = 3600
           metrics = [
             [{ expression = local.metric_avg_expressions["Iceberg table compaction duration of job (Hours)"], id = "m", label = "Avg duration (hrs)" }],
           ]
@@ -182,7 +154,6 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
           markdown = "## Snapshot Retention\nDeletes old Iceberg snapshots and their associated data/manifest files beyond the configured retention window."
         }
       },
-      # Row: runs + duration
       {
         type   = "metric"
         x      = 0
@@ -190,12 +161,12 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
         width  = 8
         height = 6
         properties = {
-          title  = "Retention — Successful Runs"
+          title  = "Retention — Runs"
           region = data.aws_region.current.region
           view   = "timeSeries"
-          period = 3600
           metrics = [
-            [{ expression = local.metric_sum_expressions["Iceberg table retention success"], id = "m", label = "Success", color = "#2ca02c" }],
+            [{ expression = local.metric_sum_expressions["Iceberg table retention success"], id = "s", label = "Success", color = "#2ca02c" }],
+            [{ expression = local.metric_sum_expressions["Iceberg table retention failure"], id = "f", label = "Failure", color = "#d62728" }],
           ]
         }
       },
@@ -206,12 +177,13 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
         width  = 8
         height = 6
         properties = {
-          title  = "Retention — Failed Runs"
+          title  = "Retention — Files Deleted"
           region = data.aws_region.current.region
           view   = "timeSeries"
-          period = 3600
           metrics = [
-            [{ expression = local.metric_sum_expressions["Iceberg table retention failure"], id = "m", label = "Failure", color = "#d62728" }],
+            [{ expression = local.metric_sum_expressions["Iceberg table retention number of data files deleted"], id = "df", label = "Data files" }],
+            [{ expression = local.metric_sum_expressions["Iceberg table retention number of manifest files deleted"], id = "mf", label = "Manifest files" }],
+            [{ expression = local.metric_sum_expressions["Iceberg table retention number of manifest lists deleted"], id = "ml", label = "Manifest lists" }],
           ]
         }
       },
@@ -225,58 +197,8 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
           title  = "Retention — Avg Job Duration (hours)"
           region = data.aws_region.current.region
           view   = "timeSeries"
-          period = 3600
           metrics = [
             [{ expression = local.metric_avg_expressions["Iceberg table retention duration of job (Hours)"], id = "m", label = "Avg duration (hrs)" }],
-          ]
-        }
-      },
-      # Row: files deleted (one widget per file type)
-      {
-        type   = "metric"
-        x      = 0
-        y      = 25
-        width  = 8
-        height = 6
-        properties = {
-          title  = "Retention — Data Files Deleted"
-          region = data.aws_region.current.region
-          view   = "timeSeries"
-          period = 3600
-          metrics = [
-            [{ expression = local.metric_sum_expressions["Iceberg table retention number of data files deleted"], id = "m", label = "Data files deleted" }],
-          ]
-        }
-      },
-      {
-        type   = "metric"
-        x      = 8
-        y      = 25
-        width  = 8
-        height = 6
-        properties = {
-          title  = "Retention — Manifest Files Deleted"
-          region = data.aws_region.current.region
-          view   = "timeSeries"
-          period = 3600
-          metrics = [
-            [{ expression = local.metric_sum_expressions["Iceberg table retention number of manifest files deleted"], id = "m", label = "Manifest files deleted" }],
-          ]
-        }
-      },
-      {
-        type   = "metric"
-        x      = 16
-        y      = 25
-        width  = 8
-        height = 6
-        properties = {
-          title  = "Retention — Manifest Lists Deleted"
-          region = data.aws_region.current.region
-          view   = "timeSeries"
-          period = 3600
-          metrics = [
-            [{ expression = local.metric_sum_expressions["Iceberg table retention number of manifest lists deleted"], id = "m", label = "Manifest lists deleted" }],
           ]
         }
       },
@@ -287,57 +209,39 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
       {
         type   = "text"
         x      = 0
-        y      = 31
+        y      = 25
         width  = 24
         height = 2
         properties = {
           markdown = "## Orphan File Deletion\nRemoves leftover S3 files not referenced by any Iceberg snapshot, freeing up storage."
         }
       },
-      # Row: runs + files deleted + duration
       {
         type   = "metric"
         x      = 0
-        y      = 33
+        y      = 27
         width  = 8
         height = 6
         properties = {
-          title  = "Orphan File Deletion — Successful Runs"
+          title  = "Orphan File Deletion — Runs"
           region = data.aws_region.current.region
           view   = "timeSeries"
-          period = 3600
           metrics = [
-            [{ expression = local.metric_sum_expressions["Iceberg table orphan_file_deletion success"], id = "m", label = "Success", color = "#2ca02c" }],
+            [{ expression = local.metric_sum_expressions["Iceberg table orphan_file_deletion success"], id = "s", label = "Success", color = "#2ca02c" }],
+            [{ expression = local.metric_sum_expressions["Iceberg table orphan_file_deletion failure"], id = "f", label = "Failure", color = "#d62728" }],
           ]
         }
       },
       {
         type   = "metric"
         x      = 8
-        y      = 33
-        width  = 8
-        height = 6
-        properties = {
-          title  = "Orphan File Deletion — Failed Runs"
-          region = data.aws_region.current.region
-          view   = "timeSeries"
-          period = 3600
-          metrics = [
-            [{ expression = local.metric_sum_expressions["Iceberg table orphan_file_deletion failure"], id = "m", label = "Failure", color = "#d62728" }],
-          ]
-        }
-      },
-      {
-        type   = "metric"
-        x      = 16
-        y      = 33
+        y      = 27
         width  = 8
         height = 6
         properties = {
           title  = "Orphan File Deletion — Files Deleted"
           region = data.aws_region.current.region
           view   = "timeSeries"
-          period = 3600
           metrics = [
             [{ expression = local.metric_sum_expressions["Iceberg table orphan_file_deletion number of orphan files deleted"], id = "m", label = "Orphan files deleted" }],
           ]
@@ -345,15 +249,14 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
       },
       {
         type   = "metric"
-        x      = 0
-        y      = 39
+        x      = 16
+        y      = 27
         width  = 8
         height = 6
         properties = {
           title  = "Orphan File Deletion — Avg Job Duration (hours)"
           region = data.aws_region.current.region
           view   = "timeSeries"
-          period = 3600
           metrics = [
             [{ expression = local.metric_avg_expressions["Iceberg table orphan_file_deletion duration of job (Hours)"], id = "m", label = "Avg duration (hrs)" }],
           ]
