@@ -29,3 +29,8 @@ output "partition_ids" {
     for k, v in newrelic_federated_logs_partition.this : k => v.id
   }
 }
+
+output "glue_optimizer_dashboard_name" {
+  description = "Name of the CloudWatch dashboard that monitors the 3 Glue Iceberg optimizer jobs (compaction, retention, orphan file deletion) for this setup."
+  value       = aws_cloudwatch_dashboard.glue_optimizer.dashboard_name
+}
