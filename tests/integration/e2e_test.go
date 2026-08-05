@@ -25,6 +25,7 @@ func TestFederatedLogsE2E(t *testing.T) {
 	accountID, err := strconv.Atoi(accountIDStr)
 	require.NoErrorf(t, err, "NEW_RELIC_ACCOUNT_ID must be numeric, got %q", accountIDStr)
 
+	routingExpression := "true == true"
 	runSuffix := randSuffix(t, 6)
 	setupName := "inttest-e2e-setup-" + runSuffix // 24 chars; <= 26 limit
 	dataProcName := "inttest-e2e-dp-" + runSuffix // 21 chars
@@ -42,6 +43,7 @@ func TestFederatedLogsE2E(t *testing.T) {
 			"newrelic_account_id":  accountID,
 			"newrelic_region":      nrRegion,
 			"aws_region":           awsRegion,
+			"routing_expression":   routingExpression,
 			"partition_tables":     map[string]interface{}{},
 		},
 		EnvVars: map[string]string{
@@ -140,10 +142,10 @@ func TestFederatedLogsE2E(t *testing.T) {
 	// ----- SCENARIO 3: table name sanitization -------------------------------
 	t.Run("table_name_sanitization", func(t *testing.T) {
 		opts.Vars["partition_tables"] = map[string]interface{}{
-			"Log_app":       map[string]interface{}{},
-			"Log_security":  map[string]interface{}{},
-			"Log_My-App.Logs":    map[string]interface{}{}, // hyphen + dot
-			"Log_UPPERCASE": map[string]interface{}{}, // uppercase
+			"Log_app":         map[string]interface{}{},
+			"Log_security":    map[string]interface{}{},
+			"Log_My-App.Logs": map[string]interface{}{}, // hyphen + dot
+			"Log_UPPERCASE":   map[string]interface{}{}, // uppercase
 		}
 
 		terraform.Apply(t, opts)
@@ -163,10 +165,10 @@ func TestFederatedLogsE2E(t *testing.T) {
 	// ----- SCENARIO 4: custom optimizer config -------------------------------
 	t.Run("custom_optimizer_config", func(t *testing.T) {
 		opts.Vars["partition_tables"] = map[string]interface{}{
-			"Log_app":       map[string]interface{}{},
-			"Log_security":  map[string]interface{}{},
-			"Log_My-App.Logs":    map[string]interface{}{},
-			"Log_UPPERCASE": map[string]interface{}{},
+			"Log_app":         map[string]interface{}{},
+			"Log_security":    map[string]interface{}{},
+			"Log_My-App.Logs": map[string]interface{}{},
+			"Log_UPPERCASE":   map[string]interface{}{},
 			"Log_custom_config": map[string]interface{}{
 				"table_parameters": map[string]interface{}{
 					"custom_param": "custom_value",
@@ -217,10 +219,10 @@ func TestFederatedLogsE2E(t *testing.T) {
 	// ----- SCENARIO 6: custom default table setting --------------------------
 	t.Run("custom_default_table_setting", func(t *testing.T) {
 		opts.Vars["partition_tables"] = map[string]interface{}{
-			"Log_app":            map[string]interface{}{},
-			"Log_security":       map[string]interface{}{},
-			"Log_My-App.Logs":         map[string]interface{}{},
-			"Log_UPPERCASE":      map[string]interface{}{},
+			"Log_app":           map[string]interface{}{},
+			"Log_security":      map[string]interface{}{},
+			"Log_My-App.Logs":   map[string]interface{}{},
+			"Log_UPPERCASE":     map[string]interface{}{},
 			"Log_custom_config": map[string]interface{}{},
 		}
 		opts.Vars["default_table_setting"] = map[string]interface{}{
