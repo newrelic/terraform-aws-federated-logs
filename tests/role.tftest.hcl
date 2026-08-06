@@ -43,7 +43,6 @@ variables {
   newrelic_account_id = 12345678
   newrelic_org_id     = "test-nr-org-id"
   newrelic_region     = "US"
-  routing_expression  = "true == true"
 }
 
 # =============================================================================
@@ -86,7 +85,6 @@ run "test_role_naming_conventions" {
     newrelic_account_id  = var.newrelic_account_id
     newrelic_org_id      = var.newrelic_org_id
     newrelic_region      = var.newrelic_region
-    routing_expression   = var.routing_expression
   }
 
   # Skip pcg-writer role creation: its trust policy principal (an IAM role ARN)
@@ -271,7 +269,6 @@ run "test_module_wiring" {
     newrelic_account_id  = var.newrelic_account_id
     newrelic_org_id      = var.newrelic_org_id
     newrelic_region      = var.newrelic_region
-    routing_expression   = var.routing_expression
   }
 
   # Skip pcg-writer role creation: trust policy principal is mocked, AWS would

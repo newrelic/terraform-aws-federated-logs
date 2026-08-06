@@ -61,11 +61,6 @@ variable "default_table_setting" {
   default = {}
 }
 
-variable "routing_expression" {
-  description = "OTTL expression for the PCG routing rule."
-  type        = string
-}
-
 variable "partition_tables" {
   description = "Map of additional partition tables."
   type = map(object({

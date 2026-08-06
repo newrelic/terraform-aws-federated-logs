@@ -28,7 +28,6 @@ module "role" {
   s3_bucket_name       = module.setup.s3_bucket_name
   glue_catalog_db_name = module.setup.glue_catalog_db_name
   fleet_entity_guid    = var.fleet_entity_guid
-  routing_expression   = var.routing_expression
   newrelic_org_id      = var.newrelic_org_id
   newrelic_account_id  = var.newrelic_account_id
   newrelic_region      = var.newrelic_region
