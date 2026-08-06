@@ -7,30 +7,37 @@ locals {
   # in this setup's Glue database.
   metric_sum_expressions = {
     for m in [
+      # Compaction — run counts (Iceberg-prefixed names)
       "Iceberg table compaction success",
       "Iceberg table compaction failure",
-      "Iceberg table compaction number of files compacted",
-      "Iceberg table compaction number of bytes compacted",
-      "Iceberg table compaction number of DPU allocated to job",
+      # Compaction — per-run stats
+      "Number of files compacted",
+      "Number of bytes compacted",
+      "Number of DPUs allocated to compaction job",
+      "DPU-hours of a compaction job",
+      "Number of data files removed",
+      "Number of delete files removed",
+      "Number of data file bytes removed",
+      "Number of delete file bytes removed",
+      # Retention — run counts
       "Iceberg table retention success",
       "Iceberg table retention failure",
-      "Iceberg table retention number of data files deleted",
-      "Iceberg table retention number of manifest files deleted",
-      "Iceberg table retention number of manifest lists deleted",
+      # Retention — per-run stats
+      "Number of data files deleted",
+      "Number of manifest files deleted",
+      "Number of manifest lists deleted",
+      "Number of DPUs allocated to retention job",
+      # Orphan file deletion — run counts
       "Iceberg table orphan_file_deletion success",
       "Iceberg table orphan_file_deletion failure",
-      "Iceberg table orphan_file_deletion number of orphan files deleted",
+      # Orphan file deletion — per-run stats
+      "Number of orphan files deleted",
+      "Number of DPUs allocated to orphan_file_deletion job",
     ] : m => "SUM(SEARCH('{AWS/Glue,DATABASE_NAME,TABLE_NAME} \"${m}\" DATABASE_NAME=\"${var.glue_catalog_db_name}\"', 'Sum', 3600))"
   }
 
-  # Average variant for duration metrics.
-  metric_avg_expressions = {
-    for m in [
-      "Iceberg table compaction duration of job (Hours)",
-      "Iceberg table retention duration of job (Hours)",
-      "Iceberg table orphan_file_deletion duration of job (Hours)",
-    ] : m => "AVG(SEARCH('{AWS/Glue,DATABASE_NAME,TABLE_NAME} \"${m}\" DATABASE_NAME=\"${var.glue_catalog_db_name}\"', 'Average', 3600))"
-  }
+  # "Duration of job (hours)" is shared across all 3 optimizer types — AVG aggregation.
+  avg_job_duration_expression = "AVG(SEARCH('{AWS/Glue,DATABASE_NAME,TABLE_NAME} \"Duration of job (hours)\" DATABASE_NAME=\"${var.glue_catalog_db_name}\"', 'Average', 3600))"
 }
 
 resource "aws_cloudwatch_dashboard" "glue_optimizer" {
@@ -91,7 +98,7 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
           region = data.aws_region.current.region
           view   = "timeSeries"
           metrics = [
-            [{ expression = local.metric_sum_expressions["Iceberg table compaction number of files compacted"], id = "m", label = "Files compacted" }],
+            [{ expression = local.metric_sum_expressions["Number of files compacted"], id = "m", label = "Files compacted" }],
           ]
         }
       },
@@ -106,7 +113,7 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
           region = data.aws_region.current.region
           view   = "timeSeries"
           metrics = [
-            [{ expression = local.metric_sum_expressions["Iceberg table compaction number of bytes compacted"], id = "m", label = "Bytes compacted" }],
+            [{ expression = local.metric_sum_expressions["Number of bytes compacted"], id = "m", label = "Bytes compacted" }],
           ]
         }
       },
@@ -121,7 +128,7 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
           region = data.aws_region.current.region
           view   = "timeSeries"
           metrics = [
-            [{ expression = local.metric_sum_expressions["Iceberg table compaction number of DPU allocated to job"], id = "m", label = "DPUs" }],
+            [{ expression = local.metric_sum_expressions["Number of DPUs allocated to compaction job"], id = "m", label = "DPUs" }],
           ]
         }
       },
@@ -132,11 +139,43 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
         width  = 8
         height = 6
         properties = {
-          title  = "Compaction — Avg Job Duration (hours)"
+          title  = "Compaction — DPU-Hours"
           region = data.aws_region.current.region
           view   = "timeSeries"
           metrics = [
-            [{ expression = local.metric_avg_expressions["Iceberg table compaction duration of job (Hours)"], id = "m", label = "Avg duration (hrs)" }],
+            [{ expression = local.metric_sum_expressions["DPU-hours of a compaction job"], id = "m", label = "DPU-hours" }],
+          ]
+        }
+      },
+      {
+        type   = "metric"
+        x      = 16
+        y      = 11
+        width  = 8
+        height = 6
+        properties = {
+          title  = "Compaction — Files Removed"
+          region = data.aws_region.current.region
+          view   = "timeSeries"
+          metrics = [
+            [{ expression = local.metric_sum_expressions["Number of data files removed"], id = "df", label = "Data files" }],
+            [{ expression = local.metric_sum_expressions["Number of delete files removed"], id = "del", label = "Delete files" }],
+          ]
+        }
+      },
+
+      {
+        type   = "metric"
+        x      = 0
+        y      = 17
+        width  = 8
+        height = 6
+        properties = {
+          title  = "Compaction — Data File Bytes Removed"
+          region = data.aws_region.current.region
+          view   = "timeSeries"
+          metrics = [
+            [{ expression = local.metric_sum_expressions["Number of data file bytes removed"], id = "m", label = "Data file bytes removed" }],
           ]
         }
       },
@@ -147,7 +186,7 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
       {
         type   = "text"
         x      = 0
-        y      = 17
+        y      = 23
         width  = 24
         height = 2
         properties = {
@@ -157,7 +196,7 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
       {
         type   = "metric"
         x      = 0
-        y      = 19
+        y      = 25
         width  = 8
         height = 6
         properties = {
@@ -173,7 +212,7 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
       {
         type   = "metric"
         x      = 8
-        y      = 19
+        y      = 25
         width  = 8
         height = 6
         properties = {
@@ -181,24 +220,24 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
           region = data.aws_region.current.region
           view   = "timeSeries"
           metrics = [
-            [{ expression = local.metric_sum_expressions["Iceberg table retention number of data files deleted"], id = "df", label = "Data files" }],
-            [{ expression = local.metric_sum_expressions["Iceberg table retention number of manifest files deleted"], id = "mf", label = "Manifest files" }],
-            [{ expression = local.metric_sum_expressions["Iceberg table retention number of manifest lists deleted"], id = "ml", label = "Manifest lists" }],
+            [{ expression = local.metric_sum_expressions["Number of data files deleted"], id = "df", label = "Data files" }],
+            [{ expression = local.metric_sum_expressions["Number of manifest files deleted"], id = "mf", label = "Manifest files" }],
+            [{ expression = local.metric_sum_expressions["Number of manifest lists deleted"], id = "ml", label = "Manifest lists" }],
           ]
         }
       },
       {
         type   = "metric"
         x      = 16
-        y      = 19
+        y      = 25
         width  = 8
         height = 6
         properties = {
-          title  = "Retention — Avg Job Duration (hours)"
+          title  = "Retention — DPU Allocated"
           region = data.aws_region.current.region
           view   = "timeSeries"
           metrics = [
-            [{ expression = local.metric_avg_expressions["Iceberg table retention duration of job (Hours)"], id = "m", label = "Avg duration (hrs)" }],
+            [{ expression = local.metric_sum_expressions["Number of DPUs allocated to retention job"], id = "m", label = "DPUs" }],
           ]
         }
       },
@@ -209,7 +248,7 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
       {
         type   = "text"
         x      = 0
-        y      = 25
+        y      = 31
         width  = 24
         height = 2
         properties = {
@@ -219,7 +258,7 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
       {
         type   = "metric"
         x      = 0
-        y      = 27
+        y      = 33
         width  = 8
         height = 6
         properties = {
@@ -235,7 +274,7 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
       {
         type   = "metric"
         x      = 8
-        y      = 27
+        y      = 33
         width  = 8
         height = 6
         properties = {
@@ -243,22 +282,51 @@ resource "aws_cloudwatch_dashboard" "glue_optimizer" {
           region = data.aws_region.current.region
           view   = "timeSeries"
           metrics = [
-            [{ expression = local.metric_sum_expressions["Iceberg table orphan_file_deletion number of orphan files deleted"], id = "m", label = "Orphan files deleted" }],
+            [{ expression = local.metric_sum_expressions["Number of orphan files deleted"], id = "m", label = "Orphan files deleted" }],
           ]
         }
       },
       {
         type   = "metric"
         x      = 16
-        y      = 27
+        y      = 33
         width  = 8
         height = 6
         properties = {
-          title  = "Orphan File Deletion — Avg Job Duration (hours)"
+          title  = "Orphan File Deletion — DPU Allocated"
           region = data.aws_region.current.region
           view   = "timeSeries"
           metrics = [
-            [{ expression = local.metric_avg_expressions["Iceberg table orphan_file_deletion duration of job (Hours)"], id = "m", label = "Avg duration (hrs)" }],
+            [{ expression = local.metric_sum_expressions["Number of DPUs allocated to orphan_file_deletion job"], id = "m", label = "DPUs" }],
+          ]
+        }
+      },
+
+      # ════════════════════════════════════════════════════════════════════
+      # JOB DURATION (shared metric across all optimizer types)
+      # ════════════════════════════════════════════════════════════════════
+      {
+        type   = "text"
+        x      = 0
+        y      = 39
+        width  = 24
+        height = 2
+        properties = {
+          markdown = "## Job Duration\n`Duration of job (hours)` is a shared metric emitted by all 3 optimizer types. This widget shows average run duration across all optimizer jobs for this setup."
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 41
+        width  = 8
+        height = 6
+        properties = {
+          title  = "All Optimizers — Avg Job Duration (hours)"
+          region = data.aws_region.current.region
+          view   = "timeSeries"
+          metrics = [
+            [{ expression = local.avg_job_duration_expression, id = "m", label = "Avg duration (hrs)" }],
           ]
         }
       },
