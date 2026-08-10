@@ -48,6 +48,16 @@ output "newrelic_query_connection_id" {
   value       = module.role.query_connection_id
 }
 
+output "dashboard_guid" {
+  description = "GUID of the Federated Logs New Relic dashboard. null when enable_dashboard = false."
+  value       = try(module.monitoring[0].dashboard_guid, null)
+}
+
+output "dashboard_permalink" {
+  description = "Permalink to the Federated Logs dashboard in the New Relic UI. null when enable_dashboard = false."
+  value       = try(module.monitoring[0].dashboard_permalink, null)
+}
+
 output "e2e_validation_status" {
   description = "Parsed PASS/FAIL status of the most recent e2e Lambda invocation. null when e2e_validation_config.enabled = false."
   value       = try(module.e2e_validation[0].invocation_status, null)

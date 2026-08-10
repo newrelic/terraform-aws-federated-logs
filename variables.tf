@@ -131,6 +131,30 @@ variable "partition_tables" {
   }
 }
 
+variable "enable_dashboard" {
+  description = "When true, creates a New Relic dashboard with metrics for all federated-logs AWS resources."
+  type        = bool
+  default     = false
+}
+
+variable "flink_application_name" {
+  description = "Name of the Managed Flink application from the data_processing module (output.flink_application_name)."
+  type        = string
+  default     = null
+}
+
+variable "sqs_queue_name" {
+  description = "Name of the main SQS queue from the data_processing module (output.sqs_queue_name)."
+  type        = string
+  default     = null
+}
+
+variable "sqs_dlq_name" {
+  description = "Name of the SQS dead-letter queue from the data_processing module (output.sqs_dlq_name)."
+  type        = string
+  default     = null
+}
+
 variable "e2e_validation_config" {
   description = "Configuration for the optional end-to-end validation. When enabled=true, deploys an AWS Lambda inside the customer's VPC that POSTs a synthetic log to PCG, polls NRDB for the log, and reports HEALTHY/UNHEALTHY back to New Relic via the federatedLogsUpdateSetup mutation. Credentials are sourced from NEW_RELIC_LICENSE_KEY and NEW_RELIC_API_KEY env vars on the runner — the module reads them and writes them into Secrets Manager automatically (the values transit Terraform state during apply; use an encrypted backend like S3+KMS or Terraform Cloud to mitigate)."
   type = object({
