@@ -18,7 +18,7 @@ locals {
   # Only scopes the pcg-writer-role's s3:ListBucket condition below —
   # changing it here without also changing PCG's config will break the
   # schema registry's background refresh with AccessDenied.
-  schema_registry_prefix = "fed-logs-schemas"
+  schema_registry_prefix = "newrelic-fed-logs-schemas"
 
   nr_graphql_endpoint = var.newrelic_region == "EU" ? "https://api.eu.newrelic.com/graphql" : (
     var.newrelic_region == "STAGING" ? "https://staging-api.newrelic.com/graphql" : "https://api.newrelic.com/graphql"
