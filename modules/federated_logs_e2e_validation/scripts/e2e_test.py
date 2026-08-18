@@ -262,24 +262,26 @@ def query_new_relic(account_id, api_key, partition, test_uuid, graphql_url):
 
 # ── Step 5: Update federated logs setup status ────────────────
 def update_federated_logs_setup(graphql_url, api_key, setup_id, account_id, status, message):
-    now = (
-        datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.")
-        + f"{datetime.datetime.utcnow().microsecond // 1000:03d}Z"
-    )
+    now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
     mutation = (
-        'mutation {\n'
+        'mutation($lastUpdatedAt: DateTime!, $message: String!) {\n'
         '  federatedLogsUpdateSetup(\n'
         '    id: "%s"\n'
         '    accountId: %s\n'
-        '    setup: {healthCheck: {end2endDataFlow: {status: %s, message: %s, lastUpdatedAt: "%s"}}}\n'
+        '    setup: {healthCheck: {end2endDataFlow: {status: %s, message: $message, lastUpdatedAt: $lastUpdatedAt}}}\n'
         '  ) {\n'
         '    setup {\n'
         '      id\n'
         '    }\n'
         '  }\n'
         '}'
-    ) % (setup_id, account_id, status, json.dumps(message), now)
+    ) % (setup_id, account_id, status)
+
+    variables = {
+        "lastUpdatedAt": now,
+        "message": message,
+    }
 
     headers = {
         "Content-Type": "application/json",
@@ -290,7 +292,7 @@ def update_federated_logs_setup(graphql_url, api_key, setup_id, account_id, stat
     info("Step 5: Updating federated logs setup status...")
     info(f"Status: {status}")
 
-    resp_status, response_body = http_post(graphql_url, headers, {"query": mutation})
+    resp_status, response_body = http_post(graphql_url, headers, {"query": mutation, "variables": variables})
 
     if resp_status == 0:
         warn(f"Connection error when updating setup status: {response_body}")
