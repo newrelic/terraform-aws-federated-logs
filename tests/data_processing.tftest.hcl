@@ -102,6 +102,19 @@ run "test_base_role_naming_and_abac" {
     condition     = can(regex("newrelic-fed-logs-\\*-pcg-writer", output.abac_policy_json))
     error_message = "ABAC policy must target newrelic-fed-logs-*-pcg-writer roles"
   }
+
+  # Verify the Flink application exposes fleet_entity_guid as a static job-level
+  # property (fleetId), so the commit worker can stamp it onto every metric
+  assert {
+    # property_group is a set of objects (not a list) in this provider's schema,
+    # so it isn't index-addressable — pick out the FlinkApplicationProperties
+    # group by its property_group_id instead.
+    condition = [
+      for pg in aws_kinesisanalyticsv2_application.flink_iceberg_commit_worker.application_configuration[0].environment_properties[0].property_group :
+      pg.property_map["fleet.entity.guid"] if pg.property_group_id == "FlinkApplicationProperties"
+    ][0] == var.fleet_entity_guid
+    error_message = "Flink application must expose fleet_entity_guid as the 'fleet.entity.guid' FlinkApplicationProperties key"
+  }
 }
 
 # =============================================================================
