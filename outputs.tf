@@ -48,6 +48,11 @@ output "newrelic_query_connection_id" {
   value       = module.role.query_connection_id
 }
 
+output "glue_optimizer_dashboard_name" {
+  description = "Name of the CloudWatch dashboard monitoring Glue Iceberg optimizer health for this setup."
+  value       = module.partition.glue_optimizer_dashboard_name
+}
+
 output "e2e_validation_status" {
   description = "Parsed PASS/FAIL status of the most recent e2e Lambda invocation. null when e2e_validation_config.enabled = false."
   value       = try(module.e2e_validation[0].invocation_status, null)
