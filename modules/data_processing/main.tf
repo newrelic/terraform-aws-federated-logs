@@ -251,6 +251,8 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
         property_map = {
           "aws.region" = data.aws_region.current.region
 
+          "fleet.entity.guid" = var.fleet_entity_guid
+
           "sqs.queue.url"  = aws_sqs_queue.iceberg_file_events.url
           "sqs.region"     = data.aws_region.current.region
           "sqs.batch.size" = tostring(var.sqs_batch_size)
