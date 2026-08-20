@@ -3,6 +3,11 @@ variable "setup_name" {
   type        = string
 }
 
+variable "setup_id" {
+  description = "Entity GUID of the parent newrelic_federated_logs_setup. Injected into the EventBridge message for the Flink commit worker to stamp onto commit metrics — distinct from setup_name, which is a human-readable name and not guaranteed unique."
+  type        = string
+}
+
 variable "s3_bucket_id" {
   description = "ID of the S3 bucket to enable EventBridge notifications on."
   type        = string
