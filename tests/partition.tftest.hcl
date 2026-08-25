@@ -273,3 +273,65 @@ run "test_snapshot_tagging_disabled_creates_nothing" {
     error_message = "No table has snapshot_tagging.enabled — expected zero tagging Glue jobs"
   }
 }
+
+# Two tables that AGREE on a non-default cadence. Guards two regressions that
+# every other run in this file tolerates:
+#   1. A precondition counting tables instead of distinct cadences
+#      (length(local.tagging_enabled_tables) vs length(local.tagging_cadences))
+#      — the mismatch test above uses 2 tables with 2 cadences, so those two
+#      quantities are equal there and expect_failures cannot tell them apart.
+#   2. A hardcoded daily cron — the only other run asserting on the schedule
+#      uses cadence = "daily", which a constant also satisfies.
+# Also confirms table_tag_config spans BOTH default_table_setting and
+# partition_tables, and that one Glue job is created per setup, not per table.
+run "test_snapshot_tagging_agreeing_cadence_multi_table_hourly" {
+  command = plan
+
+  variables {
+    setup_name            = "inttest-partition"
+    s3_bucket_name        = "test-bucket"
+    glue_catalog_db_name  = "test_db"
+    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
+    setup_id              = "mock-setup-id"
+    newrelic_account_id   = 12345678
+    default_table_setting = {
+      optimizer_configuration = {
+        snapshot_tagging = {
+          enabled     = true
+          cadence     = "hourly"
+          retain_days = 3
+        }
+      }
+    }
+    partition_tables = {
+      "Log_backup_test" = {
+        optimizer_configuration = {
+          snapshot_tagging = {
+            enabled     = true
+            cadence     = "hourly" # agrees with default_table_setting
+            retain_days = 21
+          }
+        }
+      }
+    }
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  assert {
+    condition     = length(aws_glue_job.tagging) == 1
+    error_message = "Two tagging-enabled tables must still yield exactly one Glue job per setup, not one per table"
+  }
+
+  assert {
+    condition     = aws_glue_trigger.tagging_schedule[0].schedule == "cron(0 * * * ? *)"
+    error_message = "Both tables use cadence = hourly, so the trigger must use the hourly cron, got ${aws_glue_trigger.tagging_schedule[0].schedule}"
+  }
+
+  assert {
+    condition     = length(jsondecode(aws_glue_job.tagging[0].default_arguments["--TABLE_TAG_CONFIG"])) == 2
+    error_message = "TABLE_TAG_CONFIG must contain both the default table and the partition table, got ${aws_glue_job.tagging[0].default_arguments["--TABLE_TAG_CONFIG"]}"
+  }
+}
