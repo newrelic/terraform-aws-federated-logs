@@ -111,4 +111,34 @@ locals {
     orphan_deletion = "Iceberg table orphan_file_deletion failure"
   }
 
+  # Snapshot tagging configuration — tables that opted in (snapshot_tagging.enabled = true)
+  tagging_enabled_tables = {
+    for k, v in local.all_tables : k => v
+    if v.optimizer_configuration.snapshot_tagging.enabled
+  }
+
+  is_snapshot_tagging_enabled = length(local.tagging_enabled_tables) > 0
+
+  # Map of table name -> {retain_days}, passed into the Glue job's --TABLE_TAG_CONFIG argument
+  table_tag_config = {
+    for k, v in local.tagging_enabled_tables : k => {
+      retain_days = v.optimizer_configuration.snapshot_tagging.retain_days
+    }
+  }
+
+  # Distinct cadences among enabled tables. The Glue trigger has exactly one
+  # cron schedule, so this must resolve to at most one value — enforced by
+  # terraform_data.tagging_cadence_check's precondition in tagging.tf.
+  tagging_cadences = distinct([
+    for k, v in local.tagging_enabled_tables : v.optimizer_configuration.snapshot_tagging.cadence
+  ])
+
+  # Arbitrary pick when the precondition passes, since it guarantees at most
+  # one distinct value. Falls back to "daily" when tagging is disabled
+  # entirely (the trigger resource won't exist in that case, so this value
+  # is unused, but the local must still evaluate).
+  tagging_cadence = length(local.tagging_cadences) > 0 ? local.tagging_cadences[0] : "daily"
+
+  tagging_cron_schedule = local.tagging_cadence == "hourly" ? "cron(0 * * * ? *)" : "cron(0 0 * * ? *)"
+
 }
