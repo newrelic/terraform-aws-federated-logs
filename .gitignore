@@ -19,3 +19,5 @@ tfplan.txt
 
 # IDE
 .idea/
+
+__pycache__

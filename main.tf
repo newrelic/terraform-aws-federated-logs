@@ -41,6 +41,17 @@ module "partition" {
   newrelic_account_id    = var.newrelic_account_id
 }
 
+module "validation" {
+  count  = var.validation_config.enabled ? 1 : 0
+  source = "./modules/validation"
+
+  s3_bucket_name           = module.setup.s3_bucket_name
+  glue_database_name       = module.setup.glue_catalog_db_name
+  glue_service_role_arn    = module.role.glue_service_role_arn
+  pcg_writer_role_arn      = module.role.pcg_writer_role_arn
+  nr_reader_role_arn       = module.role.nr_reader_role_arn
+  enable_permission_checks = var.validation_config.enable_permission_checks
+}
 module "e2e_validation" {
   count  = var.e2e_validation_config.enabled ? 1 : 0
   source = "./modules/federated_logs_e2e_validation"

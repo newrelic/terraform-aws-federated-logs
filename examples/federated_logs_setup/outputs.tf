@@ -42,3 +42,8 @@ output "e2e_validation_result" {
   description = "JSON result (status, exit_code, stdout, stderr) of the most recent e2e Lambda invocation. null when e2e_validation_config.enabled = false."
   value       = module.federated_logs.e2e_validation_result
 }
+
+output "validation_summary" {
+  description = "Post-deploy validation status"
+  value       = module.federated_logs.validation_summary
+}
