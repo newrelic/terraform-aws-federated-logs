@@ -64,6 +64,10 @@ variable "newrelic_region" {
 #     strategy                             = "binpack"
 #     min_input_files                      = 5
 #     delete_file_threshold                = 1
+#   snapshot_tagging (opt-in periodic protected recovery point; disabled by default):
+#     enabled                              = false
+#     cadence                              = "daily"  # "daily" | "hourly"
+#     retain_days                          = 7
 #──────────────────────────────────────────────────────────────
 
 variable "data_retention_enabled" {
