@@ -63,10 +63,20 @@ variable "default_table_setting" {
         min_input_files       = optional(number, 5)
         delete_file_threshold = optional(number, 1)
       }), {})
+      snapshot_tagging = optional(object({
+        enabled     = optional(bool, false)
+        cadence     = optional(string, "daily")
+        retain_days = optional(number, 7)
+      }), {})
 
     }), {})
   })
   default = {}
+
+  validation {
+    condition     = contains(["daily", "hourly"], var.default_table_setting.optimizer_configuration.snapshot_tagging.cadence)
+    error_message = "default_table_setting.optimizer_configuration.snapshot_tagging.cadence must be 'daily' or 'hourly'."
+  }
 }
 
 variable "partition_tables" {
@@ -92,6 +102,11 @@ variable "partition_tables" {
         min_input_files       = optional(number, 5)
         delete_file_threshold = optional(number, 1)
       }), {})
+      snapshot_tagging = optional(object({
+        enabled     = optional(bool, false)
+        cadence     = optional(string, "daily")
+        retain_days = optional(number, 7)
+      }), {})
     }), {})
   }))
   default = {}
@@ -104,6 +119,13 @@ variable "partition_tables" {
   validation {
     condition     = alltrue([for k in keys(var.partition_tables) : startswith(k, "Log_")])
     error_message = "All partition table names must start with 'Log_' (e.g., 'Log_my_partition')."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.partition_tables : contains(["daily", "hourly"], v.optimizer_configuration.snapshot_tagging.cadence)
+    ])
+    error_message = "optimizer_configuration.snapshot_tagging.cadence must be 'daily' or 'hourly' for every partition table."
   }
 }
 

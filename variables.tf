@@ -93,6 +93,11 @@ variable "default_table_setting" {
         min_input_files       = optional(number, 5)
         delete_file_threshold = optional(number, 1)
       }), {})
+      snapshot_tagging = optional(object({
+        enabled     = optional(bool, false)
+        cadence     = optional(string, "daily")
+        retain_days = optional(number, 7)
+      }), {})
     }), {})
   })
   default = {}
@@ -120,6 +125,11 @@ variable "partition_tables" {
         strategy              = optional(string, "binpack")
         min_input_files       = optional(number, 5)
         delete_file_threshold = optional(number, 1)
+      }), {})
+      snapshot_tagging = optional(object({
+        enabled     = optional(bool, false)
+        cadence     = optional(string, "daily")
+        retain_days = optional(number, 7)
       }), {})
     }), {})
   }))
