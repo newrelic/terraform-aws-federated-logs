@@ -6,7 +6,13 @@ data "aws_region" "current" {
 }
 
 data "external" "base_role" {
-  program = ["python3", "${path.module}/scripts/fetch_base_role.py"]
+  # fetch_base_role.py needs NEW_RELIC_API_KEY. An external data source has no
+  # `environment` argument -- only `program` and `query` -- so a runner that cannot put
+  # the key in the process environment has no other way to supply it. Sourcing an
+  # optional env file is that escape hatch; `exec` keeps the query-on-stdin, JSON-on-
+  # stdout and exit-code contract intact. Anything sourced must stay silent on stdout
+  # or it corrupts the JSON Terraform parses.
+  program = ["sh", "-c", "if [ -f /tmp/nr_env.sh ]; then . /tmp/nr_env.sh; fi; exec python3 ${path.module}/scripts/fetch_base_role.py"]
   query = {
     fleet_entity_guid = var.fleet_entity_guid
     nr_endpoint       = local.nr_graphql_endpoint

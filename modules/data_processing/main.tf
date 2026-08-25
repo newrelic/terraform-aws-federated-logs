@@ -468,7 +468,11 @@ resource "null_resource" "fleet_relationship" {
       NR_ENDPOINT       = local.nr_graphql_endpoint
       SQS_QUEUE_ARN     = aws_sqs_queue.iceberg_file_events.arn
     }
-    command = "python3 ${path.module}/scripts/create_relationship.py"
+    # The script needs NEW_RELIC_API_KEY. Some Terraform runners inject secrets into
+    # the provider configuration but not into the process environment, so a provisioner
+    # subprocess sees no key. Those callers write an env file and we source it here.
+    # Guarded on existence so callers that do export the key normally are unaffected.
+    command = "if [ -f /tmp/nr_env.sh ]; then . /tmp/nr_env.sh; fi; python3 ${path.module}/scripts/create_relationship.py"
   }
 
   depends_on = [newrelic_aws_connection.fleet_ingest]
