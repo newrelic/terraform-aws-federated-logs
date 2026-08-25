@@ -21,9 +21,9 @@ def main():
     results = {}
     for table_name, cfg in table_tag_config.items():
         print(f"Processing table: {table_name}")
-        print(f"Tag name: {tag_name}, retain_days: {cfg['retain_days']}")
 
         try:
+            print(f"Tag name: {tag_name}, retain_days: {cfg['retain_days']}")
             table = catalog.load_table(f"{database}.{table_name}")
 
             # Idempotency: CREATE TAG fails if a ref with this name already
@@ -34,7 +34,13 @@ def main():
                 print(f"[{table_name}] Tag {tag_name} already exists, skipping")
                 continue
 
-            snapshot_id = table.current_snapshot().snapshot_id
+            current_snapshot = table.current_snapshot()
+            if current_snapshot is None:
+                results[table_name] = "SKIPPED (no snapshot yet)"
+                print(f"[{table_name}] Table has no snapshot yet, skipping")
+                continue
+
+            snapshot_id = current_snapshot.snapshot_id
             retain_ms = cfg["retain_days"] * 24 * 60 * 60 * 1000
 
             with table.manage_snapshots() as ms:
