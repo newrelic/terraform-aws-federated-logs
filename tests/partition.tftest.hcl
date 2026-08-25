@@ -69,3 +69,60 @@ run "test_validation_rejects_reserved_name_mixed_case" {
 
   expect_failures = [var.partition_tables]
 }
+
+run "test_snapshot_tagging_schema_accepts_config" {
+  command = plan
+
+  variables {
+    setup_name            = "inttest-partition"
+    s3_bucket_name        = "test-bucket"
+    glue_catalog_db_name  = "test_db"
+    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
+    setup_id              = "mock-setup-id"
+    newrelic_account_id   = 12345678
+    partition_tables = {
+      "Log_backup_test" = {
+        optimizer_configuration = {
+          snapshot_tagging = {
+            enabled     = true
+            cadence     = "daily"
+            retain_days = 14
+          }
+        }
+      }
+    }
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+}
+
+run "test_snapshot_tagging_rejects_bad_cadence" {
+  command = plan
+
+  variables {
+    setup_name            = "inttest-partition"
+    s3_bucket_name        = "test-bucket"
+    glue_catalog_db_name  = "test_db"
+    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
+    setup_id              = "mock-setup-id"
+    newrelic_account_id   = 12345678
+    partition_tables = {
+      "Log_backup_test" = {
+        optimizer_configuration = {
+          snapshot_tagging = {
+            enabled = true
+            cadence = "weekly" # invalid — only "daily" or "hourly"
+          }
+        }
+      }
+    }
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  expect_failures = [var.partition_tables]
+}
