@@ -171,3 +171,105 @@ run "test_snapshot_tagging_rejects_bad_cadence" {
 
   expect_failures = [var.partition_tables]
 }
+
+run "test_snapshot_tagging_cadence_mismatch_fails" {
+  command = plan
+
+  variables {
+    setup_name            = "inttest-partition"
+    s3_bucket_name        = "test-bucket"
+    glue_catalog_db_name  = "test_db"
+    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
+    setup_id              = "mock-setup-id"
+    newrelic_account_id   = 12345678
+    default_table_setting = {
+      optimizer_configuration = {
+        snapshot_tagging = {
+          enabled = true
+          cadence = "daily"
+        }
+      }
+    }
+    partition_tables = {
+      "Log_backup_test" = {
+        optimizer_configuration = {
+          snapshot_tagging = {
+            enabled = true
+            cadence = "hourly" # disagrees with default_table_setting's "daily"
+          }
+        }
+      }
+    }
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  expect_failures = [terraform_data.tagging_cadence_check]
+}
+
+run "test_snapshot_tagging_enabled_creates_glue_job" {
+  command = plan
+
+  variables {
+    setup_name            = "inttest-partition"
+    s3_bucket_name        = "test-bucket"
+    glue_catalog_db_name  = "test_db"
+    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
+    setup_id              = "mock-setup-id"
+    newrelic_account_id   = 12345678
+    partition_tables = {
+      "Log_backup_test" = {
+        optimizer_configuration = {
+          snapshot_tagging = {
+            enabled     = true
+            cadence     = "daily"
+            retain_days = 14
+          }
+        }
+      }
+    }
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  assert {
+    condition     = length(aws_glue_job.tagging) == 1
+    error_message = "Expected exactly one tagging Glue job when a table has snapshot_tagging.enabled = true"
+  }
+
+  assert {
+    condition     = aws_glue_job.tagging[0].command[0].name == "pythonshell"
+    error_message = "Tagging job must be a Python Shell job, not Spark ETL"
+  }
+
+  assert {
+    condition     = length(aws_glue_trigger.tagging_schedule) == 1 && aws_glue_trigger.tagging_schedule[0].schedule == "cron(0 0 * * ? *)"
+    error_message = "Expected a daily tagging trigger with the standard midnight-UTC cron"
+  }
+}
+
+run "test_snapshot_tagging_disabled_creates_nothing" {
+  command = plan
+
+  variables {
+    setup_name            = "inttest-partition"
+    s3_bucket_name        = "test-bucket"
+    glue_catalog_db_name  = "test_db"
+    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
+    setup_id              = "mock-setup-id"
+    newrelic_account_id   = 12345678
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  assert {
+    condition     = length(aws_glue_job.tagging) == 0
+    error_message = "No table has snapshot_tagging.enabled — expected zero tagging Glue jobs"
+  }
+}
