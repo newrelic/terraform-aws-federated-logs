@@ -74,6 +74,13 @@ module "federated_logs" {
         min_input_files       = 5
         delete_file_threshold = 1
       }
+      # Opt-in: periodic protected recovery point. Disabled by default —
+      # see snapshot_tagging under Inputs below before enabling.
+      snapshot_tagging = {
+        enabled     = false
+        cadence     = "daily"
+        retain_days = 7
+      }
     }
   }
 
