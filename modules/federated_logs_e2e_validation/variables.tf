@@ -91,3 +91,9 @@ variable "lambda_memory_size" {
   type        = number
   default     = 256
 }
+
+variable "permissions_boundary" {
+  description = "ARN of an IAM permissions boundary to attach to every IAM role this module creates. Leave null (default) for no boundary. Required in AWS accounts whose provisioning principal is denied iam:CreateRole unless the new role carries an approved boundary."
+  type        = string
+  default     = null
+}

@@ -165,3 +165,14 @@ variable "e2e_validation_config" {
   }
 }
 
+variable "permissions_boundary" {
+  description = "ARN of an IAM permissions boundary to attach to every IAM role this module creates. Leave null (default) for no boundary. Required in AWS accounts whose provisioning principal is denied iam:CreateRole unless the new role carries an approved boundary."
+  type        = string
+  default     = null
+}
+
+variable "cross_account_delivery" {
+  description = "Passed to the notifications submodule. Override the automatic same-account vs cross-account detection for EventBridge to SQS delivery. Leave null (default) to infer it."
+  type        = bool
+  default     = null
+}

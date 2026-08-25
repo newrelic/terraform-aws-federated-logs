@@ -238,3 +238,16 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "permissions_boundary" {
+  description = "ARN of an IAM permissions boundary to attach to every IAM role this module creates. Leave null (default) for no boundary. Required in AWS accounts whose provisioning principal is denied iam:CreateRole unless the new role carries an approved boundary."
+  type        = string
+  default     = null
+}
+
+variable "newrelic_license_key" {
+  description = "New Relic ingest license key. Optional: when null the module falls back to the NEW_RELIC_LICENSE_KEY environment variable of the Terraform process. Set this when the key cannot be exported into that environment, e.g. CI systems that inject secrets only into the build container."
+  type        = string
+  default     = null
+  sensitive   = true
+}

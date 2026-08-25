@@ -66,8 +66,9 @@ data "archive_file" "e2e_lambda" {
 # =============================================================================
 
 resource "aws_iam_role" "e2e_lambda" {
-  name_prefix = "${local.function_name}-"
-  description = "Execution role for the federated-logs E2E validation Lambda."
+  permissions_boundary = var.permissions_boundary
+  name_prefix          = "${local.function_name}-"
+  description          = "Execution role for the federated-logs E2E validation Lambda."
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

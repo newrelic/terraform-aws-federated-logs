@@ -6,6 +6,7 @@ module "setup" {
 
 module "role" {
   source                       = "./modules/federated_logs_role"
+  permissions_boundary         = var.permissions_boundary
   setup_name                   = var.setup_name
   s3_bucket_name               = module.setup.s3_bucket_name
   glue_catalog_db_name         = module.setup.glue_catalog_db_name
@@ -20,11 +21,13 @@ module "role" {
 }
 
 module "notifications" {
-  source              = "./modules/federated_logs_setup_notifications"
-  setup_name          = module.setup.setup_name
-  s3_bucket_id        = module.setup.s3_bucket_name
-  pcg_writer_role_arn = module.role.pcg_writer_role_arn
-  sqs_queue_arn       = module.role.sqs_queue_arn_from_ngep
+  source                 = "./modules/federated_logs_setup_notifications"
+  cross_account_delivery = var.cross_account_delivery
+  permissions_boundary   = var.permissions_boundary
+  setup_name             = module.setup.setup_name
+  s3_bucket_id           = module.setup.s3_bucket_name
+  pcg_writer_role_arn    = module.role.pcg_writer_role_arn
+  sqs_queue_arn          = module.role.sqs_queue_arn_from_ngep
 }
 
 module "partition" {
@@ -42,8 +45,9 @@ module "partition" {
 }
 
 module "e2e_validation" {
-  count  = var.e2e_validation_config.enabled ? 1 : 0
-  source = "./modules/federated_logs_e2e_validation"
+  count                = var.e2e_validation_config.enabled ? 1 : 0
+  source               = "./modules/federated_logs_e2e_validation"
+  permissions_boundary = var.permissions_boundary
 
   pcg_endpoint  = var.e2e_validation_config.pcg_endpoint
   nr_account_id = var.newrelic_account_id
