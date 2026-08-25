@@ -4,8 +4,9 @@
 # roles via the ABAC inline policy below.
 
 resource "aws_iam_role" "base_role" {
-  name        = "${local.naming_prefix}-base"
-  description = "Fleet-level base role for PCG. Authenticates via EKS and assumes per-setup writer roles via ABAC."
+  permissions_boundary = var.permissions_boundary
+  name                 = "${local.naming_prefix}-base"
+  description          = "Fleet-level base role for PCG. Authenticates via EKS and assumes per-setup writer roles via ABAC."
 
   assume_role_policy = local.auth_mode == "irsa" ? jsonencode({
     Version = "2012-10-17"
@@ -85,8 +86,9 @@ resource "aws_eks_pod_identity_association" "base_role" {
 # assumes per-setup pcg-writer roles via ABAC, mirroring the PCG base role.
 
 resource "aws_iam_role" "flink_role" {
-  name        = "${local.naming_prefix}-flink-base"
-  description = "Fleet-level Flink role for Iceberg commits. Trusts Managed Flink service and assumes per-setup writer roles via ABAC."
+  permissions_boundary = var.permissions_boundary
+  name                 = "${local.naming_prefix}-flink-base"
+  description          = "Fleet-level Flink role for Iceberg commits. Trusts Managed Flink service and assumes per-setup writer roles via ABAC."
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -181,6 +183,12 @@ data "aws_caller_identity" "current" {}
 # Read NR license key from environment variable (never stored in Terraform state)
 data "external" "license_key" {
   program = ["python3", "${path.module}/scripts/get_license_key.py"]
+
+  # Passed on stdin. The script prefers this and falls back to the
+  # NEW_RELIC_LICENSE_KEY environment variable when it is null.
+  query = {
+    license_key = var.newrelic_license_key == null ? "" : var.newrelic_license_key
+  }
 }
 
 resource "aws_cloudwatch_log_group" "flink_log_group" {

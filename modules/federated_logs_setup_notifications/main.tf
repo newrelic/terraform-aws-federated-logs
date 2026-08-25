@@ -16,7 +16,10 @@ locals {
   # different account from the EventBridge rule. AWS requires a role_arn on
   # the target in that case; same-account targets can rely solely on the
   # queue's resource policy.
-  cross_account_delivery = local.target_account_id != data.aws_caller_identity.current.account_id
+  # Honour an explicit override first: the inference below needs var.sqs_queue_arn
+  # to be known at plan time, which is not the case when the module supplying it
+  # is deferred.
+  cross_account_delivery = var.cross_account_delivery != null ? var.cross_account_delivery : (local.target_account_id != data.aws_caller_identity.current.account_id)
 }
 
 # Enable EventBridge notifications on the bucket
@@ -29,7 +32,8 @@ resource "aws_s3_bucket_notification" "this" {
 # IAM role assumed by EventBridge to deliver events to a cross-account SQS queue.
 # Created only when target_account_id is set and differs from the current account.
 resource "aws_iam_role" "eventbridge_to_sqs" {
-  count = local.cross_account_delivery ? 1 : 0
+  permissions_boundary = var.permissions_boundary
+  count                = local.cross_account_delivery ? 1 : 0
 
   name = "newrelic-fed-logs-${var.setup_name}-eb-to-sqs"
 
