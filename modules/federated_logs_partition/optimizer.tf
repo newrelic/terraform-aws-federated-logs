@@ -86,6 +86,11 @@ resource "null_resource" "compaction_configuration" {
     }
     command = <<-EOT
       set -e
+      # A provider-level assume_role does not reach provisioner subprocesses, so this
+      # CLI call would otherwise run as the runner's own identity and get AccessDenied
+      # against another account's catalog. Callers that assume a role may leave an env
+      # file exporting session credentials; source it when present.
+      if [ -f /tmp/nr_env.sh ]; then . /tmp/nr_env.sh; fi
       echo "Configuring compaction for table ${each.key} (strategy: ${each.value.optimizer_configuration.compaction.strategy})..."
       aws glue update-table-optimizer \
         --catalog-id ${data.aws_caller_identity.current.account_id} \
