@@ -335,3 +335,37 @@ run "test_snapshot_tagging_agreeing_cadence_multi_table_hourly" {
     error_message = "TABLE_TAG_CONFIG must contain both the default table and the partition table, got ${aws_glue_job.tagging[0].default_arguments["--TABLE_TAG_CONFIG"]}"
   }
 }
+
+# retain_days = 0 produces a tag with max_ref_age_ms = 0 that expires the
+# instant it's written — the job reports SUCCESS while protecting nothing.
+# Placed last in the file deliberately: a failing run aborts every run after
+# it, so new runs go at the end rather than in the middle.
+run "test_snapshot_tagging_rejects_zero_retain_days" {
+  command = plan
+
+  variables {
+    setup_name            = "inttest-partition"
+    s3_bucket_name        = "test-bucket"
+    glue_catalog_db_name  = "test_db"
+    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
+    setup_id              = "mock-setup-id"
+    newrelic_account_id   = 12345678
+    partition_tables = {
+      "Log_backup_test" = {
+        optimizer_configuration = {
+          snapshot_tagging = {
+            enabled     = true
+            cadence     = "daily"
+            retain_days = 0
+          }
+        }
+      }
+    }
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  expect_failures = [var.partition_tables]
+}

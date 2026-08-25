@@ -31,7 +31,7 @@ resource "aws_glue_job" "tagging" {
 
   default_arguments = {
     "--enable-continuous-cloudwatch-log" = "true"
-    "--additional-python-modules"        = "pyiceberg[glue]"
+    "--additional-python-modules"        = "pyiceberg[glue]<1.0"
     "--DATABASE_NAME"                    = var.glue_catalog_db_name
     "--WAREHOUSE_PATH"                   = "s3://${var.s3_bucket_name}/warehouse/"
     "--TABLE_TAG_CONFIG"                 = jsonencode(local.table_tag_config)
@@ -57,7 +57,12 @@ resource "aws_glue_trigger" "tagging_schedule" {
   }
 }
 
-# CloudWatch Log Group for tagging job logs
+# CloudWatch Log Group for tagging job logs.
+# NOTE: a pythonshell Glue job writes to the account-wide
+# /aws-glue/python-jobs/{output,error} log groups, not this one — this
+# group exists for naming/retention parity with retention_logs. Any future
+# alarming on this job's failures must target /aws-glue/python-jobs/*
+# (filtered to this job's name), not this group.
 resource "aws_cloudwatch_log_group" "tagging_logs" {
   count = local.is_snapshot_tagging_enabled ? 1 : 0
 
