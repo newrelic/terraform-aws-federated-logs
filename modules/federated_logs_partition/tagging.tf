@@ -31,10 +31,14 @@ resource "aws_glue_job" "tagging" {
 
   default_arguments = {
     "--enable-continuous-cloudwatch-log" = "true"
-    "--additional-python-modules"        = "pyiceberg[glue]<1.0"
-    "--DATABASE_NAME"                    = var.glue_catalog_db_name
-    "--WAREHOUSE_PATH"                   = "s3://${var.s3_bucket_name}/warehouse/"
-    "--TABLE_TAG_CONFIG"                 = jsonencode(local.table_tag_config)
+    # pyarrow must be pinned explicitly: pyiceberg[glue]<1.0 alone resolves to
+    # 0.10.0, which needs a pyarrow newer than the one preinstalled on Glue's
+    # Python Shell 3.9 runtime (ImportError: S3RetryStrategy from
+    # pyarrow._s3fs). Verified against a live Glue 5.1 job.
+    "--additional-python-modules" = "pyarrow==14.0.2,pyiceberg[glue]<1.0"
+    "--DATABASE_NAME"             = var.glue_catalog_db_name
+    "--WAREHOUSE_PATH"            = "s3://${var.s3_bucket_name}/warehouse/"
+    "--TABLE_TAG_CONFIG"          = jsonencode(local.table_tag_config)
   }
 
   depends_on = [aws_s3_object.tagging_script]
