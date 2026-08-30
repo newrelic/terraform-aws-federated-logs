@@ -33,6 +33,13 @@ variable "glue_service_role_arn" {
 #     strategy                             = "binpack"
 #     min_input_files                      = 5
 #     delete_file_threshold                = 1
+#   snapshot_tagging (opt-in periodic protected recovery point; disabled by default):
+#     enabled                              = false
+#     cadence                              = "daily"  # "daily" | "hourly" — all tagging-enabled
+#                                                      # tables in one setup must agree
+#     retain_days                          = 7         # storage scales with cadence x retain_days
+#                                                      # (e.g. hourly + 7 days ~= 168 pinned
+#                                                      # snapshots per table, not 1)
 #──────────────────────────────────────────────────────────────
 
 variable "data_retention_enabled" {
@@ -63,10 +70,25 @@ variable "default_table_setting" {
         min_input_files       = optional(number, 5)
         delete_file_threshold = optional(number, 1)
       }), {})
+      snapshot_tagging = optional(object({
+        enabled     = optional(bool, false)
+        cadence     = optional(string, "daily")
+        retain_days = optional(number, 7)
+      }), {})
 
     }), {})
   })
   default = {}
+
+  validation {
+    condition     = contains(["daily", "hourly"], var.default_table_setting.optimizer_configuration.snapshot_tagging.cadence)
+    error_message = "default_table_setting.optimizer_configuration.snapshot_tagging.cadence must be 'daily' or 'hourly'."
+  }
+
+  validation {
+    condition     = var.default_table_setting.optimizer_configuration.snapshot_tagging.retain_days >= 1
+    error_message = "default_table_setting.optimizer_configuration.snapshot_tagging.retain_days must be at least 1."
+  }
 }
 
 variable "partition_tables" {
@@ -92,6 +114,11 @@ variable "partition_tables" {
         min_input_files       = optional(number, 5)
         delete_file_threshold = optional(number, 1)
       }), {})
+      snapshot_tagging = optional(object({
+        enabled     = optional(bool, false)
+        cadence     = optional(string, "daily")
+        retain_days = optional(number, 7)
+      }), {})
     }), {})
   }))
   default = {}
@@ -104,6 +131,20 @@ variable "partition_tables" {
   validation {
     condition     = alltrue([for k in keys(var.partition_tables) : startswith(k, "Log_")])
     error_message = "All partition table names must start with 'Log_' (e.g., 'Log_my_partition')."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.partition_tables : contains(["daily", "hourly"], v.optimizer_configuration.snapshot_tagging.cadence)
+    ])
+    error_message = "optimizer_configuration.snapshot_tagging.cadence must be 'daily' or 'hourly' for every partition table."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.partition_tables : v.optimizer_configuration.snapshot_tagging.retain_days >= 1
+    ])
+    error_message = "optimizer_configuration.snapshot_tagging.retain_days must be at least 1 for every partition table."
   }
 }
 
