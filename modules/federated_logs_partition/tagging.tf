@@ -11,8 +11,9 @@ resource "aws_s3_object" "tagging_script" {
 # AWS Glue Python Shell job for periodic snapshot tagging.
 # Python Shell (not Spark ETL) because tagging is a single metadata commit
 # per table — no data scan, no distributed compute — so a full Spark cluster
-# would be pure overhead. See docs/superpowers/plans/2026-08-25-snapshot-tagging.md
-# and the linked design doc for the job-type comparison.
+# (Glue 4.0, G.1X workers, ~1 minute cold start) would be pure overhead for
+# a job that only writes one JSON pointer; Python Shell gets fractional-DPU
+# billing and seconds-scale startup instead.
 resource "aws_glue_job" "tagging" {
   count = local.is_snapshot_tagging_enabled ? 1 : 0
 
