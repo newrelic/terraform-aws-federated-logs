@@ -14,12 +14,15 @@
 #
 # =============================================================================
 
-# Mock the external provider to avoid requiring NEW_RELIC_LICENSE_KEY in CI
+# Mock the external provider to avoid requiring NEW_RELIC_LICENSE_KEY/NEW_RELIC_API_KEY in CI.
+# Applies to every `data "external"` instance (license_key, fleet_name); each one only
+# reads the key it cares about, so having both in the shared defaults is harmless.
 mock_provider "external" {
   mock_data "external" {
     defaults = {
       result = {
-        license_key = "mock-license-key-for-testing"
+        license_key       = "mock-license-key-for-testing"
+        fleet_entity_name = "mock-fleet-name-for-testing"
       }
     }
   }
@@ -101,6 +104,29 @@ run "test_base_role_naming_and_abac" {
   assert {
     condition     = can(regex("newrelic-fed-logs-\\*-pcg-writer", output.abac_policy_json))
     error_message = "ABAC policy must target newrelic-fed-logs-*-pcg-writer roles"
+  }
+
+  # Verify the Flink application exposes fleet_entity_guid as a static job-level
+  # property (fleetId), so the commit worker can stamp it onto every metric
+  assert {
+    # property_group is a set of objects (not a list) in this provider's schema,
+    # so it isn't index-addressable — pick out the FlinkApplicationProperties
+    # group by its property_group_id instead.
+    condition = [
+      for pg in aws_kinesisanalyticsv2_application.flink_iceberg_commit_worker.application_configuration[0].environment_properties[0].property_group :
+      pg.property_map["fleet.entity.guid"] if pg.property_group_id == "FlinkApplicationProperties"
+    ][0] == var.fleet_entity_guid
+    error_message = "Flink application must expose fleet_entity_guid as the 'fleet.entity.guid' FlinkApplicationProperties key"
+  }
+
+  # Verify the Flink application also exposes the resolved fleet display name
+  # (fleetName), alongside — not instead of — fleet_entity_guid
+  assert {
+    condition = [
+      for pg in aws_kinesisanalyticsv2_application.flink_iceberg_commit_worker.application_configuration[0].environment_properties[0].property_group :
+      pg.property_map["fleet.entity.name"] if pg.property_group_id == "FlinkApplicationProperties"
+    ][0] == "mock-fleet-name-for-testing"
+    error_message = "Flink application must expose the resolved fleet name as the 'fleet.entity.name' FlinkApplicationProperties key"
   }
 }
 
