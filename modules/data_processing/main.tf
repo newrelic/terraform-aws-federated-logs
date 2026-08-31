@@ -183,6 +183,17 @@ data "external" "license_key" {
   program = ["python3", "${path.module}/scripts/get_license_key.py"]
 }
 
+# Resolve fleet_entity_guid's display name via NerdGraph, for the "fleet.entity.name"
+# Flink application property (display-only — fleet.entity.guid remains the stable
+# identifier). Degrades to an empty string on lookup failure rather than failing apply.
+data "external" "fleet_name" {
+  program = ["python3", "${path.module}/scripts/fetch_fleet_name.py"]
+  query = {
+    fleet_entity_guid = var.fleet_entity_guid
+    nr_endpoint       = local.nr_graphql_endpoint
+  }
+}
+
 resource "aws_cloudwatch_log_group" "flink_log_group" {
   name              = "/aws/kinesis-analytics/${local.naming_prefix}-flink-application"
   retention_in_days = var.log_retention_days
@@ -252,6 +263,7 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
           "aws.region" = data.aws_region.current.region
 
           "fleet.entity.guid" = var.fleet_entity_guid
+          "fleet.entity.name" = data.external.fleet_name.result.fleet_entity_name
 
           "sqs.queue.url"  = aws_sqs_queue.iceberg_file_events.url
           "sqs.region"     = data.aws_region.current.region
