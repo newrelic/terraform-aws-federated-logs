@@ -27,11 +27,11 @@ resource "newrelic_one_dashboard" "this" {
       row    = 1
       column = 1
       width  = 12
-      height = 2
+      height = 1
       text   = <<-EOT
         ## Federated Logs — ${var.setup_name}
         AWS infrastructure monitoring for New Relic Federated Logs.
-        **S3:** `${var.s3_bucket_name}` | **Glue DB:** `${var.glue_catalog_db_name}` | **EventBridge:** `${local.eventbridge_rule_name}`
+        **S3:** `${var.s3_bucket_name}` | **Glue DB:** `${var.glue_catalog_db_name}`
       EOT
     }
 
@@ -44,7 +44,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT latest(`aws.sqs.ApproximateNumberOfMessagesVisible`) AS 'Messages' FROM Metric WHERE `aws.sqs.QueueName` = '${local.sqs_queue_name}' SINCE 5 minutes ago"
+        query      = "SELECT average(`aws.sqs.ApproximateNumberOfMessagesVisible`) AS 'Messages' FROM Metric WHERE `aws.sqs.QueueName` = '${local.sqs_queue_name}' SINCE 5 minutes ago"
       }
 
       warning  = 1000
@@ -60,7 +60,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT latest(`aws.sqs.ApproximateNumberOfMessagesVisible`) AS 'Messages' FROM Metric WHERE `aws.sqs.QueueName` = '${local.sqs_dlq_name}' SINCE 5 minutes ago"
+        query      = "SELECT average(`aws.sqs.ApproximateNumberOfMessagesVisible`) AS 'Messages' FROM Metric WHERE `aws.sqs.QueueName` = '${local.sqs_dlq_name}' SINCE 5 minutes ago"
       }
 
       warning  = 1
@@ -76,7 +76,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT latest(`aws.s3.BucketSizeBytes`) / 1073741824 AS 'Size (GB)' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 2 days ago"
+        query      = "SELECT average(`aws.s3.BucketSizeBytes`) / 1073741824 AS 'Size (GB)' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 3 days ago"
       }
     }
 
@@ -91,9 +91,6 @@ resource "newrelic_one_dashboard" "this" {
         account_id = var.newrelic_account_id
         query      = "SELECT sum(`aws.glue.Iceberg table compaction failure`) + sum(`aws.glue.Iceberg table retention failure`) + sum(`aws.glue.Iceberg table orphan_file_deletion failure`) AS 'Failures' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 24 hours ago"
       }
-
-      warning  = 1
-      critical = 5
     }
 
     widget_line {
@@ -118,7 +115,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT latest(`aws.kinesisanalytics.uptime`) / 60000 AS 'Uptime (min)' FROM Metric WHERE `aws.kinesisanalytics.Application` = '${local.flink_app_name}' SINCE 3 hours ago TIMESERIES AUTO"
+        query      = "SELECT average(`aws.kinesisanalytics.uptime`) / 60000 AS 'Uptime (min)' FROM Metric WHERE `aws.kinesisanalytics.Application` = '${local.flink_app_name}' SINCE 3 hours ago TIMESERIES AUTO"
       }
     }
   }
@@ -138,7 +135,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.sqs.NumberOfMessagesSent`) AS 'Sent' FROM Metric WHERE `aws.sqs.QueueName` = '${local.sqs_queue_name}' SINCE 6 hours ago TIMESERIES AUTO"
+        query      = "SELECT sum(`aws.sqs.NumberOfMessagesSent`) AS 'Sent' FROM Metric WHERE `aws.sqs.QueueName` = '${local.sqs_queue_name}' SINCE 1 hour ago TIMESERIES AUTO"
       }
     }
 
@@ -151,7 +148,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT average(`aws.sqs.ApproximateNumberOfMessagesVisible`) AS 'Visible', average(`aws.sqs.ApproximateNumberOfMessagesNotVisible`) AS 'In-Flight' FROM Metric WHERE `aws.sqs.QueueName` = '${local.sqs_queue_name}' SINCE 6 hours ago TIMESERIES AUTO"
+        query      = "SELECT average(`aws.sqs.ApproximateNumberOfMessagesVisible`) AS 'Visible', average(`aws.sqs.ApproximateNumberOfMessagesNotVisible`) AS 'In-Flight' FROM Metric WHERE `aws.sqs.QueueName` = '${local.sqs_queue_name}' SINCE 1 hour ago TIMESERIES AUTO"
       }
     }
 
@@ -164,12 +161,12 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT max(`aws.sqs.ApproximateAgeOfOldestMessage`) AS 'Age (s)' FROM Metric WHERE `aws.sqs.QueueName` = '${local.sqs_queue_name}' SINCE 6 hours ago TIMESERIES AUTO"
+        query      = "SELECT max(`aws.sqs.ApproximateAgeOfOldestMessage`) AS 'Age (s)' FROM Metric WHERE `aws.sqs.QueueName` = '${local.sqs_queue_name}' SINCE 1 hour ago TIMESERIES AUTO"
       }
     }
 
     widget_line {
-      title  = "Dead Letter Queue Depth"
+      title  = "Messages Deleted (Processed)"
       row    = 4
       column = 7
       width  = 6
@@ -177,26 +174,35 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT average(`aws.sqs.ApproximateNumberOfMessagesVisible`) AS 'DLQ Visible' FROM Metric WHERE `aws.sqs.QueueName` = '${local.sqs_dlq_name}' SINCE 6 hours ago TIMESERIES AUTO"
+        query      = "SELECT sum(`aws.sqs.NumberOfMessagesDeleted`) AS 'Deleted messages' FROM Metric WHERE `aws.sqs.QueueName` = '${local.sqs_queue_name}' SINCE 1 hour ago TIMESERIES AUTO"
       }
+    }
+
+    widget_markdown {
+      title  = ""
+      row    = 7
+      column = 1
+      width  = 12
+      height = 1
+      text   = "## Flink System Metrics"
     }
 
     widget_line {
       title  = "Flink Uptime vs Downtime"
-      row    = 7
+      row    = 8
       column = 1
       width  = 4
       height = 3
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT latest(`aws.kinesisanalytics.uptime`) / 60000 AS 'Uptime (min)', latest(`aws.kinesisanalytics.downtime`) / 60000 AS 'Downtime (min)' FROM Metric WHERE `aws.kinesisanalytics.Application` = '${local.flink_app_name}' SINCE 6 hours ago TIMESERIES AUTO"
+        query      = "SELECT average(`aws.kinesisanalytics.uptime`) / 60000 AS 'Uptime (min)', average(`aws.kinesisanalytics.downtime`) / 60000 AS 'Downtime (min)' FROM Metric WHERE `aws.kinesisanalytics.Application` = '${local.flink_app_name}' SINCE 6 hours ago TIMESERIES AUTO"
       }
     }
 
     widget_line {
       title  = "Flink Checkpoint Duration"
-      row    = 7
+      row    = 8
       column = 5
       width  = 4
       height = 3
@@ -209,7 +215,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_billboard {
       title  = "Flink Full Restarts (24 h)"
-      row    = 7
+      row    = 8
       column = 9
       width  = 4
       height = 3
@@ -218,14 +224,11 @@ resource "newrelic_one_dashboard" "this" {
         account_id = var.newrelic_account_id
         query      = "SELECT sum(`aws.kinesisanalytics.fullRestarts`) AS 'Full Restarts' FROM Metric WHERE `aws.kinesisanalytics.Application` = '${local.flink_app_name}' SINCE 24 hours ago"
       }
-
-      warning  = 1
-      critical = 3
     }
 
     widget_line {
       title  = "Flink CPU Utilization"
-      row    = 10
+      row    = 11
       column = 1
       width  = 6
       height = 3
@@ -238,7 +241,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_line {
       title  = "Flink Heap Memory Utilization"
-      row    = 10
+      row    = 11
       column = 7
       width  = 6
       height = 3
@@ -248,16 +251,92 @@ resource "newrelic_one_dashboard" "this" {
         query      = "SELECT average(`aws.kinesisanalytics.heapMemoryUtilization`) AS 'Heap %' FROM Metric WHERE `aws.kinesisanalytics.Application` = '${local.flink_app_name}' SINCE 6 hours ago TIMESERIES AUTO"
       }
     }
+
+    # ── Iceberg Commit Metrics ────────────────────────────────────────────────
+
+    widget_markdown {
+      title  = ""
+      row    = 14
+      column = 1
+      width  = 12
+      height = 1
+      text   = "## Flink Application Metrics"
+    }
+
+    widget_line {
+      title  = "Iceberg Commit Success"
+      row    = 15
+      column = 1
+      width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT count(*) AS 'Commits' FROM Metric WHERE tableId = '${var.glue_catalog_db_name}.${var.glue_catalog_db_name}_log_federated' AND metricName = 'iceberg.commit.success' SINCE 1 hour ago TIMESERIES AUTO"
+      }
+    }
+
+    widget_line {
+      title  = "Iceberg Commit E2E Latency (ms)"
+      row    = 15
+      column = 7
+      width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT average(`iceberg.commit.e2e_latency_ms`) AS 'E2E Latency (ms)' FROM Metric WHERE tableId = '${var.glue_catalog_db_name}.${var.glue_catalog_db_name}_log_federated' SINCE 1 hour ago TIMESERIES AUTO"
+      }
+    }
+
+    widget_line {
+      title  = "Iceberg Commit Duration (ms)"
+      row    = 18
+      column = 1
+      width  = 4
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT average(`iceberg.commit.duration_ms`) AS 'Commit Duration (ms)' FROM Metric WHERE tableId = '${var.glue_catalog_db_name}.${var.glue_catalog_db_name}_log_federated' SINCE 1 hour ago TIMESERIES AUTO"
+      }
+    }
+
+    widget_line {
+      title  = "Iceberg Batch Processing Latency (ms)"
+      row    = 18
+      column = 5
+      width  = 4
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT average(`iceberg.commit.batch_processing_latency_ms`) AS 'Batch Latency (ms)' FROM Metric WHERE tableId = '${var.glue_catalog_db_name}.${var.glue_catalog_db_name}_log_federated' SINCE 1 hour ago TIMESERIES AUTO"
+      }
+    }
+
+    widget_line {
+      title  = "Iceberg Commit File Count"
+      row    = 18
+      column = 9
+      width  = 4
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT average(`iceberg.commit.file_count`) AS 'Files per Commit' FROM Metric WHERE tableId = '${var.glue_catalog_db_name}.${var.glue_catalog_db_name}_log_federated' SINCE 1 hour ago TIMESERIES AUTO"
+      }
+    }
   }
 
   # ══════════════════════════════════════════════════════════════════════════
   # Page 3 — Storage & Events (S3 + EventBridge)
   # ══════════════════════════════════════════════════════════════════════════
   page {
-    name = "Data Storage - S3 & EventBridge"
+    name = "Data Storage - S3"
 
     widget_line {
-      title  = "S3 Bucket Size"
+      title  = "S3 Request Activity (GET / PUT / HEAD)"
       row    = 1
       column = 1
       width  = 6
@@ -265,12 +344,12 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT latest(`aws.s3.BucketSizeBytes`) / 1073741824 AS 'Bucket Size (GB)' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 7 days ago TIMESERIES 1 day"
+        query      = "SELECT sum(`aws.s3.GetRequests`) AS 'GET', sum(`aws.s3.PutRequests`) AS 'PUT', sum(`aws.s3.HeadRequests`) AS 'HEAD' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 1 hour ago TIMESERIES AUTO"
       }
     }
 
     widget_line {
-      title  = "S3 Object Count"
+      title  = "S3 Bytes Transferred"
       row    = 1
       column = 7
       width  = 6
@@ -278,12 +357,12 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT latest(`aws.s3.NumberOfObjects`) AS 'Objects' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 7 days ago TIMESERIES 1 day"
+        query      = "SELECT sum(`aws.s3.BytesDownloaded`) AS 'Downloaded (bytes)', sum(`aws.s3.BytesUploaded`) AS 'Uploaded (bytes)' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 1 hour ago TIMESERIES AUTO"
       }
     }
 
     widget_line {
-      title  = "S3 Request Activity"
+      title  = "S3 Request Latency"
       row    = 4
       column = 1
       width  = 12
@@ -291,9 +370,37 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.s3.GetRequests`) AS 'GET', sum(`aws.s3.PutRequests`) AS 'PUT', sum(`aws.s3.HeadRequests`) AS 'HEAD', sum(`aws.s3.DeleteRequests`) AS 'DELETE' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 6 hours ago TIMESERIES AUTO"
+        query      = "SELECT average(`aws.s3.TotalRequestLatency`) AS 'Average latency (ms)' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 1 hour ago TIMESERIES AUTO"
       }
     }
+
+    widget_line {
+      title  = "S3 Bucket Size"
+      row    = 7
+      column = 1
+      width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT average(`aws.s3.BucketSizeBytes`) / 1073741824 AS 'Bucket Size (GB)' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 7 days ago TIMESERIES 1 day"
+      }
+    }
+
+    widget_line {
+      title  = "S3 Object Count"
+      row    = 7
+      column = 7
+      width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT average(`aws.s3.NumberOfObjects`) AS 'Objects' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 7 days ago TIMESERIES 1 day"
+      }
+    }
+
+    /* EventBridge widgets — uncomment when EventBridge metrics are needed
 
     widget_line {
       title  = "EventBridge — Parquet Events Routed"
@@ -320,6 +427,8 @@ resource "newrelic_one_dashboard" "this" {
         query      = "SELECT sum(`aws.events.FailedInvocations`) AS 'Failed', sum(`aws.events.ThrottledRules`) AS 'Throttled' FROM Metric WHERE `aws.events.RuleName` = '${local.eventbridge_rule_name}' SINCE 6 hours ago TIMESERIES AUTO"
       }
     }
+
+    */
   }
 
   # ══════════════════════════════════════════════════════════════════════════
@@ -329,7 +438,7 @@ resource "newrelic_one_dashboard" "this" {
     name = "Glue & Optimizer Health"
 
     widget_billboard {
-      title  = "Compaction Failures (24 h)"
+      title  = "Compaction (24 h)"
       row    = 1
       column = 1
       width  = 4
@@ -337,15 +446,12 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.glue.Iceberg table compaction failure`) AS 'Failures' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 24 hours ago"
+        query      = "SELECT sum(`aws.glue.Iceberg table compaction success`) AS 'Success', sum(`aws.glue.Iceberg table compaction failure`) AS 'Failures' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 24 hours ago"
       }
-
-      warning  = 1
-      critical = 3
     }
 
     widget_billboard {
-      title  = "Retention Failures (24 h)"
+      title  = "Retention (24 h)"
       row    = 1
       column = 5
       width  = 4
@@ -353,15 +459,12 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.glue.Iceberg table retention failure`) AS 'Failures' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 24 hours ago"
+        query      = "SELECT sum(`aws.glue.Iceberg table retention success`) AS 'Success', sum(`aws.glue.Iceberg table retention failure`) AS 'Failures' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 24 hours ago"
       }
-
-      warning  = 1
-      critical = 3
     }
 
     widget_billboard {
-      title  = "Orphan Deletion Failures (24 h)"
+      title  = "Orphan Deletion (24 h)"
       row    = 1
       column = 9
       width  = 4
@@ -369,11 +472,8 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.glue.Iceberg table orphan_file_deletion failure`) AS 'Failures' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 24 hours ago"
+        query      = "SELECT sum(`aws.glue.Iceberg table orphan_file_deletion success`) AS 'Success', sum(`aws.glue.Iceberg table orphan_file_deletion failure`) AS 'Failures' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 24 hours ago"
       }
-
-      warning  = 1
-      critical = 3
     }
 
     widget_line {
@@ -398,7 +498,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT average(`aws.glue.glue.driver.aggregate.elapsedTime`) / 1000 AS 'Duration (s)' FROM Metric WHERE `aws.glue.JobName` = '${local.glue_retention_job}' AND `aws.glue.JobRunId` = 'ALL' SINCE 7 days ago TIMESERIES 1 day"
+        query      = "SELECT average(`aws.glue.Duration of job (hours)`) * 3600 AS 'Duration (s)' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' AND metricName = 'aws.glue.Duration of job (hours)' SINCE 7 days ago TIMESERIES 1 day"
       }
     }
 
@@ -411,7 +511,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.glue.glue.driver.aggregate.numCompletedStages`) AS 'Succeeded', sum(`aws.glue.glue.driver.aggregate.numFailedTasks`) AS 'Failed' FROM Metric WHERE `aws.glue.JobName` = '${local.glue_retention_job}' AND `aws.glue.JobRunId` = 'ALL' SINCE 30 days ago FACET cases(WHERE `aws.glue.glue.driver.aggregate.numFailedTasks` > 0 AS 'Failed', WHERE `aws.glue.glue.driver.aggregate.numCompletedStages` > 0 AS 'Succeeded')"
+        query      = "SELECT sum(`aws.glue.Iceberg table retention success`) AS 'Success', sum(`aws.glue.Iceberg table retention failure`) AS 'Failures' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 30 days ago TIMESERIES 1 day"
       }
     }
   }
