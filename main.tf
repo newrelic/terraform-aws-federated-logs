@@ -17,6 +17,7 @@ module "role" {
   setup_description            = var.setup_description
   query_connection_description = var.query_connection_description
   default_table_setting        = var.default_table_setting
+  script_dependencies          = var.script_dependencies
 }
 
 module "notifications" {
