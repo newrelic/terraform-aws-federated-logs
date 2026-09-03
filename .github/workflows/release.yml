@@ -26,26 +26,9 @@ jobs:
           node-version: 22
 
       - name: Install semantic-release plugins
-        run: npm install --no-save semantic-release@24 conventional-changelog-conventionalcommits@8 @semantic-release/exec
+        run: npm install --no-save semantic-release@24 conventional-changelog-conventionalcommits@8 @semantic-release/exec @semantic-release/git
 
       - name: Run semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx semantic-release
-
-      - name: Publish latest.json to latest branch
-        if: hashFiles('latest.json') != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          CONTENT=$(base64 < latest.json | tr -d '\n')
-          gh api repos/${{ github.repository }}/git/refs \
-            -f ref="refs/heads/latest" \
-            -f sha="$(git rev-parse HEAD)" 2>/dev/null || true
-          FILE_SHA=$(gh api "repos/${{ github.repository }}/contents/latest.json?ref=latest" \
-            --jq '.sha' 2>/dev/null || echo "")
-          ARGS=(-X PUT "repos/${{ github.repository }}/contents/latest.json" \
-            -f message="chore: update latest.json" \
-            -f content="$CONTENT" -f branch="latest")
-          [ -n "$FILE_SHA" ] && ARGS+=(-f sha="$FILE_SHA")
-          gh api "${ARGS[@]}"
