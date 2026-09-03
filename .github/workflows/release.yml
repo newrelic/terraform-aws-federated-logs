@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   release:
-    name: Semantic Release
+    name: Release from latest.json
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -20,15 +20,35 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22
+      # The version is whatever a human wrote into latest.json — no semantic-release,
+      # no auto-bump from commit messages. This step only reacts to that value; it
+      # does not decide it.
+      - name: Read tag from latest.json
+        id: tag
+        run: echo "tag=$(jq -r .tag latest.json)" >> "$GITHUB_OUTPUT"
 
-      - name: Install semantic-release plugins
-        run: npm install --no-save semantic-release@24 conventional-changelog-conventionalcommits@8
-
-      - name: Run semantic-release
+      # Most merges to master don't bump latest.json, so most runs of this workflow
+      # must no-op rather than re-release the same version.
+      - name: Check if this tag already has a release
+        id: check
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "${{ steps.tag.outputs.tag }}" --repo ${{ github.repository }} >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Tag and release
+        if: steps.check.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git tag "${{ steps.tag.outputs.tag }}"
+          git push origin "${{ steps.tag.outputs.tag }}"
+          gh release create "${{ steps.tag.outputs.tag }}" \
+            --repo ${{ github.repository }} \
+            --generate-notes
+          # GitHub attaches the source zip/tarball to every release automatically —
+          # no separate build/zip step needed.
