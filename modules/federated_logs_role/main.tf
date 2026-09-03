@@ -5,7 +5,21 @@ data "aws_region" "current" {
   region = var.region
 }
 
+# Carries var.script_dependencies so the depends_on below has a resource to reference.
+# The count keeps it absent when a caller passes nothing, which leaves the data source
+# reading at plan time exactly as it did before this variable existed.
+#
+# The ordering belongs here rather than on the module block. depends_on on a module
+# defers every data source inside it, including the two above, and anything computed
+# from those is then unknown at plan.
+resource "terraform_data" "script_dependencies" {
+  count = var.script_dependencies == null ? 0 : 1
+  input = var.script_dependencies
+}
+
 data "external" "base_role" {
+  depends_on = [terraform_data.script_dependencies]
+
   program = ["python3", "${path.module}/scripts/fetch_base_role.py"]
   query = {
     fleet_entity_guid = var.fleet_entity_guid
