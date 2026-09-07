@@ -35,11 +35,20 @@ resource "newrelic_one_dashboard" "this" {
       row    = 1
       column = 1
       width  = 12
-      height = 1
+      height = 2
       text   = <<-EOT
-        ## Federated Logs — ${var.setup_name}
-        AWS infrastructure monitoring for New Relic Federated Logs.
-        **S3:** `${var.s3_bucket_name}` | **Glue DB:** `${var.glue_catalog_db_name}`
+        ## Federated Logs - ${var.setup_name}
+        This dashboard provides end-to-end visibility into your Federated Logs pipeline - from log ingestion through PCG, to S3 storage, SQS event routing, Flink Iceberg commits, and Glue table maintenance.
+
+        **Overview** - Aggregated health indicators across the full pipeline.
+
+        **Data Processing** - Monitors SQS queue health and Flink commit metrics.
+
+        **Data Storage** - Covers S3 storage trends and EventBridge routing.
+
+        **Glue & Optimizer Health** - Monitors compaction, retention, and orphan deletion jobs.
+
+        **PCG Metrics** - Surfaces backpressure, throughput, and latency signals from the gateway.
       EOT
     }
 
