@@ -59,9 +59,10 @@ jobs:
       # ship a release, same as the old commit-analyzer rules did.
       - name: Determine PR type
         id: pr-type
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          title="${{ github.event.pull_request.title }}"
-          type=$(echo "$title" | sed -E 's/^([A-Za-z]+).*/\1/' | tr '[:upper:]' '[:lower:]')
+          type=$(echo "$PR_TITLE" | sed -E 's/^([A-Za-z]+).*/\1/' | tr '[:upper:]' '[:lower:]')
           echo "type=$type" >> "$GITHUB_OUTPUT"
 
       - name: Require latest.json bump
