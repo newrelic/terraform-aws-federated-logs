@@ -98,6 +98,12 @@ variable "default_table_setting" {
   default = {}
 }
 
+variable "pcg_cluster_name" {
+  description = "EKS cluster name where PCG is running (e.g. 'test-aj-cluster-5'). When provided, enables the PCG Metrics page in the dashboard. Matches the 'cluster' value in your pipeline-control-gateway Helm values."
+  type        = string
+  default     = null
+}
+
 variable "partition_tables" {
   description = "Map of additional partition tables. Each entry can override table_parameters, optimizer_configuration, routing_expression, and/or description — or use {} for all defaults."
   type = map(object({

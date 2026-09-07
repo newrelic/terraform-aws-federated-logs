@@ -38,3 +38,15 @@ variable "dashboard_name" {
   type        = string
   default     = null
 }
+
+variable "partition_table_ids" {
+  description = "Map of tableId (database.table) to partition display name (e.g. Log_Federated). Sourced from the partition module's all_table_ids output. Used to seed the dashboard partition dropdown so it is always populated regardless of metric history."
+  type        = map(string)
+  default     = {}
+}
+
+variable "pcg_cluster_name" {
+  description = "EKS cluster name where PCG is running. Used to filter PCG metrics in the dashboard. If not provided, the PCG Metrics page will appear but show no data."
+  type        = string
+  default     = ""
+}

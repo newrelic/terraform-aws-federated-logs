@@ -52,6 +52,8 @@ module "monitoring" {
   flink_application_name = var.flink_application_name
   sqs_queue_name         = var.sqs_queue_name
   sqs_dlq_name           = var.sqs_dlq_name
+  partition_table_ids    = module.partition.all_table_ids
+  pcg_cluster_name       = var.pcg_cluster_name
 
   depends_on = [module.setup, module.partition]
 }
