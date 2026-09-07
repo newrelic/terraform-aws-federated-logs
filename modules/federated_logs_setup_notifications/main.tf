@@ -68,11 +68,9 @@ resource "aws_iam_role_policy" "eventbridge_to_sqs" {
 #   bucket name → only this bucket
 #   key suffix  → only files ending in .parquet (a `suffix` filter, unlike
 #                 `wildcard`, does not count against EventBridge's 30
-#                 wildcard-filter-rules-per-bus quota — see CDD: PCG File
-#                 Identification & EventBridge Rule Scaling for Fed Logs).
-#                 This also matches Glue-compaction output, which Flink
-#                 must distinguish from PCG-written files downstream via
-#                 the x-amz-meta-iceberg-table S3 header.
+#                 wildcard-filter-rules-per-bus quota). This also matches
+#                 Glue-compaction output, which the Flink commit worker
+#                 discards downstream via a PCG filename check.
 #   reason      → PutObject or CompleteMultipartUpload (large files >5MB use multipart)
 resource "aws_cloudwatch_event_rule" "iceberg_file_events" {
   name        = "newrelic-fed-logs-${var.setup_name}-iceberg-file-created"
