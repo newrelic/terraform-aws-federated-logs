@@ -18,18 +18,8 @@ variable "glue_catalog_db_name" {
   type        = string
 }
 
-variable "flink_application_name" {
-  description = "Name of the Managed Flink application (output.flink_application_name from the data_processing module)."
-  type        = string
-}
-
-variable "sqs_queue_name" {
-  description = "Name of the main SQS queue (output.sqs_queue_name from the data_processing module)."
-  type        = string
-}
-
-variable "sqs_dlq_name" {
-  description = "Name of the SQS dead-letter queue (output.sqs_dlq_name from the data_processing module)."
+variable "sqs_queue_arn" {
+  description = "SQS queue ARN from the fleet entity."
   type        = string
 }
 

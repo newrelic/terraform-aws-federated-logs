@@ -1,16 +1,3 @@
-locals {
-  sqs_queue_name = var.sqs_queue_name
-  sqs_dlq_name   = var.sqs_dlq_name
-  flink_app_name = var.flink_application_name
-
-  naming_prefix         = "newrelic-fed-logs-${var.setup_name}"
-  glue_prefix           = "newrelic_fed_logs_${var.setup_name}"
-  eventbridge_rule_name = "${local.naming_prefix}-iceberg-file-created"
-  glue_retention_job    = "${local.glue_prefix}-retention-job"
-
-  dashboard_name = coalesce(var.dashboard_name, "Federated Logs - ${var.setup_name}")
-}
-
 resource "newrelic_one_dashboard" "this" {
   name        = local.dashboard_name
   permissions = "public_read_only"
