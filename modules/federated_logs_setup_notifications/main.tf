@@ -63,18 +63,29 @@ resource "aws_iam_role_policy" "eventbridge_to_sqs" {
   })
 }
 
-# EventBridge rule — matches parquet file creation events in this bucket
+# EventBridge rule — matches PCG-written parquet file creation events in this bucket
 # Filters by:
 #   bucket name → only this bucket
-#   key suffix  → only files ending in .parquet (a `suffix` filter, unlike
-#                 `wildcard`, does not count against EventBridge's 30
-#                 wildcard-filter-rules-per-bus quota). This also matches
-#                 Glue-compaction output, which the Flink commit worker
-#                 discards downstream via a PCG filename check.
+#   key         → matches EITHER of two PCG-file naming conventions, OR'd
+#                 (EventBridge evaluates an array of filter objects as OR):
+#                   - wildcard "*pcg-*.parquet": the legacy convention
+#                     (PCG writer versions that predate the pcg-df.parquet
+#                     suffix marker). `wildcard` filters are capped at 30
+#                     rules per event bus account-wide (non-adjustable) —
+#                     this clause exists only for backward compatibility
+#                     with setups whose PCG image hasn't yet been upgraded.
+#                   - suffix "pcg-df.parquet": the current convention
+#                     (<uuid>.pcg-df.parquet). `suffix` filters aren't
+#                     subject to the wildcard quota, so setups running the
+#                     upgraded PCG image no longer count against it, EVEN
+#                     THOUGH this rule still carries a wildcard clause for
+#                     compatibility. Dropping the wildcard clause entirely
+#                     (a separate, future change) is required to actually
+#                     free up a setup's quota slot.
 #   reason      → PutObject or CompleteMultipartUpload (large files >5MB use multipart)
 resource "aws_cloudwatch_event_rule" "iceberg_file_events" {
   name        = "newrelic-fed-logs-${var.setup_name}-iceberg-file-created"
-  description = "Fires when a .parquet file is created in ${var.s3_bucket_id}"
+  description = "Fires when a PCG-written .parquet file is created in ${var.s3_bucket_id}"
 
   event_pattern = jsonencode({
     source        = ["aws.s3"]
@@ -84,7 +95,10 @@ resource "aws_cloudwatch_event_rule" "iceberg_file_events" {
         name = [var.s3_bucket_id]
       }
       object = {
-        key = [{ suffix = ".parquet" }]
+        key = [
+          { wildcard = "*pcg-*.parquet" },
+          { suffix = "pcg-df.parquet" },
+        ]
       }
       reason = ["PutObject", "CompleteMultipartUpload"]
     }
