@@ -41,6 +41,21 @@ module "partition" {
   newrelic_account_id    = var.newrelic_account_id
 }
 
+module "monitoring" {
+  count  = var.enable_dashboard ? 1 : 0
+  source = "./modules/federated_logs_monitoring"
+
+  newrelic_account_id  = var.newrelic_account_id
+  setup_name           = var.setup_name
+  s3_bucket_name       = module.setup.s3_bucket_name
+  glue_catalog_db_name = module.setup.glue_catalog_db_name
+  sqs_queue_arn        = module.role.sqs_queue_arn_from_ngep
+  partition_table_ids  = module.partition.all_table_ids
+  pcg_cluster_name     = var.pcg_cluster_name
+
+  depends_on = [module.setup, module.partition]
+}
+
 module "e2e_validation" {
   count  = var.e2e_validation_config.enabled ? 1 : 0
   source = "./modules/federated_logs_e2e_validation"
