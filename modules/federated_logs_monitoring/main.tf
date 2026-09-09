@@ -399,29 +399,31 @@ resource "newrelic_one_dashboard" "this" {
 
     */
 
-    widget_area {
-      title  = "S3 Bucket Size"
-      row    = 1
-      column = 1
-      width  = 6
-      height = 3
+    widget_line {
+      title             = "S3 Bucket Size"
+      row               = 1
+      column            = 1
+      width             = 6
+      height            = 3
+      ignore_time_range = true
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT average(`aws.s3.BucketSizeBytes`) / 1073741824 AS 'Bucket Size (GB)' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 7 days ago TIMESERIES 1 day"
+        query      = "SELECT sum(`aws.s3.BucketSizeBytes`) FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 7 days ago TIMESERIES 1 day UNTIL 24 hours ago"
       }
     }
 
-    widget_area {
-      title  = "S3 Object Count"
-      row    = 1
-      column = 7
-      width  = 6
-      height = 3
+    widget_line {
+      title             = "S3 Object Count"
+      row               = 1
+      column            = 7
+      width             = 6
+      height            = 3
+      ignore_time_range = true
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT average(`aws.s3.NumberOfObjects`) AS 'Objects' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 7 days ago TIMESERIES 1 day"
+        query      = "SELECT sum(`aws.s3.NumberOfObjects`) AS 'Objects' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 7 days ago TIMESERIES 1 day UNTIL 24 hours ago"
       }
     }
 
