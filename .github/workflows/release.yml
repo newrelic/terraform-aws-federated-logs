@@ -2,9 +2,7 @@ name: Release
 
 on:
   push:
-    # TEMP for testing sync-latest-json without a real release: remove
-    # release-version-fix from this list once verified.
-    branches: [master, release-version-fix]
+    branches: [master]
   release:
     types: [published]
 
@@ -17,7 +15,7 @@ jobs:
   # except when the merge IS the version-bump PR from the job below
   auto-release:
     name: Auto-create release on merge
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -67,12 +65,7 @@ jobs:
           # GitHub attaches the source zip/tarball to every release automatically.
 
   sync-latest-json:
-    # TEMP: the release-version-fix branch clause lets this fire on a plain
-    # push for testing. Remove it once verified — only `release` should
-    # trigger this job for real.
-    if: >-
-      github.event_name == 'release' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/release-version-fix')
+    if: github.event_name == 'release'
     name: Open PR to sync latest.json
     runs-on: ubuntu-latest
     steps:
@@ -81,24 +74,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      # TEMP: falls back to a fixed test tag when there's no real release
-      # event (i.e. when triggered by the test push clause above).
-      - name: Determine tag
-        id: tag
-        run: |
-          tag="${{ github.event.release.tag_name }}"
-          if [ -z "$tag" ]; then
-            tag="v0.0.0-test"
-          fi
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-
       # The release is the source of truth for the version — this job only
       # reacts to one being published, it never decides or creates one.
       - name: Skip if latest.json already matches this release
         id: check
         run: |
           current=$(jq -r .tag latest.json)
-          if [ "$current" = "${{ steps.tag.outputs.tag }}" ]; then
+          if [ "$current" = "${{ github.event.release.tag_name }}" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
@@ -109,18 +91,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag="${{ steps.tag.outputs.tag }}"
-          branch="update-latest-json-${tag}"
-          echo "{ \"tag\": \"${tag}\" }" > latest.json
+          branch="update-latest-json-${{ github.event.release.tag_name }}"
+          echo "{ \"tag\": \"${{ github.event.release.tag_name }}\" }" > latest.json
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
           git add latest.json
-          git commit -m "chore(release): update latest.json to ${tag}"
+          git commit -m "chore(release): update latest.json to ${{ github.event.release.tag_name }}"
           git push origin "$branch"
           gh pr create \
             --repo ${{ github.repository }} \
-            --title "chore(release): update latest.json to ${tag}" \
-            --body "Syncs latest.json with the ${tag} release." \
+            --title "chore(release): update latest.json to ${{ github.event.release.tag_name }}" \
+            --body "Syncs latest.json with the ${{ github.event.release.tag_name }} release." \
             --base master \
             --head "$branch"
