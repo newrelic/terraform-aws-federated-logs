@@ -2,52 +2,125 @@ name: Release
 
 on:
   push:
-    branches: [master]
+    # TEMP for testing sync-latest-json without a real release: remove
+    # release-version-fix from this list once verified.
+    branches: [master, release-version-fix]
+  release:
+    types: [published]
 
 permissions:
   contents: write
-  issues: write
   pull-requests: write
 
 jobs:
-  release:
-    name: Release from latest.json
+  # Fires on every merge to master. Creates a new release automatically —
+  # except when the merge IS the version-bump PR from the job below
+  auto-release:
+    name: Auto-create release on merge
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Skip if this merge is the version-bump PR
+        id: guard
+        run: |
+          if git log -1 --pretty=%s | grep -q '^chore(release): update latest.json to '; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # No semantic-release, no commit-message analysis — just bump the patch
+      # on top of whatever latest.json currently says is live.
+      - name: Compute next version
+        id: next
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          current=$(jq -r .tag latest.json)
+          base=${current#v}
+          major=$(echo "$base" | cut -d. -f1)
+          minor=$(echo "$base" | cut -d. -f2)
+          patch=$(echo "$base" | cut -d. -f3)
+          echo "tag=v${major}.${minor}.$((patch + 1))" >> "$GITHUB_OUTPUT"
+
+      - name: Tag and release
+        if: steps.guard.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ steps.next.outputs.tag }}"
+          # Two merges landing before the bump PR round-trips would both
+          # compute the same next version. Bump again rather than fail.
+          while gh release view "$tag" --repo ${{ github.repository }} >/dev/null 2>&1; do
+            patch=$(echo "$tag" | sed -E 's/^v[0-9]+\.[0-9]+\.([0-9]+)$/\1/')
+            prefix=$(echo "$tag" | sed -E 's/^(v[0-9]+\.[0-9]+\.)[0-9]+$/\1/')
+            tag="${prefix}$((patch + 1))"
+          done
+          gh api "repos/${{ github.repository }}/git/refs" \
+            -f ref="refs/tags/${tag}" \
+            -f sha="$(git rev-parse HEAD)"
+          gh release create "$tag" \
+            --repo ${{ github.repository }} \
+            --generate-notes
+          # GitHub attaches the source zip/tarball to every release automatically.
+
+  sync-latest-json:
+    # TEMP: the release-version-fix branch clause lets this fire on a plain
+    # push for testing. Remove it once verified — only `release` should
+    # trigger this job for real.
+    if: >-
+      github.event_name == 'release' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/release-version-fix')
+    name: Open PR to sync latest.json
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
-          persist-credentials: false
 
-      # Version comes from latest.json, not from commit messages.
-      - name: Read tag from latest.json
+      # TEMP: falls back to a fixed test tag when there's no real release
+      # event (i.e. when triggered by the test push clause above).
+      - name: Determine tag
         id: tag
-        run: echo "tag=$(jq -r .tag latest.json)" >> "$GITHUB_OUTPUT"
-
-      # Most merges to master don't bump latest.json, so most runs of this workflow
-      # must no-op rather than re-release the same version.
-      - name: Check if this tag already has a release
-        id: check
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if gh release view "${{ steps.tag.outputs.tag }}" --repo ${{ github.repository }} >/dev/null 2>&1; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
+          tag="${{ github.event.release.tag_name }}"
+          if [ -z "$tag" ]; then
+            tag="v0.0.0-test"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      # The release is the source of truth for the version — this job only
+      # reacts to one being published, it never decides or creates one.
+      - name: Skip if latest.json already matches this release
+        id: check
+        run: |
+          current=$(jq -r .tag latest.json)
+          if [ "$current" = "${{ steps.tag.outputs.tag }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
           else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Tag and release
-        if: steps.check.outputs.exists == 'false'
+      - name: Open PR to update latest.json
+        if: steps.check.outputs.skip == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh api "repos/${{ github.repository }}/git/refs" \
-            -f ref="refs/tags/${{ steps.tag.outputs.tag }}" \
-            -f sha="$(git rev-parse HEAD)"
-          gh release create "${{ steps.tag.outputs.tag }}" \
+          tag="${{ steps.tag.outputs.tag }}"
+          branch="update-latest-json-${tag}"
+          echo "{ \"tag\": \"${tag}\" }" > latest.json
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add latest.json
+          git commit -m "chore(release): update latest.json to ${tag}"
+          git push origin "$branch"
+          gh pr create \
             --repo ${{ github.repository }} \
-            --generate-notes
-          # GitHub attaches the source zip/tarball to every release automatically —
-          # no separate build/zip step needed.
+            --title "chore(release): update latest.json to ${tag}" \
+            --body "Syncs latest.json with the ${tag} release." \
+            --base master \
+            --head "$branch"

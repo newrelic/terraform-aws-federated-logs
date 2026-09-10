@@ -44,36 +44,6 @@ jobs:
           headerPatternCorrespondence: type, scope, subject
 
   # ──────────────────────────────────────────────────────────────
-  # Version Bump Check
-  # ──────────────────────────────────────────────────────────────
-  check-version-bump:
-    name: latest.json bumped
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-        with:
-          fetch-depth: 0
-
-      # Same type prefix lint-pr-title validates against. docs/chore PRs don't
-      # ship a release, same as the old commit-analyzer rules did.
-      - name: Determine PR type
-        id: pr-type
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-        run: |
-          type=$(echo "$PR_TITLE" | sed -E 's/^([A-Za-z]+).*/\1/' | tr '[:upper:]' '[:lower:]')
-          echo "type=$type" >> "$GITHUB_OUTPUT"
-
-      - name: Require latest.json bump
-        if: steps.pr-type.outputs.type != 'docs' && steps.pr-type.outputs.type != 'chore'
-        run: |
-          if git diff --quiet "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" -- latest.json; then
-            echo "latest.json wasn't bumped. Update the tag in latest.json so merging this PR cuts a release, or use a docs:/chore: PR title if no release is needed." >&2
-            exit 1
-          fi
-
-  # ──────────────────────────────────────────────────────────────
   # Terraform Validate
   # ──────────────────────────────────────────────────────────────
   terraform-validate:
