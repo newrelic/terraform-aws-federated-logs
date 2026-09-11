@@ -72,6 +72,18 @@ variable "data_retention_enabled" {
   default     = false
 }
 
+variable "force_destroy" {
+  description = <<-EOT
+    Permit `terraform destroy` to remove the S3 bucket, Glue database, Iceberg tables,
+    and partition folder markers — including any stored log data. Default is false, which
+    keeps the S3 bucket protected: an accidental destroy fails on the non-empty bucket and
+    your logs stay intact.
+
+  EOT
+  type        = bool
+  default     = false
+}
+
 variable "default_table_setting" {
   description = "Settings for the primary federated log table, including Iceberg table parameters and optimizer configuration"
   type = object({
