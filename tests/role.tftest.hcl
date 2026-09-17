@@ -181,6 +181,16 @@ run "test_role_naming_conventions" {
     error_message = "PCG writer policy missing glue:GetTable - required for reading table metadata"
   }
 
+  assert {
+    condition     = can(regex("s3:ListBucket", output.pcg_writer_policy_json))
+    error_message = "PCG writer policy missing s3:ListBucket - required for the schema registry's background refresh"
+  }
+
+  assert {
+    condition     = can(regex("s3:prefix", output.pcg_writer_policy_json))
+    error_message = "PCG writer policy's s3:ListBucket grant should be scoped to the schema registry prefix via an s3:prefix condition, not bucket-wide"
+  }
+
   # --- NR Reader Role Permissions ---
   assert {
     condition     = can(regex("s3:GetObject", output.nr_reader_policy_json))

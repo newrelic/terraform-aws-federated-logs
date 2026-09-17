@@ -214,6 +214,25 @@ resource "aws_iam_policy" "writer_policy" {
         ]
       },
       {
+        # Lets PCG's S3-backed schema registry (iceberg.schema_registry)
+        # incrementally list its own keys for background refresh. Scoped to
+        # the registry's key namespace via s3:prefix so this role still
+        # can't enumerate the bucket's actual log data.
+        Sid    = "S3SchemaRegistryListAccess"
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket"
+        ]
+        Resource = [
+          "arn:aws:s3:::${var.s3_bucket_name}"
+        ]
+        Condition = {
+          StringLike = {
+            "s3:prefix" = ["${local.schema_registry_prefix}/*"]
+          }
+        }
+      },
+      {
         Sid    = "GlueCatalogAccess"
         Effect = "Allow"
         Action = [
