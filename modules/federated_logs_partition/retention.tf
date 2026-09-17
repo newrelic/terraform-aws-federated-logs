@@ -2,6 +2,7 @@
 resource "aws_s3_bucket" "retention_scripts" {
   count  = local.is_data_retention_enabled ? 1 : 0
   bucket = "newrelic-fed-logs-${var.setup_name}-retention-scripts"
+  region = data.aws_region.current.region
 }
 
 # Bucket policy grants the Glue service role read access
