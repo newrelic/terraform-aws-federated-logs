@@ -40,7 +40,7 @@ jobs:
             refactor
             [Uu]pdate
             [Bb]ring
-          headerPattern: '^(?:\[WIP\]\s+)?(\w*)(?:\(([\w$.\-*/ ]*)\))?:? (.*)$'
+          headerPattern: '^(?:\[[Ww][Ii][Pp]\]\s+)?(\w*)(?:\(([\w$.\-*/ ]*)\))?:? (.*)$'
           headerPatternCorrespondence: type, scope, subject
 
   # ──────────────────────────────────────────────────────────────
