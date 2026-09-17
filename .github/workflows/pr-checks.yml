@@ -35,12 +35,13 @@ jobs:
         with:
           types: |
             feat
-            [Ff]ix
+            fix
+            Fix
             chore
             docs
             refactor
-            [Uu]pdate
-            [Bb]ring
+            update
+            Update
           headerPattern: '^(?:\[[Ww][Ii][Pp]\]\s+)?(\w*)(?:\(([\w$.\-*/ ]*)\))?:? (.*)$'
           headerPatternCorrespondence: type, scope, subject
 
