@@ -89,8 +89,9 @@ resource "aws_cloudwatch_event_rule" "iceberg_file_events" {
 
 # EventBridge target — route matched events to the fleet-level SQS queue.
 # The input_transformer preserves the native EventBridge envelope shape and
-# injects roleArn / setupId under "detail" so the Flink commit worker can
-# AssumeRole without an S3 HeadObject round-trip per file event.
+# injects roleArn / setupId / setupName under "detail" so the Flink commit
+# worker can AssumeRole without an S3 HeadObject round-trip per file event.
+# setupId is the entity GUID (unique); setupName is the human-readable name.
 resource "aws_cloudwatch_event_target" "iceberg_file_events_sqs" {
   rule      = aws_cloudwatch_event_rule.iceberg_file_events.name
   target_id = "sqs-target"
@@ -134,7 +135,8 @@ resource "aws_cloudwatch_event_target" "iceberg_file_events_sqs" {
           "object": { "key": <key>, "size": <size>, "etag": <etag> },
           "reason": <reason>,
           "roleArn": "${var.pcg_writer_role_arn}",
-          "setupId": "${var.setup_name}"
+          "setupId": "${var.setup_id}",
+          "setupName": "${var.setup_name}"
         }
       }
     EOT
