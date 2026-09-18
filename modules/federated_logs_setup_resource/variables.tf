@@ -12,3 +12,9 @@ variable "region" {
   type        = string
   default     = null
 }
+
+variable "force_destroy" {
+  description = "When true, `aws_s3_bucket.force_destroy` is enabled so the bucket can be deleted even when it holds objects, and a destroy-time guard permits `terraform destroy`. Default false keeps the bucket delete-protected as long as it has content."
+  type        = bool
+  default     = false
+}
