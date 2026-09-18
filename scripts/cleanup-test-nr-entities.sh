@@ -54,10 +54,10 @@ search_setups() {
     while :; do
         local payload
         if [[ -z "$cursor" ]]; then
-            payload='{"query":"{ actor { entityManagement { entitySearch(query: \"type = '"'"'FEDERATED_LOGS_SETUP'"'"'\") { entities { id name type ... on EntityManagementFederatedLogsSetupEntity { lifecycleStatus { status } metadata { version } } } nextCursor } } } }"}'
+            payload='{"query":"{ actor { entityManagement { entitySearch(query: \"type = '"'"'FEDERATED_LOGS_SETUP'"'"'\") { entities { id name type ... on EntityManagementFederatedLogsSetupEntity { lifecycleStatus { status } metadata { version } defaultPartitionId } } nextCursor } } } }"}'
         else
             payload=$(jq -n --arg c "$cursor" '{
-                query: ("{ actor { entityManagement { entitySearch(query: \"type = '"'"'FEDERATED_LOGS_SETUP'"'"'\", cursor: " + ($c | tojson) + ") { entities { id name type ... on EntityManagementFederatedLogsSetupEntity { lifecycleStatus { status } metadata { version } } } nextCursor } } } }")
+                query: ("{ actor { entityManagement { entitySearch(query: \"type = '"'"'FEDERATED_LOGS_SETUP'"'"'\", cursor: " + ($c | tojson) + ") { entities { id name type ... on EntityManagementFederatedLogsSetupEntity { lifecycleStatus { status } metadata { version } defaultPartitionId } } nextCursor } } } }")
             }')
         fi
         local resp
@@ -120,7 +120,7 @@ name_contains_any() {
 get_entity_version() {
     local id="$1"
     local payload
-    payload=$(jq -n --arg id "$id" '{query: "{ actor { entityManagement { entity(id: $id) { metadata { version } } } } }", variables: {id: $id}}')
+    payload=$(jq -n --arg id "$id" '{query: "query($id: ID!) { actor { entityManagement { entity(id: $id) { metadata { version } } } } }", variables: {id: $id}}')
     nerdgraph "$payload" \
         | jq -r '.data.actor.entityManagement.entity.metadata.version // empty'
 }
@@ -152,6 +152,25 @@ delete_entity() {
     return 1
 }
 
+delete_with_retry() {
+    local id="$1"
+    local label="${2:-entity}"
+    local attempt
+    for attempt in 1 2 3; do
+        local version
+        version=$(get_entity_version "$id")
+        if [[ -z "$version" || "$version" == "null" ]]; then
+            echo "  ${label}: ${id} already gone — skipping"
+            return 0
+        fi
+        if delete_entity "$id" "$version" "$label"; then
+            return 0
+        fi
+        [[ $attempt -lt 3 ]] && echo "  ${label}: retrying (attempt $((attempt + 1))/3)..." && sleep 1
+    done
+    return 1
+}
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 echo "==> NR entity cleanup against ${ENDPOINT}"
@@ -174,7 +193,7 @@ while IFS= read -r entity; do
         version=$(echo "$entity" | jq -r '.metadata.version // empty')
         status=$(echo "$entity" | jq -r '.lifecycleStatus.status // "unknown"')
         echo "    matched setup: $name (id=$id, status=$status, version=$version)"
-        echo "$entity" | jq -c '{id, name, version: .metadata.version}' >> "$SETUPS_MATCHED"
+        echo "$entity" | jq -c '{id, name, version: .metadata.version, defaultPartitionId}' >> "$SETUPS_MATCHED"
     fi
 done < <(search_setups)
 
@@ -227,39 +246,57 @@ if [[ "$setup_count" -gt 0 ]]; then
     done < "$PARTITIONS_MATCHED"
 fi
 
-partition_count=$(wc -l < "$PARTITIONS_MATCHED" 2>/dev/null | tr -d ' ' || echo 0)
-
-# Step 3: delete in order — custom partitions, then setups (default cascades),
-# then AWS_CONNECTIONs (safety net).
+# Step 3: for each setup — delete its custom partitions, then its default partition,
+# then the setup itself. Setup is only deleted if all its partitions were cleaned up.
+# Each entity gets up to 3 attempts with a fresh version fetch on each retry.
 fails=0
-total=$((partition_count + setup_count + awsconn_count))
+total=0
 
-if [[ "$partition_count" -gt 0 ]]; then
-    echo "==> Deleting $partition_count custom partition(s)"
+while IFS= read -r s; do
+    [[ -z "$s" ]] && continue
+    setup_id=$(echo "$s" | jq -r '.id')
+    setup_name=$(echo "$s" | jq -r '.name')
+    default_partition_id=$(echo "$s" | jq -r '.defaultPartitionId // empty')
+
+    echo "==> Processing setup: $setup_name"
+    all_partitions_ok=true
+
+    # 3a: delete custom partitions for this setup
     while IFS= read -r p; do
         [[ -z "$p" ]] && continue
-        id=$(echo "$p" | jq -r '.id')
-        version=$(echo "$p" | jq -r '.version')
-        delete_entity "$id" "$version" "partition" || fails=$((fails + 1))
+        sid=$(echo "$p" | jq -r '.setup_id')
+        [[ "$sid" != "$setup_id" ]] && continue
+        pid=$(echo "$p" | jq -r '.id')
+        pname=$(echo "$p" | jq -r '.name')
+        total=$((total + 1))
+        delete_with_retry "$pid" "partition($pname)" || { all_partitions_ok=false; fails=$((fails + 1)); }
     done < "$PARTITIONS_MATCHED"
-fi
 
-if [[ "$setup_count" -gt 0 ]]; then
-    echo "==> Deleting $setup_count setup(s) (default partition cascades)"
-    while IFS= read -r s; do
-        [[ -z "$s" ]] && continue
-        id=$(echo "$s" | jq -r '.id')
-        version=$(echo "$s" | jq -r '.version')
-        delete_entity "$id" "$version" "setup" || fails=$((fails + 1))
-    done < "$SETUPS_MATCHED"
-fi
+    # 3b: delete default partition
+    if [[ -n "$default_partition_id" ]]; then
+        total=$((total + 1))
+        delete_with_retry "$default_partition_id" "default-partition($setup_name)" \
+            || { all_partitions_ok=false; fails=$((fails + 1)); }
+    fi
 
+    # 3c: delete setup only if all partitions succeeded
+    total=$((total + 1))
+    if $all_partitions_ok; then
+        delete_with_retry "$setup_id" "setup($setup_name)" || fails=$((fails + 1))
+    else
+        echo "  setup($setup_name): skipped — one or more partitions failed to delete"
+        fails=$((fails + 1))
+    fi
+done < "$SETUPS_MATCHED"
+
+# Step 4: AWS connections
 if [[ "$awsconn_count" -gt 0 ]]; then
     echo "==> Deleting $awsconn_count AWS_CONNECTION(s) (safety net for failed tf destroy)"
     while IFS= read -r a; do
         [[ -z "$a" ]] && continue
         id=$(echo "$a" | jq -r '.id')
         version=$(echo "$a" | jq -r '.version')
+        total=$((total + 1))
         delete_entity "$id" "$version" "aws-connection" || fails=$((fails + 1))
     done < "$AWSCONN_MATCHED"
 fi
