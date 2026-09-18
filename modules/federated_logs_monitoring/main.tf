@@ -46,14 +46,14 @@ resource "newrelic_one_dashboard" "this" {
 
         **Data Storage** - Covers S3 storage trends and EventBridge routing.
 
-        **Glue & Optimizer Health** - Monitors compaction, retention, and orphan deletion jobs.
+        **Glue & Optimizer Health** - Monitors compaction, snapshot retention, and orphan deletion optimizers, and the data retention job.
 
         **PCG Metrics** - Surfaces backpressure, throughput, and latency signals from the gateway.
       EOT
     }
 
     widget_billboard {
-      title  = "SQS Queue Depth"
+      title  = "SQS — Approximate Visible Messages"
       row    = 3
       column = 1
       width  = 3
@@ -64,12 +64,10 @@ resource "newrelic_one_dashboard" "this" {
         query      = "SELECT average(`aws.sqs.ApproximateNumberOfMessagesVisible`) AS 'Messages' FROM Metric WHERE `aws.sqs.QueueName` = '${local.sqs_queue_name}' SINCE 5 minutes ago"
       }
 
-      warning  = 1000
-      critical = 5000
     }
 
     widget_billboard {
-      title  = "DLQ Depth"
+      title  = "DLQ — Approximate Visible Messages"
       row    = 3
       column = 4
       width  = 3
@@ -487,7 +485,7 @@ resource "newrelic_one_dashboard" "this" {
     }
 
     widget_billboard {
-      title  = "Retention"
+      title  = "Snapshot Retention"
       row    = 1
       column = 5
       width  = 4
@@ -516,17 +514,30 @@ resource "newrelic_one_dashboard" "this" {
       title  = "Optimizer Failure Trend"
       row    = 4
       column = 1
-      width  = 12
+      width  = 8
       height = 3
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.glue.Iceberg table compaction failure`) AS 'Compaction', sum(`aws.glue.Iceberg table retention failure`) AS 'Retention', sum(`aws.glue.Iceberg table orphan_file_deletion failure`) AS 'Orphan Deletion' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 7 days ago TIMESERIES AUTO"
+        query      = "SELECT sum(`aws.glue.Iceberg table compaction failure`) AS 'Compaction', sum(`aws.glue.Iceberg table retention failure`) AS 'Snapshot Retention', sum(`aws.glue.Iceberg table orphan_file_deletion failure`) AS 'Orphan Deletion' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 7 days ago TIMESERIES AUTO"
+      }
+    }
+
+    widget_billboard {
+      title  = "Data Retention Job - Total Runs"
+      row    = 4
+      column = 9
+      width  = 4
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT uniqueCount(`aws.glue.JobRunId`) AS 'Total Runs' FROM Metric WHERE aws.Namespace = 'Glue' AND `aws.glue.JobName` = '${local.glue_retention_job}' AND `aws.glue.JobRunId` != 'ALL' SINCE 7 days ago"
       }
     }
 
     widget_line {
-      title  = "Retention Job — Execution Time"
+      title  = "Glue Optimizer — Average Run Duration"
       row    = 7
       column = 1
       width  = 6
@@ -547,9 +558,10 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.glue.Number of files compacted`) AS 'Files Compacted', sum(`aws.glue.Number of data files removed`) AS 'Files Removed (Retention)', sum(`aws.glue.Number of orphan files deleted`) AS 'Orphan Files Deleted' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 7 days ago TIMESERIES AUTO"
+        query      = "SELECT sum(`aws.glue.Number of files compacted`) AS 'Files Compacted', sum(`aws.glue.Number of data files removed`) AS 'Files Removed (Snapshot Retention)', sum(`aws.glue.Number of orphan files deleted`) AS 'Orphan Files Deleted' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 7 days ago TIMESERIES AUTO"
       }
     }
+
   }
 
   # ══════════════════════════════════════════════════════════════════════════
