@@ -53,7 +53,7 @@ resource "newrelic_one_dashboard" "this" {
     }
 
     widget_billboard {
-      title  = "SQS — Approximate Visible Messages"
+      title  = "SQS - Approximate Visible Messages"
       row    = 3
       column = 1
       width  = 3
@@ -67,7 +67,7 @@ resource "newrelic_one_dashboard" "this" {
     }
 
     widget_billboard {
-      title  = "DLQ — Approximate Visible Messages"
+      title  = "DLQ - Approximate Visible Messages"
       row    = 3
       column = 4
       width  = 3
@@ -537,7 +537,7 @@ resource "newrelic_one_dashboard" "this" {
     }
 
     widget_line {
-      title  = "Glue Optimizer — Average Run Duration"
+      title  = "Glue Optimizer - Average Run Duration"
       row    = 7
       column = 1
       width  = 6
