@@ -98,6 +98,12 @@ variable "default_table_setting" {
   default = {}
 }
 
+variable "pcg_cluster_name" {
+  description = "EKS cluster name where PCG is running (e.g. 'test-aj-cluster-5'). When provided, enables the PCG Metrics page in the dashboard. Matches the 'cluster' value in your pipeline-control-gateway Helm values."
+  type        = string
+  default     = null
+}
+
 variable "partition_tables" {
   description = "Map of additional partition tables. Each entry can override table_parameters, optimizer_configuration, routing_expression, and/or description — or use {} for all defaults."
   type = map(object({
@@ -130,6 +136,13 @@ variable "partition_tables" {
     error_message = "All partition table names must start with 'Log_' (e.g., 'Log_my_partition')."
   }
 }
+
+variable "enable_dashboard" {
+  description = "When true, creates a New Relic dashboard with metrics for all federated-logs AWS resources."
+  type        = bool
+  default     = false
+}
+
 
 variable "e2e_validation_config" {
   description = "Configuration for the optional end-to-end validation. When enabled=true, deploys an AWS Lambda inside the customer's VPC that POSTs a synthetic log to PCG, polls NRDB for the log, and reports HEALTHY/UNHEALTHY back to New Relic via the federatedLogsUpdateSetup mutation. Credentials are sourced from NEW_RELIC_LICENSE_KEY and NEW_RELIC_API_KEY env vars on the runner — the module reads them and writes them into Secrets Manager automatically (the values transit Terraform state during apply; use an encrypted backend like S3+KMS or Terraform Cloud to mitigate)."
