@@ -64,6 +64,13 @@ variable "newrelic_region" {
 #     strategy                             = "binpack"
 #     min_input_files                      = 5
 #     delete_file_threshold                = 1
+#   snapshot_tagging (opt-in periodic protected recovery point; disabled by default):
+#     enabled                              = false
+#     cadence                              = "daily"  # "daily" | "hourly" — all tagging-enabled
+#                                                      # tables in one setup must agree
+#     retain_days                          = 7         # storage scales with cadence x retain_days
+#                                                      # (e.g. hourly + 7 days ~= 168 pinned
+#                                                      # snapshots per table, not 1)
 #──────────────────────────────────────────────────────────────
 
 variable "data_retention_enabled" {
@@ -93,6 +100,11 @@ variable "default_table_setting" {
         min_input_files       = optional(number, 5)
         delete_file_threshold = optional(number, 1)
       }), {})
+      snapshot_tagging = optional(object({
+        enabled     = optional(bool, false)
+        cadence     = optional(string, "daily")
+        retain_days = optional(number, 7)
+      }), {})
     }), {})
   })
   default = {}
@@ -120,6 +132,11 @@ variable "partition_tables" {
         strategy              = optional(string, "binpack")
         min_input_files       = optional(number, 5)
         delete_file_threshold = optional(number, 1)
+      }), {})
+      snapshot_tagging = optional(object({
+        enabled     = optional(bool, false)
+        cadence     = optional(string, "daily")
+        retain_days = optional(number, 7)
       }), {})
     }), {})
   }))
