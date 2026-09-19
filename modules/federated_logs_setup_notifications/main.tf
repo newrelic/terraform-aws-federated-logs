@@ -75,13 +75,16 @@ resource "aws_iam_role_policy" "eventbridge_to_sqs" {
 #                     this clause exists only for backward compatibility
 #                     with setups whose PCG image hasn't yet been upgraded.
 #                   - suffix "pcg-df.parquet": the current convention
-#                     (<uuid>.pcg-df.parquet). `suffix` filters aren't
-#                     subject to the wildcard quota, so setups running the
-#                     upgraded PCG image no longer count against it, EVEN
-#                     THOUGH this rule still carries a wildcard clause for
-#                     compatibility. Dropping the wildcard clause entirely
-#                     (a separate, future change) is required to actually
-#                     free up a setup's quota slot.
+#                     (<uuid>.pcg-df.parquet), matched without a wildcard.
+#                     Adding this clause does NOT free a quota slot: the
+#                     quota counts any rule that *contains* a wildcard
+#                     filter, whatever else is OR'd alongside it, so this
+#                     rule still consumes one. The clause is here so the
+#                     rule matches PCG's new filenames under either
+#                     upgrade order, not to reclaim quota. Reclaiming a
+#                     slot means dropping the wildcard clause outright,
+#                     once a setup's PCG image is confirmed upgraded
+#                     fleet-wide — a separate change, not yet toggleable.
 #   reason      → PutObject or CompleteMultipartUpload (large files >5MB use multipart)
 resource "aws_cloudwatch_event_rule" "iceberg_file_events" {
   name        = "newrelic-fed-logs-${var.setup_name}-iceberg-file-created"
