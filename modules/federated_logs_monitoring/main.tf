@@ -407,7 +407,11 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.s3.BucketSizeBytes`) FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 7 days ago TIMESERIES 1 day UNTIL 24 hours ago"
+        query      = "SELECT max(`aws.s3.BucketSizeBytes`) AS 'Bucket Size' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 7 days ago TIMESERIES 1 day"
+      }
+
+      units {
+        unit = "bytes"
       }
     }
 
@@ -421,7 +425,11 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.s3.NumberOfObjects`) AS 'Objects' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 7 days ago TIMESERIES 1 day UNTIL 24 hours ago"
+        query      = "SELECT max(`aws.s3.NumberOfObjects`) AS 'Objects' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 7 days ago TIMESERIES 1 day"
+      }
+
+      units {
+        unit = "count"
       }
     }
 
