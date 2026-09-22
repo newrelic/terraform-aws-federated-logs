@@ -2,7 +2,9 @@
 # Destination: Auto-created bucket in customer's account for Flink JAR storage
 
 locals {
-  flink_jar_source_bucket = "nr-downloads-main"
+  # "staging" is a special-cased version: it's built from unmerged PRs and published to
+  # a separate testing bucket, never to the customer-facing nr-downloads-main bucket.
+  flink_jar_source_bucket = var.flink_iceberg_commit_worker_version == "staging" ? "nr-downloads-ohai-testing" : "nr-downloads-main"
   flink_jar_filename      = "flink-iceberg-commit-worker-${var.flink_iceberg_commit_worker_version}.jar"
   flink_jar_source_key    = "pipeline-control-gateway/fed-logs/${local.flink_jar_filename}"
   flink_jar_dest_key      = "flink/${local.flink_jar_filename}"
@@ -68,7 +70,7 @@ data "http" "flink_jar_metadata" {
     }
     postcondition {
       condition     = self.status_code != 404
-      error_message = "JAR not found at ${local.flink_jar_source_url} (HTTP 404). Verify that version '${var.flink_iceberg_commit_worker_version}' exists in the nr-downloads-main bucket."
+      error_message = "JAR not found at ${local.flink_jar_source_url} (HTTP 404). Verify that version '${var.flink_iceberg_commit_worker_version}' exists in the ${local.flink_jar_source_bucket} bucket."
     }
     postcondition {
       condition     = contains([200, 401, 403, 404], self.status_code)
