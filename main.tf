@@ -51,7 +51,7 @@ module "monitoring" {
   glue_catalog_db_name = module.setup.glue_catalog_db_name
   sqs_queue_arn        = module.role.sqs_queue_arn_from_ngep
   partition_table_ids  = module.partition.all_table_ids
-  pcg_cluster_name     = var.pcg_cluster_name
+  fleet_entity_guid    = var.fleet_entity_guid
 
   depends_on = [module.setup, module.partition]
 }

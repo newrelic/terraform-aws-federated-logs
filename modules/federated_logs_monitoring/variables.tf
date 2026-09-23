@@ -35,8 +35,7 @@ variable "partition_table_ids" {
   default     = {}
 }
 
-variable "pcg_cluster_name" {
-  description = "EKS cluster name where PCG is running. Used to filter PCG metrics in the dashboard. If not provided, the PCG Metrics page will appear but show no data."
+variable "fleet_entity_guid" {
+  description = "Entity GUID of the PCG fleet."
   type        = string
-  default     = ""
 }

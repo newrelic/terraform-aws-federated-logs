@@ -24,6 +24,20 @@ resource "newrelic_one_dashboard" "this" {
     }
   }
 
+
+  variable {
+    name                 = "cluster_name"
+    title                = "Cluster"
+    type                 = "nrql"
+    replacement_strategy = "default"
+    is_multi_selection   = false
+
+    nrql_query {
+      account_ids = [var.newrelic_account_id]
+      query       = "SELECT uniques(clusterName) FROM Metric WHERE service.name = 'pipeline-control-gateway' AND fleetId = '${var.fleet_entity_guid}' SINCE 30 days ago"
+    }
+  }
+
   # ══════════════════════════════════════════════════════════════════════════
   # Page 1 — Overview
   # ══════════════════════════════════════════════════════════════════════════
@@ -91,7 +105,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT latest(pcg_backpressure_active) AS 'Backpressure' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = '${var.pcg_cluster_name}' SINCE 5 minutes ago"
+        query      = "SELECT latest(pcg_backpressure_active) AS 'Backpressure' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 5 minutes ago"
       }
 
       critical = 0.5
@@ -544,7 +558,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT latest(pcg_backpressure_active) AS 'Backpressure' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = '${var.pcg_cluster_name}' FACET podName SINCE 5 minutes ago"
+        query      = "SELECT latest(pcg_backpressure_active) AS 'Backpressure' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET podName SINCE 5 minutes ago"
       }
 
       critical = 0.5
@@ -559,7 +573,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT latest(pcg_instance_cpu_utilization) * 100 AS 'CPU %' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = '${var.pcg_cluster_name}' FACET podName SINCE 5 minutes ago"
+        query      = "SELECT latest(pcg_instance_cpu_utilization) * 100 AS 'CPU %' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET podName SINCE 5 minutes ago"
       }
 
       warning  = 70
@@ -575,7 +589,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT latest(pcg_instance_memory_utilization) * 100 AS 'Memory %' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = '${var.pcg_cluster_name}' FACET podName SINCE 5 minutes ago"
+        query      = "SELECT latest(pcg_instance_memory_utilization) * 100 AS 'Memory %' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET podName SINCE 5 minutes ago"
       }
 
       warning  = 60
@@ -591,7 +605,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT latest(otelcol_icebergexporter_ingest_channel_depth) AS 'Ingest Depth' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = '${var.pcg_cluster_name}' FACET podName SINCE 5 minutes ago"
+        query      = "SELECT latest(otelcol_icebergexporter_ingest_channel_depth) AS 'Ingest Depth' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET podName SINCE 5 minutes ago"
       }
 
       warning  = 25000
@@ -609,7 +623,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT rate(sum(otelcol_icebergexporter_batch_sent_records), 1 SECOND) AS 'Records/sec', rate(sum(otelcol_icebergexporter_files_written), 1 MINUTE) AS 'Files/min' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = '${var.pcg_cluster_name}' SINCE 1 hour ago TIMESERIES AUTO"
+        query      = "SELECT rate(sum(otelcol_icebergexporter_batch_sent_records), 1 SECOND) AS 'Records/sec', rate(sum(otelcol_icebergexporter_files_written), 1 MINUTE) AS 'Files/min' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
       }
     }
 
@@ -622,7 +636,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT rate(sum(otelcol_icebergexporter_batch_sent_bytes), 1 SECOND) / 1000000 AS 'Incoming MB/s', rate(sum(otelcol_icebergexporter_s3_bytes_sent), 1 SECOND) / 1000000 AS 'S3 Written MB/s' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = '${var.pcg_cluster_name}' SINCE 1 hour ago TIMESERIES AUTO"
+        query      = "SELECT rate(sum(otelcol_icebergexporter_batch_sent_bytes), 1 SECOND) / 1000000 AS 'Incoming MB/s', rate(sum(otelcol_icebergexporter_s3_bytes_sent), 1 SECOND) / 1000000 AS 'S3 Written MB/s' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
       }
     }
 
@@ -637,7 +651,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT percentile(otelcol_icebergexporter_pcg_total_latency_ms, 50) AS 'P50', percentile(otelcol_icebergexporter_pcg_total_latency_ms, 95) AS 'P95', percentile(otelcol_icebergexporter_pcg_total_latency_ms, 99) AS 'P99' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = '${var.pcg_cluster_name}' SINCE 1 hour ago TIMESERIES AUTO"
+        query      = "SELECT percentile(otelcol_icebergexporter_pcg_total_latency_ms, 50) AS 'P50', percentile(otelcol_icebergexporter_pcg_total_latency_ms, 95) AS 'P95', percentile(otelcol_icebergexporter_pcg_total_latency_ms, 99) AS 'P99' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
       }
     }
 
@@ -650,7 +664,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT percentile(otelcol_icebergexporter_write_latency_ms, 50) AS 'P50', percentile(otelcol_icebergexporter_write_latency_ms, 95) AS 'P95', percentile(otelcol_icebergexporter_write_latency_ms, 99) AS 'P99' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = '${var.pcg_cluster_name}' SINCE 1 hour ago TIMESERIES AUTO"
+        query      = "SELECT percentile(otelcol_icebergexporter_write_latency_ms, 50) AS 'P50', percentile(otelcol_icebergexporter_write_latency_ms, 95) AS 'P95', percentile(otelcol_icebergexporter_write_latency_ms, 99) AS 'P99' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
       }
     }
 
@@ -663,7 +677,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT average(otelcol_icebergexporter_buffering_latency_ms) AS 'Buffering', average(otelcol_icebergexporter_conversion_latency_ms) AS 'Arrow Conversion', average(otelcol_icebergexporter_write_latency_ms) AS 'S3 Write' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = '${var.pcg_cluster_name}' SINCE 1 hour ago TIMESERIES AUTO"
+        query      = "SELECT average(otelcol_icebergexporter_buffering_latency_ms) AS 'Buffering', average(otelcol_icebergexporter_conversion_latency_ms) AS 'Arrow Conversion', average(otelcol_icebergexporter_write_latency_ms) AS 'S3 Write' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
       }
     }
 
@@ -678,7 +692,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT rate(sum(pcg_backpressure_rejections_total), 1 SECOND) AS 'Rejections/sec' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = '${var.pcg_cluster_name}' SINCE 1 hour ago TIMESERIES AUTO"
+        query      = "SELECT rate(sum(pcg_backpressure_rejections_total), 1 SECOND) AS 'Rejections/sec' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
       }
     }
 
@@ -691,7 +705,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT rate(sum(otelcol_receiver_refused_log_records), 1 SECOND) AS 'Refused/sec' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = '${var.pcg_cluster_name}' SINCE 1 hour ago TIMESERIES AUTO"
+        query      = "SELECT rate(sum(otelcol_receiver_refused_log_records), 1 SECOND) AS 'Refused/sec' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
       }
     }
 
@@ -704,7 +718,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(otelcol_icebergexporter_batches_flushed_by_reason) FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = '${var.pcg_cluster_name}' FACET flush_reason SINCE 6 hours ago"
+        query      = "SELECT sum(otelcol_icebergexporter_batches_flushed_by_reason) FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET flush_reason SINCE 6 hours ago"
       }
     }
   }
