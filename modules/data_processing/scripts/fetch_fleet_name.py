@@ -19,7 +19,7 @@ def call_graphql(endpoint, nr_api_key, query, variables):
         "API-Key": nr_api_key,
         "X-Query-Source-Capability-Id": "ADD_DATA",
     })
-    return json.loads(urllib.request.urlopen(req).read())
+    return json.loads(urllib.request.urlopen(req, timeout=15).read())
 
 
 def fail_soft(reason):
