@@ -38,7 +38,7 @@ resource "newrelic_one_dashboard" "this" {
       height = 2
       text   = <<-EOT
         ## Federated Logs - ${var.setup_name}
-        This dashboard provides end-to-end visibility into your Federated Logs pipeline - from log ingestion through PCG, to S3 storage, SQS event routing, Flink Iceberg commits, and Glue table maintenance.
+        This dashboard provides end-to-end visibility into your Federated Logs setup - from log ingestion through PCG, to S3 storage, SQS event routing, Flink Iceberg commits, and Glue table maintenance.
 
         **Overview** - Aggregated health indicators across the full pipeline.
 
@@ -351,51 +351,6 @@ resource "newrelic_one_dashboard" "this" {
   # ══════════════════════════════════════════════════════════════════════════
   page {
     name = "Data Storage - S3 & EventBridge"
-
-    /* S3 request metrics — uncomment after enabling S3 request metrics on the bucket
-       (AWS Console → S3 → bucket → Metrics → Request metrics → Create filter)
-       Equivalent metrics are available on the PCG Metrics page for free.
-
-    widget_line {
-      title  = "S3 Request Activity (GET / PUT / HEAD)"
-      row    = 1
-      column = 1
-      width  = 6
-      height = 3
-
-      nrql_query {
-        account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.s3.GetRequests`) AS 'GET', sum(`aws.s3.PutRequests`) AS 'PUT', sum(`aws.s3.HeadRequests`) AS 'HEAD' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 1 hour ago TIMESERIES AUTO"
-      }
-    }
-
-    widget_line {
-      title  = "S3 Bytes Transferred"
-      row    = 1
-      column = 7
-      width  = 6
-      height = 3
-
-      nrql_query {
-        account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.s3.BytesDownloaded`) AS 'Downloaded (bytes)', sum(`aws.s3.BytesUploaded`) AS 'Uploaded (bytes)' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 1 hour ago TIMESERIES AUTO"
-      }
-    }
-
-    widget_bar {
-      title  = "S3 Request Latency"
-      row    = 4
-      column = 1
-      width  = 12
-      height = 3
-
-      nrql_query {
-        account_id = var.newrelic_account_id
-        query      = "SELECT average(`aws.s3.TotalRequestLatency`) AS 'Average latency (ms)' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 1 hour ago TIMESERIES AUTO"
-      }
-    }
-
-    */
 
     widget_line {
       title             = "S3 Bucket Size"
