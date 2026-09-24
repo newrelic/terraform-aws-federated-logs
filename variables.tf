@@ -165,3 +165,19 @@ variable "e2e_validation_config" {
   }
 }
 
+
+variable "script_dependencies" {
+  description = <<-EOT
+    Optional values that must be resolved before the module runs `data.external.base_role`,
+    which shells out to Python. Pass anything that has to be in place first, such as a
+    null_resource that installs python dependencies or writes an env file.
+
+    Use this instead of `depends_on` on the module block. `depends_on` on a module defers
+    every data source inside it until apply, including `aws_region` and
+    `aws_caller_identity`, which makes attributes computed from them unknown at plan time.
+    On attributes that force replacement, such as the Glue table optimizers `catalog_id`,
+    that surfaces as a planned replacement that does not really happen.
+  EOT
+  type        = any
+  default     = null
+}

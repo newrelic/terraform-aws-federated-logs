@@ -238,3 +238,19 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "script_dependencies" {
+  description = <<-EOT
+    Optional values that must be resolved before `data.external.license_key` runs its
+    Python script. Pass anything the script needs in place first, such as a
+    null_resource that installs python dependencies or writes an env file.
+
+    Use this instead of `depends_on` on the module block. `depends_on` on a module
+    defers every data source inside it until apply, including `aws_region` and
+    `aws_caller_identity`, which makes attributes computed from them unknown at plan
+    time. For attributes that force replacement, that shows up as a spurious planned
+    replacement.
+  EOT
+  type        = any
+  default     = null
+}
