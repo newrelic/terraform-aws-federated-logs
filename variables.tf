@@ -68,7 +68,7 @@ variable "newrelic_region" {
 #     enabled                              = false
 #     cadence                              = "daily"  # "daily" | "hourly" — all tagging-enabled
 #                                                      # tables in one setup must agree
-#     retain_days                          = 7         # storage scales with cadence x retain_days
+#     retain_days                          = 15        # storage scales with cadence x retain_days
 #                                                      # (e.g. hourly + 7 days ~= 168 pinned
 #                                                      # snapshots per table, not 1)
 #──────────────────────────────────────────────────────────────
@@ -103,7 +103,7 @@ variable "default_table_setting" {
       snapshot_tagging = optional(object({
         enabled     = optional(bool, false)
         cadence     = optional(string, "daily")
-        retain_days = optional(number, 7)
+        retain_days = optional(number, 15)
       }), {})
     }), {})
   })
@@ -136,7 +136,7 @@ variable "partition_tables" {
       snapshot_tagging = optional(object({
         enabled     = optional(bool, false)
         cadence     = optional(string, "daily")
-        retain_days = optional(number, 7)
+        retain_days = optional(number, 15)
       }), {})
     }), {})
   }))

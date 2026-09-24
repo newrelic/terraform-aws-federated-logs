@@ -76,15 +76,15 @@ module "federated_logs" {
       }
       # Opt-in: periodic protected recovery point that survives the
       # aggressive snapshot_retention policy above. Disabled by default.
-      # cadence accepts "daily" (default) or "hourly" — all tables that
-      # enable tagging in one setup must use the same cadence.
+      # cadence accepts "daily" (default, 01:00 UTC) or "hourly" — all tables
+      # that enable tagging in one setup must use the same cadence.
       # Note: each tag pins a snapshot for retain_days, so storage grows
-      # with cadence × retain_days — e.g. hourly + retain_days = 7 keeps
-      # ~168 pinned snapshots per table instead of 1.
+      # with cadence × retain_days — daily + retain_days = 15 keeps ~15
+      # pinned snapshots per table, but hourly + 15 keeps ~360.
       snapshot_tagging = {
         enabled     = false
         cadence     = "daily"
-        retain_days = 7
+        retain_days = 15
       }
     }
   }

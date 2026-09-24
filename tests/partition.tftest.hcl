@@ -138,8 +138,8 @@ run "test_snapshot_tagging_defaults_apply_when_omitted" {
     error_message = "snapshot_tagging.cadence should default to daily"
   }
   assert {
-    condition     = var.partition_tables["Log_backup_test"].optimizer_configuration.snapshot_tagging.retain_days == 7
-    error_message = "snapshot_tagging.retain_days should default to 7"
+    condition     = var.partition_tables["Log_backup_test"].optimizer_configuration.snapshot_tagging.retain_days == 15
+    error_message = "snapshot_tagging.retain_days should default to 15"
   }
 }
 
@@ -247,8 +247,8 @@ run "test_snapshot_tagging_enabled_creates_glue_job" {
   }
 
   assert {
-    condition     = length(aws_glue_trigger.tagging_schedule) == 1 && aws_glue_trigger.tagging_schedule[0].schedule == "cron(0 0 * * ? *)"
-    error_message = "Expected a daily tagging trigger with the standard midnight-UTC cron"
+    condition     = length(aws_glue_trigger.tagging_schedule) == 1 && aws_glue_trigger.tagging_schedule[0].schedule == "cron(0 1 * * ? *)"
+    error_message = "Expected a daily tagging trigger at 01:00 UTC, offset from the retention job's midnight cron"
   }
 }
 

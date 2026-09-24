@@ -139,6 +139,6 @@ locals {
   # is unused, but the local must still evaluate).
   tagging_cadence = length(local.tagging_cadences) > 0 ? local.tagging_cadences[0] : "daily"
 
-  tagging_cron_schedule = local.tagging_cadence == "hourly" ? "cron(0 * * * ? *)" : "cron(0 0 * * ? *)"
+  tagging_cron_schedule = local.tagging_cadence == "hourly" ? "cron(0 * * * ? *)" : "cron(0 1 * * ? *)"
 
 }
