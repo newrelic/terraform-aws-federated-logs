@@ -1,8 +1,59 @@
 import sys
 import json
+import random
+import time
 from datetime import datetime, timezone
 from awsglue.utils import getResolvedOptions
 from pyiceberg.catalog.glue import GlueCatalog
+from pyiceberg.exceptions import CommitFailedException
+
+# Creating a tag is an Iceberg metadata commit under optimistic locking, and
+# these tables are appended to continuously by the Flink commit worker and
+# rewritten by Glue's compaction optimizer. Losing that race is the expected
+# case, not the exotic one, and pyiceberg surfaces it as CommitFailedException
+# with no retry of its own.
+COMMIT_ATTEMPTS = 5
+COMMIT_BACKOFF_CAP_S = 8
+
+
+def tag_current_snapshot(catalog, identifier, tag_name, retain_ms):
+    """Tag the table's current snapshot, retrying on commit conflicts.
+
+    Returns (snapshot_id, status). snapshot_id is None when nothing was tagged.
+
+    The table handle MUST be reloaded on every attempt: it carries the metadata
+    version the commit is validated against, so retrying with a stale handle
+    fails identically every time. Reloading also means a conflict re-reads the
+    table, so we tag whatever is current at the winning attempt — which is what
+    we want for a recovery point.
+    """
+    for attempt in range(1, COMMIT_ATTEMPTS + 1):
+        table = catalog.load_table(identifier)
+
+        # Re-checked per attempt, not just once: a concurrent run of this job
+        # may have created the tag while we were backing off.
+        if tag_name in table.refs():
+            return None, "SKIPPED (already tagged this tick)"
+
+        current_snapshot = table.current_snapshot()
+        if current_snapshot is None:
+            return None, "SKIPPED (no snapshot yet)"
+
+        snapshot_id = current_snapshot.snapshot_id
+        try:
+            with table.manage_snapshots() as ms:
+                ms.create_tag(snapshot_id, tag_name, max_ref_age_ms=retain_ms)
+            return snapshot_id, "SUCCESS"
+        except CommitFailedException as e:
+            if attempt == COMMIT_ATTEMPTS:
+                raise
+            backoff = min(2 ** (attempt - 1), COMMIT_BACKOFF_CAP_S)
+            backoff += random.uniform(0, 0.5)  # jitter, so parallel tables desync
+            print(
+                f"  commit conflict on attempt {attempt}/{COMMIT_ATTEMPTS} "
+                f"({e}); reloading table and retrying in {backoff:.1f}s"
+            )
+            time.sleep(backoff)
 
 
 def main():
@@ -24,30 +75,20 @@ def main():
 
         try:
             print(f"Tag name: {tag_name}, retain_days: {cfg['retain_days']}")
-            table = catalog.load_table(f"{database}.{table_name}")
-
-            # Idempotency: CREATE TAG fails if a ref with this name already
-            # exists. Check first so a retried/overlapping run for the same
-            # tick is a no-op, not a failure.
-            if tag_name in table.refs():
-                results[table_name] = "SKIPPED (already tagged this tick)"
-                print(f"[{table_name}] Tag {tag_name} already exists, skipping")
-                continue
-
-            current_snapshot = table.current_snapshot()
-            if current_snapshot is None:
-                results[table_name] = "SKIPPED (no snapshot yet)"
-                print(f"[{table_name}] Table has no snapshot yet, skipping")
-                continue
-
-            snapshot_id = current_snapshot.snapshot_id
             retain_ms = cfg["retain_days"] * 24 * 60 * 60 * 1000
 
-            with table.manage_snapshots() as ms:
-                ms.create_tag(snapshot_id, tag_name, max_ref_age_ms=retain_ms)
+            # Idempotency is handled inside the helper: CREATE TAG fails if a
+            # ref with this name already exists, so an overlapping or retried
+            # run for the same tick is a no-op rather than a failure.
+            snapshot_id, status = tag_current_snapshot(
+                catalog, f"{database}.{table_name}", tag_name, retain_ms
+            )
+            results[table_name] = status
 
-            results[table_name] = "SUCCESS"
-            print(f"[{table_name}] Created tag {tag_name} on snapshot {snapshot_id}")
+            if status == "SUCCESS":
+                print(f"[{table_name}] Created tag {tag_name} on snapshot {snapshot_id}")
+            else:
+                print(f"[{table_name}] {status}")
 
         except Exception as e:
             error_msg = str(e)

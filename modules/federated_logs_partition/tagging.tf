@@ -46,7 +46,7 @@ resource "aws_glue_job" "tagging" {
 }
 
 # Glue Trigger to schedule the tagging job. Cron resolves to daily
-# (cron(0 0 * * ? *)) or hourly (cron(0 * * * ? *)) based on the single
+# (cron(0 1 * * ? *)) or hourly (cron(0 * * * ? *)) based on the single
 # cadence shared by every table that has snapshot_tagging.enabled = true —
 # see terraform_data.tagging_cadence_check below for why it's guaranteed
 # to be single-valued.
