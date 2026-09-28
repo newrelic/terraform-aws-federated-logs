@@ -129,6 +129,40 @@ run "test_base_role_naming_and_abac" {
   }
 }
 
+run "test_fleet_name_omitted_when_empty" {
+  command = plan
+
+  variables {
+    data_processing_module_name = "inttest-dp-no-fleet-name"
+    fleet_entity_guid           = var.fleet_entity_guid
+    newrelic_org_id             = var.newrelic_org_id
+    newrelic_account_id         = var.newrelic_account_id
+    newrelic_region             = var.newrelic_region
+    clusters = {
+      "test-cluster" = {
+        k8s_namespace            = "federated-logs"
+        k8s_service_account_name = "pcg-writer-sa"
+        oidc_provider_arn        = var.test_oidc_arn
+      }
+    }
+  }
+
+  module {
+    source = "./modules/data_processing"
+  }
+
+  # fleet_name defaults to "" — the "fleet.entity.name" key must be omitted
+  # entirely rather than set to an empty string, since AWS Managed Flink's
+  # property map rejects empty-string values outright.
+  assert {
+    condition = ![
+      for pg in aws_kinesisanalyticsv2_application.flink_iceberg_commit_worker.application_configuration[0].environment_properties[0].property_group :
+      contains(keys(pg.property_map), "fleet.entity.name") if pg.property_group_id == "FlinkApplicationProperties"
+    ][0]
+    error_message = "fleet.entity.name must be omitted from FlinkApplicationProperties when fleet_name is unset"
+  }
+}
+
 # =============================================================================
 # INPUT VALIDATION TESTS
 # =============================================================================
