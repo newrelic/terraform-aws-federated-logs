@@ -113,12 +113,18 @@ resource "aws_iam_role_policy" "flink_role_policy" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      # S3 read-only access for the JAR deployment bucket (customer's bucket)
+      # S3 read-only access for the JAR deployment bucket (customer's bucket).
+      # GetObjectVersion is required, not just GetObject: aws_s3_content_location
+      # now pins object_version, so KDA's CreateApplication/UpdateApplication call
+      # fetches that specific version rather than "whatever is current". GetObject
+      # alone cannot satisfy a versioned fetch and its own service-side check on that
+      # path fails with "unable to get the specified fileKey ... with version id: ...".
       {
         Sid    = "S3DeploymentBucketAccess"
         Effect = "Allow"
         Action = [
           "s3:GetObject",
+          "s3:GetObjectVersion",
           "s3:GetObjectMetadata",
           "s3:ListBucket",
         ]
