@@ -113,12 +113,18 @@ resource "aws_iam_role_policy" "flink_role_policy" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      # S3 read-only access for the JAR deployment bucket (customer's bucket)
+      # S3 read-only access for the JAR deployment bucket (customer's bucket).
+      # GetObjectVersion is required, not just GetObject: aws_s3_content_location
+      # now pins object_version, so KDA's CreateApplication/UpdateApplication call
+      # fetches that specific version rather than "whatever is current". GetObject
+      # alone cannot satisfy a versioned fetch and its own service-side check on that
+      # path fails with "unable to get the specified fileKey ... with version id: ...".
       {
         Sid    = "S3DeploymentBucketAccess"
         Effect = "Allow"
         Action = [
           "s3:GetObject",
+          "s3:GetObjectVersion",
           "s3:GetObjectMetadata",
           "s3:ListBucket",
         ]
@@ -213,6 +219,22 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
         s3_content_location {
           bucket_arn = aws_s3_bucket.flink_jar.arn
           file_key   = local.flink_jar_dest_key
+
+          # Pin the exact S3 object version of the JAR.
+          #
+          # Without this, a new worker release never reaches an already-provisioned
+          # application. On the default unpinned config the destination key is the
+          # constant "flink/flink-iceberg-commit-worker-latest.jar", so when a new
+          # release is published upstream the object's bytes are refreshed (the
+          # data.http ETag trigger in flink-jar.tf handles that correctly) but every
+          # attribute Terraform tracks on this resource stays identical — same bucket,
+          # same key. Terraform therefore plans no change and never calls KDA's
+          # UpdateApplication, leaving the old code running indefinitely. Nothing else
+          # in this repo calls UpdateApplication either, so there is no other path.
+          #
+          # version_id changes on every re-upload, so wiring it here gives Terraform an
+          # attribute that actually moves when the code does.
+          object_version = aws_s3_object.flink_jar.version_id
         }
       }
       code_content_type = "ZIPFILE"
