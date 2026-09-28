@@ -3,6 +3,7 @@ module "federated_logs" {
 
   setup_name          = "my-app-logs-pptt"
   fleet_entity_guid   = var.fleet_entity_guid
+  routing_expression  = "true == true"
   newrelic_org_id     = var.newrelic_org_id
   newrelic_account_id = 0    # Replace with your NR account ID.
   newrelic_region     = "US" # "US" (default), "EU", or "STAGING"

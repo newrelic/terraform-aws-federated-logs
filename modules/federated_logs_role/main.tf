@@ -315,6 +315,13 @@ resource "newrelic_federated_logs_setup" "this" {
     type = "PIPELINE_CONTROL"
     pipeline_control {
       fleet_id = var.fleet_entity_guid
+
+      dynamic "routing_rule" {
+        for_each = var.routing_expression != null ? [1] : []
+        content {
+          expression = var.routing_expression
+        }
+      }
     }
   }
 }

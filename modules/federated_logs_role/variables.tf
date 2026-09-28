@@ -19,6 +19,12 @@ variable "fleet_entity_guid" {
   type        = string
 }
 
+variable "routing_expression" {
+  description = "OTTL expression for the PCG routing rule. Determines which logs from the fleet are forwarded to this setup."
+  type        = string
+  default     = null
+}
+
 variable "newrelic_region" {
   description = "New Relic region: 'US', 'EU', or 'STAGING'."
   type        = string
