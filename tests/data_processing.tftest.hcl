@@ -15,14 +15,12 @@
 # =============================================================================
 
 # Mock the external provider to avoid requiring NEW_RELIC_LICENSE_KEY/NEW_RELIC_API_KEY in CI.
-# Applies to every `data "external"` instance (license_key, fleet_name); each one only
-# reads the key it cares about, so having both in the shared defaults is harmless.
+# Applies to the license_key `data "external"` instance.
 mock_provider "external" {
   mock_data "external" {
     defaults = {
       result = {
-        license_key       = "mock-license-key-for-testing"
-        fleet_entity_name = "mock-fleet-name-for-testing"
+        license_key = "mock-license-key-for-testing"
       }
     }
   }
@@ -66,6 +64,7 @@ run "test_base_role_naming_and_abac" {
   variables {
     data_processing_module_name = "inttest-dp-name"
     fleet_entity_guid           = var.fleet_entity_guid
+    fleet_name                  = "test-fleet-name"
     newrelic_org_id             = var.newrelic_org_id
     newrelic_account_id         = var.newrelic_account_id
     newrelic_region             = var.newrelic_region
@@ -119,14 +118,14 @@ run "test_base_role_naming_and_abac" {
     error_message = "Flink application must expose fleet_entity_guid as the 'fleet.entity.guid' FlinkApplicationProperties key"
   }
 
-  # Verify the Flink application also exposes the resolved fleet display name
-  # (fleetName), alongside — not instead of — fleet_entity_guid
+  # Verify the Flink application also exposes the fleet display name (fleetName),
+  # alongside — not instead of — fleet_entity_guid
   assert {
     condition = [
       for pg in aws_kinesisanalyticsv2_application.flink_iceberg_commit_worker.application_configuration[0].environment_properties[0].property_group :
       pg.property_map["fleet.entity.name"] if pg.property_group_id == "FlinkApplicationProperties"
-    ][0] == "mock-fleet-name-for-testing"
-    error_message = "Flink application must expose the resolved fleet name as the 'fleet.entity.name' FlinkApplicationProperties key"
+    ][0] == "test-fleet-name"
+    error_message = "Flink application must expose fleet_name as the 'fleet.entity.name' FlinkApplicationProperties key"
   }
 }
 
