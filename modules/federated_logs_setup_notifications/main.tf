@@ -66,25 +66,16 @@ resource "aws_iam_role_policy" "eventbridge_to_sqs" {
 # EventBridge rule — matches PCG-written parquet file creation events in this bucket
 # Filters by:
 #   bucket name → only this bucket
-#   key         → matches EITHER of two PCG-file naming conventions, OR'd
-#                 (EventBridge evaluates an array of filter objects as OR):
-#                   - wildcard "*pcg-*.parquet": the legacy convention
-#                     (PCG writer versions that predate the pcg-df.parquet
-#                     suffix marker). `wildcard` filters are capped at 30
-#                     rules per event bus account-wide (non-adjustable) —
-#                     this clause exists only for backward compatibility
-#                     with setups whose PCG image hasn't yet been upgraded.
-#                   - suffix "pcg-df.parquet": the current convention
-#                     (<uuid>.pcg-df.parquet), matched without a wildcard.
-#                     Adding this clause does NOT free a quota slot: the
-#                     quota counts any rule that *contains* a wildcard
-#                     filter, whatever else is OR'd alongside it, so this
-#                     rule still consumes one. The clause is here so the
-#                     rule matches PCG's new filenames under either
-#                     upgrade order, not to reclaim quota. Reclaiming a
-#                     slot means dropping the wildcard clause outright,
-#                     once a setup's PCG image is confirmed upgraded
-#                     fleet-wide — a separate change, not yet toggleable.
+#   key         → suffix "pcg-df.parquet" (PCG's current file-naming convention,
+#                 <uuid>.pcg-df.parquet — see pipeline-control-gateway#634).
+#                 `suffix` filters are NOT subject to the 30-rules-per-bus
+#                 wildcard quota (non-adjustable), unlike the `wildcard` filter
+#                 this replaced — that's the entire reason for this rule shape.
+#                 Requires every setup's PCG image to be on a build that writes
+#                 the .pcg-df.parquet suffix; a setup still writing the legacy
+#                 pcg-00000-<uuid>.parquet prefix form will silently stop
+#                 triggering this rule. Confirm the PCG image is upgraded
+#                 fleet-wide before applying this to an existing setup.
 #   reason      → PutObject or CompleteMultipartUpload (large files >5MB use multipart)
 resource "aws_cloudwatch_event_rule" "iceberg_file_events" {
   name        = "newrelic-fed-logs-${var.setup_name}-iceberg-file-created"
@@ -98,10 +89,7 @@ resource "aws_cloudwatch_event_rule" "iceberg_file_events" {
         name = [var.s3_bucket_id]
       }
       object = {
-        key = [
-          { wildcard = "*pcg-*.parquet" },
-          { suffix = "pcg-df.parquet" },
-        ]
+        key = [{ suffix = "pcg-df.parquet" }]
       }
       reason = ["PutObject", "CompleteMultipartUpload"]
     }
