@@ -315,6 +315,10 @@ resource "newrelic_one_dashboard" "this" {
         account_id = var.newrelic_account_id
         query      = "SELECT average(`iceberg.commit.e2e_latency_ms`) AS 'E2E Latency (ms)' FROM Metric WHERE tableId = {{table_id}} SINCE 1 hour ago TIMESERIES AUTO"
       }
+
+      units {
+        unit = "ms"
+      }
     }
 
     widget_line {
@@ -328,6 +332,10 @@ resource "newrelic_one_dashboard" "this" {
         account_id = var.newrelic_account_id
         query      = "SELECT average(`iceberg.commit.duration_ms`) AS 'Commit Duration (ms)' FROM Metric WHERE tableId = {{table_id}} SINCE 1 hour ago TIMESERIES AUTO"
       }
+
+      units {
+        unit = "ms"
+      }
     }
 
     widget_line {
@@ -340,6 +348,10 @@ resource "newrelic_one_dashboard" "this" {
       nrql_query {
         account_id = var.newrelic_account_id
         query      = "SELECT average(`iceberg.commit.batch_processing_latency_ms`) AS 'Batch Latency (ms)' FROM Metric WHERE tableId = {{table_id}} SINCE 1 hour ago TIMESERIES AUTO"
+      }
+
+      units {
+        unit = "ms"
       }
     }
 
