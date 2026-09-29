@@ -8,6 +8,20 @@ output "all_tables" {
   }
 }
 
+output "all_table_ids" {
+  description = "Map of tableId (database.table) to partition display name (e.g. Log_Federated) for seeding the dashboard variable dropdown."
+  value = merge(
+    {
+      for k in [substr(replace(lower("${local.setup_naming_prefix}_${local.default_partition_name}"), "/[^a-z0-9_]/", "_"), 0, local.max_table_name_length)] :
+      "${var.glue_catalog_db_name}.${k}" => local.default_partition_name
+    },
+    {
+      for sanitized_name, raw_name in local.nr_partition_names :
+      "${var.glue_catalog_db_name}.${sanitized_name}" => raw_name
+    }
+  )
+}
+
 output "retention_job_name" {
   description = "Name of the Glue retention job (if enabled)"
   value       = local.is_data_retention_enabled ? aws_glue_job.retention[0].name : null
