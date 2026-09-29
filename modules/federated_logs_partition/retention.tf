@@ -1,7 +1,7 @@
 # Dedicated bucket for Glue ETL scripts
 resource "aws_s3_bucket" "retention_scripts" {
   count  = local.is_data_retention_enabled ? 1 : 0
-  bucket = "newrelic-fed-logs-${var.setup_name}-retention-scripts"
+  bucket = "newrelic-fed-logs-${var.setup_name}-code-artifacts"
   region = data.aws_region.current.region
 }
 

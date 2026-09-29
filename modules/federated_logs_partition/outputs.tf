@@ -13,8 +13,8 @@ output "retention_job_name" {
   value       = local.is_data_retention_enabled ? aws_glue_job.retention[0].name : null
 }
 
-output "retention_scripts_bucket_name" {
-  description = "Name of the S3 bucket holding Glue retention scripts (if enabled)"
+output "code_artifacts_bucket_name" {
+  description = "Name of the S3 bucket holding Glue ETL scripts and other code artifacts (if retention is enabled)"
   value       = local.is_data_retention_enabled ? aws_s3_bucket.retention_scripts[0].bucket : null
 }
 
