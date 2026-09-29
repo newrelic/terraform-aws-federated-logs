@@ -21,6 +21,10 @@ variable "glue_catalog_db_name" {
 variable "sqs_queue_arn" {
   description = "SQS queue ARN from the fleet entity."
   type        = string
+  validation {
+    condition     = can(regex("^arn:aws:sqs:[^:]+:[0-9]{12}:.+$", var.sqs_queue_arn))
+    error_message = "sqs_queue_arn must be a valid SQS ARN (arn:aws:sqs:<region>:<account-id>:<queue-name>)."
+  }
 }
 
 variable "dashboard_name" {

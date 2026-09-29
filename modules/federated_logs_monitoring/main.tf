@@ -3,25 +3,22 @@ resource "newrelic_one_dashboard" "this" {
   permissions = "public_read_only"
   account_id  = var.newrelic_account_id
 
-  dynamic "variable" {
-    for_each = length(var.partition_table_ids) > 0 ? [1] : []
-    content {
-      name                 = "table_id"
-      title                = "Partition"
-      type                 = "enum"
-      is_multi_selection   = false
-      replacement_strategy = "default"
+  variable {
+    name                 = "table_id"
+    title                = "Partition"
+    type                 = "enum"
+    is_multi_selection   = false
+    replacement_strategy = "default"
 
-      dynamic "item" {
-        for_each = var.partition_table_ids
-        content {
-          title = item.value # "Log_Federated", "Log_Application" etc.
-          value = item.key   # full tableId "database.table"
-        }
+    dynamic "item" {
+      for_each = var.partition_table_ids
+      content {
+        title = item.value # "Log_Federated", "Log_Application" etc.
+        value = item.key   # full tableId "database.table"
       }
-
-      default_values = ["${var.glue_catalog_db_name}.${var.glue_catalog_db_name}_log_federated"]
     }
+
+    default_values = ["${var.glue_catalog_db_name}.${var.glue_catalog_db_name}_log_federated"]
   }
 
 
