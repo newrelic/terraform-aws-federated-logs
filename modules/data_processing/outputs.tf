@@ -52,7 +52,6 @@ output "flink_application_arn" {
   value       = aws_kinesisanalyticsv2_application.flink_iceberg_commit_worker.arn
 }
 
-
 output "sqs_queue_url" {
   description = "URL of the SQS queue for Iceberg file events."
   value       = aws_sqs_queue.iceberg_file_events.url
