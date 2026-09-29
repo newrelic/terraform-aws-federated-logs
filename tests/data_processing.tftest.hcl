@@ -14,7 +14,8 @@
 #
 # =============================================================================
 
-# Mock the external provider to avoid requiring NEW_RELIC_LICENSE_KEY in CI
+# Mock the external provider to avoid requiring NEW_RELIC_LICENSE_KEY/NEW_RELIC_API_KEY in CI.
+# Applies to the license_key `data "external"` instance.
 mock_provider "external" {
   mock_data "external" {
     defaults = {
@@ -63,6 +64,7 @@ run "test_base_role_naming_and_abac" {
   variables {
     data_processing_module_name = "inttest-dp-name"
     fleet_entity_guid           = var.fleet_entity_guid
+    fleet_name                  = "test-fleet-name"
     newrelic_org_id             = var.newrelic_org_id
     newrelic_account_id         = var.newrelic_account_id
     newrelic_region             = var.newrelic_region
@@ -101,6 +103,63 @@ run "test_base_role_naming_and_abac" {
   assert {
     condition     = can(regex("newrelic-fed-logs-\\*-pcg-writer", output.abac_policy_json))
     error_message = "ABAC policy must target newrelic-fed-logs-*-pcg-writer roles"
+  }
+
+  # Verify the Flink application exposes fleet_entity_guid as a static job-level
+  # property (fleetId), so the commit worker can stamp it onto every metric
+  assert {
+    # property_group is a set of objects (not a list) in this provider's schema,
+    # so it isn't index-addressable — pick out the FlinkApplicationProperties
+    # group by its property_group_id instead.
+    condition = [
+      for pg in aws_kinesisanalyticsv2_application.flink_iceberg_commit_worker.application_configuration[0].environment_properties[0].property_group :
+      pg.property_map["fleet.entity.guid"] if pg.property_group_id == "FlinkApplicationProperties"
+    ][0] == var.fleet_entity_guid
+    error_message = "Flink application must expose fleet_entity_guid as the 'fleet.entity.guid' FlinkApplicationProperties key"
+  }
+
+  # Verify the Flink application also exposes the fleet display name (fleetName),
+  # alongside — not instead of — fleet_entity_guid
+  assert {
+    condition = [
+      for pg in aws_kinesisanalyticsv2_application.flink_iceberg_commit_worker.application_configuration[0].environment_properties[0].property_group :
+      pg.property_map["fleet.entity.name"] if pg.property_group_id == "FlinkApplicationProperties"
+    ][0] == "test-fleet-name"
+    error_message = "Flink application must expose fleet_name as the 'fleet.entity.name' FlinkApplicationProperties key"
+  }
+}
+
+run "test_fleet_name_omitted_when_empty" {
+  command = plan
+
+  variables {
+    data_processing_module_name = "inttest-dp-no-fleet-name"
+    fleet_entity_guid           = var.fleet_entity_guid
+    newrelic_org_id             = var.newrelic_org_id
+    newrelic_account_id         = var.newrelic_account_id
+    newrelic_region             = var.newrelic_region
+    clusters = {
+      "test-cluster" = {
+        k8s_namespace            = "federated-logs"
+        k8s_service_account_name = "pcg-writer-sa"
+        oidc_provider_arn        = var.test_oidc_arn
+      }
+    }
+  }
+
+  module {
+    source = "./modules/data_processing"
+  }
+
+  # fleet_name defaults to "" — the "fleet.entity.name" key must be omitted
+  # entirely rather than set to an empty string, since AWS Managed Flink's
+  # property map rejects empty-string values outright.
+  assert {
+    condition = ![
+      for pg in aws_kinesisanalyticsv2_application.flink_iceberg_commit_worker.application_configuration[0].environment_properties[0].property_group :
+      contains(keys(pg.property_map), "fleet.entity.name") if pg.property_group_id == "FlinkApplicationProperties"
+    ][0]
+    error_message = "fleet.entity.name must be omitted from FlinkApplicationProperties when fleet_name is unset"
   }
 }
 
