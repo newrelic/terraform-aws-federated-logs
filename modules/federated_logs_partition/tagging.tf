@@ -2,8 +2,8 @@
 resource "aws_s3_object" "tagging_script" {
   count = local.is_snapshot_tagging_enabled ? 1 : 0
 
-  bucket = var.s3_bucket_name
-  key    = "${var.glue_catalog_db_name}/scripts/tagging_job.py"
+  bucket = aws_s3_bucket.retention_scripts[0].id
+  key    = "scripts/tagging_job.py"
   source = "${path.module}/scripts/tagging_job.py"
   etag   = filemd5("${path.module}/scripts/tagging_job.py")
 }
@@ -22,7 +22,7 @@ resource "aws_glue_job" "tagging" {
 
   command {
     name            = "pythonshell"
-    script_location = "s3://${var.s3_bucket_name}/${aws_s3_object.tagging_script[0].key}"
+    script_location = "s3://${aws_s3_bucket.retention_scripts[0].bucket}/${aws_s3_object.tagging_script[0].key}"
     python_version  = "3.9"
   }
 
