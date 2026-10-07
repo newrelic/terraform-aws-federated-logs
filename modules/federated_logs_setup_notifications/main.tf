@@ -70,16 +70,26 @@ resource "aws_iam_role_policy" "eventbridge_to_sqs" {
 # EventBridge rule — matches PCG-written parquet file creation events in this bucket
 # Filters by:
 #   bucket name → only this bucket
-#   key         → suffix "pcg-df.parquet" (PCG's current file-naming convention,
-#                 <uuid>.pcg-df.parquet — see pipeline-control-gateway#634).
-#                 `suffix` filters are NOT subject to the 30-rules-per-bus
-#                 wildcard quota (non-adjustable), unlike the `wildcard` filter
-#                 this replaced — that's the entire reason for this rule shape.
-#                 Requires every setup's PCG image to be on a build that writes
-#                 the .pcg-df.parquet suffix; a setup still writing the legacy
-#                 pcg-00000-<uuid>.parquet prefix form will silently stop
-#                 triggering this rule. Confirm the PCG image is upgraded
-#                 fleet-wide before applying this to an existing setup.
+#   key         → wildcard "*pcg-*.parquet", which matches BOTH PCG file-naming
+#                 conventions: the legacy pcg-00000-<uuid>.parquet form and the
+#                 current <uuid>.pcg-df.parquet form introduced by
+#                 pipeline-control-gateway#634.
+#                 This is deliberately not the narrower `suffix = "pcg-df.parquet"`
+#                 filter. A suffix filter matches only the post-#634 form, so any
+#                 setup whose PCG predates that build stops triggering this rule the
+#                 moment the module is upgraded — and it fails silently: the apply
+#                 succeeds, S3 keeps accepting writes, and file events simply stop
+#                 reaching SQS, so the commit worker goes idle and the Iceberg tables
+#                 stop growing with no error raised anywhere. The wildcard has no
+#                 such upgrade-ordering constraint.
+#                 The cost is that `wildcard` matchers count against the
+#                 non-adjustable 30-wildcard-rules-per-bus quota, which `suffix`
+#                 filters escape. Narrowing to the suffix is worth doing, but only
+#                 once every setup's PCG is known to be on a post-#634 build.
+#                 Do not broaden this to a bare ".parquet" suffix as a shortcut: the
+#                 Glue table optimizers write compacted parquet into the same data
+#                 prefix, and feeding their output back to the commit worker would
+#                 have it re-commit files it does not own.
 #   reason      → PutObject or CompleteMultipartUpload (large files >5MB use multipart)
 resource "aws_cloudwatch_event_rule" "iceberg_file_events" {
   name        = "newrelic-fed-logs-${var.setup_name}-iceberg-file-created"
@@ -93,7 +103,7 @@ resource "aws_cloudwatch_event_rule" "iceberg_file_events" {
         name = [var.s3_bucket_id]
       }
       object = {
-        key = [{ suffix = "pcg-df.parquet" }]
+        key = [{ wildcard = "*pcg-*.parquet" }]
       }
       reason = ["PutObject", "CompleteMultipartUpload"]
     }
