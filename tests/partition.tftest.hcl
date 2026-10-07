@@ -69,22 +69,25 @@ run "test_validation_rejects_reserved_name_mixed_case" {
   expect_failures = [var.partition_tables]
 }
 
-run "test_snapshot_tagging_explicit_values_pass_through" {
+# Asserts on the --TABLE_TAG_CONFIG the module renders (not on the input
+# variable), so it also pins the sanitized-key contract tagging_job.py relies
+# on: keys are full Glue table names, covering both default_table_setting and
+# every partition table, with retain_days defaulting to 15 when omitted.
+run "test_snapshot_tagging_renders_table_tag_config" {
   command = plan
 
   variables {
-    setup_name            = "inttest-partition"
-    s3_bucket_name        = "test-bucket"
-    glue_catalog_db_name  = "test_db"
-    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
-    setup_id              = "mock-setup-id"
-    newrelic_account_id   = 12345678
+    setup_name               = "inttest-partition"
+    s3_bucket_name           = "test-bucket"
+    glue_catalog_db_name     = "test_db"
+    glue_service_role_arn    = "arn:aws:iam::123456789012:role/test-role"
+    setup_id                 = "mock-setup-id"
+    newrelic_account_id      = 12345678
+    snapshot_tagging_enabled = true
     partition_tables = {
-      "Log_backup_test" = {
+      "Log_backup-test" = {
         optimizer_configuration = {
           snapshot_tagging = {
-            enabled     = true
-            cadence     = "hourly"
             retain_days = 14
           }
         }
@@ -97,139 +100,28 @@ run "test_snapshot_tagging_explicit_values_pass_through" {
   }
 
   assert {
-    condition     = var.partition_tables["Log_backup_test"].optimizer_configuration.snapshot_tagging.enabled == true
-    error_message = "snapshot_tagging.enabled should be true as explicitly set"
-  }
-  assert {
-    condition     = var.partition_tables["Log_backup_test"].optimizer_configuration.snapshot_tagging.cadence == "hourly"
-    error_message = "snapshot_tagging.cadence should be hourly as explicitly set"
-  }
-  assert {
-    condition     = var.partition_tables["Log_backup_test"].optimizer_configuration.snapshot_tagging.retain_days == 14
-    error_message = "snapshot_tagging.retain_days should be 14 as explicitly set"
+    condition = jsondecode(aws_glue_job.tagging[0].default_arguments["--TABLE_TAG_CONFIG"]) == {
+      newrelic_fed_logs_inttest_partition_log_federated   = { retain_days = 15 }
+      newrelic_fed_logs_inttest_partition_log_backup_test = { retain_days = 14 }
+    }
+    error_message = "TABLE_TAG_CONFIG must map every sanitized table name to its retain_days (default 15), got ${aws_glue_job.tagging[0].default_arguments["--TABLE_TAG_CONFIG"]}"
   }
 }
 
-run "test_snapshot_tagging_defaults_apply_when_omitted" {
-  command = plan
-
-  variables {
-    setup_name            = "inttest-partition"
-    s3_bucket_name        = "test-bucket"
-    glue_catalog_db_name  = "test_db"
-    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
-    setup_id              = "mock-setup-id"
-    newrelic_account_id   = 12345678
-    partition_tables = {
-      "Log_backup_test" = {}
-    }
-  }
-
-  module {
-    source = "./modules/federated_logs_partition"
-  }
-
-  assert {
-    condition     = var.partition_tables["Log_backup_test"].optimizer_configuration.snapshot_tagging.enabled == false
-    error_message = "snapshot_tagging.enabled should default to false"
-  }
-  assert {
-    condition     = var.partition_tables["Log_backup_test"].optimizer_configuration.snapshot_tagging.cadence == "daily"
-    error_message = "snapshot_tagging.cadence should default to daily"
-  }
-  assert {
-    condition     = var.partition_tables["Log_backup_test"].optimizer_configuration.snapshot_tagging.retain_days == 15
-    error_message = "snapshot_tagging.retain_days should default to 15"
-  }
-}
-
-run "test_snapshot_tagging_rejects_bad_cadence" {
-  command = plan
-
-  variables {
-    setup_name            = "inttest-partition"
-    s3_bucket_name        = "test-bucket"
-    glue_catalog_db_name  = "test_db"
-    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
-    setup_id              = "mock-setup-id"
-    newrelic_account_id   = 12345678
-    partition_tables = {
-      "Log_backup_test" = {
-        optimizer_configuration = {
-          snapshot_tagging = {
-            enabled = true
-            cadence = "weekly" # invalid — only "daily" or "hourly"
-          }
-        }
-      }
-    }
-  }
-
-  module {
-    source = "./modules/federated_logs_partition"
-  }
-
-  expect_failures = [var.partition_tables]
-}
-
-run "test_snapshot_tagging_cadence_mismatch_fails" {
-  command = plan
-
-  variables {
-    setup_name            = "inttest-partition"
-    s3_bucket_name        = "test-bucket"
-    glue_catalog_db_name  = "test_db"
-    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
-    setup_id              = "mock-setup-id"
-    newrelic_account_id   = 12345678
-    default_table_setting = {
-      optimizer_configuration = {
-        snapshot_tagging = {
-          enabled = true
-          cadence = "daily"
-        }
-      }
-    }
-    partition_tables = {
-      "Log_backup_test" = {
-        optimizer_configuration = {
-          snapshot_tagging = {
-            enabled = true
-            cadence = "hourly" # disagrees with default_table_setting's "daily"
-          }
-        }
-      }
-    }
-  }
-
-  module {
-    source = "./modules/federated_logs_partition"
-  }
-
-  expect_failures = [terraform_data.tagging_cadence_check]
-}
-
+# Retention deliberately left disabled: the code-artifacts bucket must still
+# be created for the tagging script alone.
 run "test_snapshot_tagging_enabled_creates_glue_job" {
   command = plan
 
   variables {
-    setup_name            = "inttest-partition"
-    s3_bucket_name        = "test-bucket"
-    glue_catalog_db_name  = "test_db"
-    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
-    setup_id              = "mock-setup-id"
-    newrelic_account_id   = 12345678
-    partition_tables = {
-      "Log_backup_test" = {
-        optimizer_configuration = {
-          snapshot_tagging = {
-            enabled     = true
-            cadence     = "daily"
-            retain_days = 14
-          }
-        }
-      }
-    }
+    setup_name               = "inttest-partition"
+    s3_bucket_name           = "test-bucket"
+    glue_catalog_db_name     = "test_db"
+    glue_service_role_arn    = "arn:aws:iam::123456789012:role/test-role"
+    setup_id                 = "mock-setup-id"
+    newrelic_account_id      = 12345678
+    snapshot_tagging_enabled = true
+    data_retention_enabled   = false
   }
 
   module {
@@ -238,7 +130,7 @@ run "test_snapshot_tagging_enabled_creates_glue_job" {
 
   assert {
     condition     = length(aws_glue_job.tagging) == 1
-    error_message = "Expected exactly one tagging Glue job when a table has snapshot_tagging.enabled = true"
+    error_message = "Expected exactly one tagging Glue job per setup when snapshot_tagging_enabled = true"
   }
 
   assert {
@@ -250,18 +142,34 @@ run "test_snapshot_tagging_enabled_creates_glue_job" {
     condition     = length(aws_glue_trigger.tagging_schedule) == 1 && aws_glue_trigger.tagging_schedule[0].schedule == "cron(0 1 * * ? *)"
     error_message = "Expected a daily tagging trigger at 01:00 UTC, offset from the retention job's midnight cron"
   }
+
+  assert {
+    condition     = aws_glue_job.tagging[0].default_arguments["--additional-python-modules"] == "pyarrow==14.0.2,pyiceberg[glue]==0.10.0"
+    error_message = "pyiceberg/pyarrow must stay pinned to the exact pair verified on Python Shell 3.9, got ${aws_glue_job.tagging[0].default_arguments["--additional-python-modules"]}"
+  }
+
+  assert {
+    condition     = length(aws_s3_bucket.retention_scripts) == 1
+    error_message = "The code-artifacts bucket must be created for the tagging script even when data retention is disabled"
+  }
+
+  assert {
+    condition     = aws_glue_job.tagging[0].command[0].script_location == "s3://newrelic-fed-logs-inttest-partition-code-artifacts/scripts/tagging_job.py"
+    error_message = "Tagging job must run the script from the code-artifacts bucket, got ${aws_glue_job.tagging[0].command[0].script_location}"
+  }
 }
 
 run "test_snapshot_tagging_disabled_creates_nothing" {
   command = plan
 
   variables {
-    setup_name            = "inttest-partition"
-    s3_bucket_name        = "test-bucket"
-    glue_catalog_db_name  = "test_db"
-    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
-    setup_id              = "mock-setup-id"
-    newrelic_account_id   = 12345678
+    setup_name             = "inttest-partition"
+    s3_bucket_name         = "test-bucket"
+    glue_catalog_db_name   = "test_db"
+    glue_service_role_arn  = "arn:aws:iam::123456789012:role/test-role"
+    setup_id               = "mock-setup-id"
+    newrelic_account_id    = 12345678
+    data_retention_enabled = false
   }
 
   module {
@@ -269,70 +177,13 @@ run "test_snapshot_tagging_disabled_creates_nothing" {
   }
 
   assert {
-    condition     = length(aws_glue_job.tagging) == 0
-    error_message = "No table has snapshot_tagging.enabled — expected zero tagging Glue jobs"
-  }
-}
-
-# Two tables that AGREE on a non-default cadence. Guards two regressions that
-# every other run in this file tolerates:
-#   1. A precondition counting tables instead of distinct cadences
-#      (length(local.tagging_enabled_tables) vs length(local.tagging_cadences))
-#      — the mismatch test above uses 2 tables with 2 cadences, so those two
-#      quantities are equal there and expect_failures cannot tell them apart.
-#   2. A hardcoded daily cron — the only other run asserting on the schedule
-#      uses cadence = "daily", which a constant also satisfies.
-# Also confirms table_tag_config spans BOTH default_table_setting and
-# partition_tables, and that one Glue job is created per setup, not per table.
-run "test_snapshot_tagging_agreeing_cadence_multi_table_hourly" {
-  command = plan
-
-  variables {
-    setup_name            = "inttest-partition"
-    s3_bucket_name        = "test-bucket"
-    glue_catalog_db_name  = "test_db"
-    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
-    setup_id              = "mock-setup-id"
-    newrelic_account_id   = 12345678
-    default_table_setting = {
-      optimizer_configuration = {
-        snapshot_tagging = {
-          enabled     = true
-          cadence     = "hourly"
-          retain_days = 3
-        }
-      }
-    }
-    partition_tables = {
-      "Log_backup_test" = {
-        optimizer_configuration = {
-          snapshot_tagging = {
-            enabled     = true
-            cadence     = "hourly" # agrees with default_table_setting
-            retain_days = 21
-          }
-        }
-      }
-    }
-  }
-
-  module {
-    source = "./modules/federated_logs_partition"
+    condition     = length(aws_glue_job.tagging) == 0 && length(aws_glue_trigger.tagging_schedule) == 0
+    error_message = "snapshot_tagging_enabled defaults to false — expected no tagging job or trigger"
   }
 
   assert {
-    condition     = length(aws_glue_job.tagging) == 1
-    error_message = "Two tagging-enabled tables must still yield exactly one Glue job per setup, not one per table"
-  }
-
-  assert {
-    condition     = aws_glue_trigger.tagging_schedule[0].schedule == "cron(0 * * * ? *)"
-    error_message = "Both tables use cadence = hourly, so the trigger must use the hourly cron, got ${aws_glue_trigger.tagging_schedule[0].schedule}"
-  }
-
-  assert {
-    condition     = length(jsondecode(aws_glue_job.tagging[0].default_arguments["--TABLE_TAG_CONFIG"])) == 2
-    error_message = "TABLE_TAG_CONFIG must contain both the default table and the partition table, got ${aws_glue_job.tagging[0].default_arguments["--TABLE_TAG_CONFIG"]}"
+    condition     = length(aws_s3_bucket.retention_scripts) == 0
+    error_message = "With neither retention nor tagging enabled, no code-artifacts bucket should be created"
   }
 }
 
@@ -344,18 +195,17 @@ run "test_snapshot_tagging_rejects_zero_retain_days" {
   command = plan
 
   variables {
-    setup_name            = "inttest-partition"
-    s3_bucket_name        = "test-bucket"
-    glue_catalog_db_name  = "test_db"
-    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
-    setup_id              = "mock-setup-id"
-    newrelic_account_id   = 12345678
+    setup_name               = "inttest-partition"
+    s3_bucket_name           = "test-bucket"
+    glue_catalog_db_name     = "test_db"
+    glue_service_role_arn    = "arn:aws:iam::123456789012:role/test-role"
+    setup_id                 = "mock-setup-id"
+    newrelic_account_id      = 12345678
+    snapshot_tagging_enabled = true
     partition_tables = {
       "Log_backup_test" = {
         optimizer_configuration = {
           snapshot_tagging = {
-            enabled     = true
-            cadence     = "daily"
             retain_days = 0
           }
         }

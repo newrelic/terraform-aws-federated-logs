@@ -50,6 +50,10 @@ module "federated_logs" {
   # Enable data retention feature (creates Glue job to delete old data)
   data_retention_enabled = true
 
+  # Enable snapshot tagging (creates Glue job that tags each table's current
+  # snapshot daily, kept for the table's snapshot_tagging.retain_days)
+  snapshot_tagging_enabled = false
+
   # Override default Iceberg table parameters and optimizer settings
   default_table_setting = {
     retention_in_days = 30
@@ -75,16 +79,11 @@ module "federated_logs" {
         min_input_files       = 5
         delete_file_threshold = 1
       }
-      # Opt-in: periodic protected recovery point that survives the
-      # aggressive snapshot_retention policy above. Disabled by default.
-      # cadence accepts "daily" (default, 01:00 UTC) or "hourly" — all tables
-      # that enable tagging in one setup must use the same cadence.
-      # Note: each tag pins a snapshot for retain_days, so storage grows
-      # with cadence × retain_days — daily + retain_days = 15 keeps ~15
-      # pinned snapshots per table, but hourly + 15 keeps ~360.
+      # Used only when snapshot_tagging_enabled = true: a daily (01:00 UTC)
+      # protected recovery point that survives the aggressive
+      # snapshot_retention policy above. Each tag pins a snapshot for
+      # retain_days, so expect ~retain_days pinned snapshots per table.
       snapshot_tagging = {
-        enabled     = false
-        cadence     = "daily"
         retain_days = 15
       }
     }
@@ -150,6 +149,7 @@ These are read directly from the environment and are never stored in Terraform s
 | `newrelic_region` | New Relic region: 'US', 'EU', or 'STAGING' | `string` | no (default: `"US"`) |
 | `region` | AWS region where resources will be created. If not set, uses the provider's configured region | `string` | no |
 | `data_retention_enabled` | Enable data retention feature (creates Glue job to delete old data based on per-table retention_in_days) | `bool` | no (default: `true`) |
+| `snapshot_tagging_enabled` | Enable snapshot tagging (creates Glue job that tags each table's current Iceberg snapshot daily at 01:00 UTC, kept for per-table snapshot_tagging.retain_days) | `bool` | no (default: `false`) |
 | `default_table_setting` | Settings for the primary federated log table (retention, table parameters, optimizer config) | `object` | no |
 | `partition_tables` | Map of additional partition tables, each can override retention, table parameters, optimizer config, routing expression, and description | `map(object)` | no |
 | `setup_description` | Optional description for the newrelic_federated_logs_setup resource | `string` | no |

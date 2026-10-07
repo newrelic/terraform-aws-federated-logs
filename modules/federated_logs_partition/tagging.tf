@@ -30,13 +30,20 @@ resource "aws_glue_job" "tagging" {
   timeout      = 15
   max_retries  = 1
 
+  # stdout/stderr go to the account-wide /aws-glue/python-jobs/{output,error}
+  # log groups — Python Shell jobs have no per-job log group or continuous
+  # logging. Alarming on this job must filter those groups by job name.
   default_arguments = {
-    "--enable-continuous-cloudwatch-log" = "true"
-    # pyarrow must be pinned explicitly: pyiceberg[glue]<1.0 alone resolves to
-    # 0.10.0, which needs a pyarrow newer than the one preinstalled on Glue's
-    # Python Shell 3.9 runtime (ImportError: S3RetryStrategy from
-    # pyarrow._s3fs). Verified against a live Glue 5.1 job.
-    "--additional-python-modules" = "pyarrow==14.0.2,pyiceberg[glue]<1.0"
+    # Both versions are pinned exactly because Glue pip-installs these on
+    # every run: a floating bound would pull an untested pyiceberg release on
+    # the next scheduled run. pyarrow is held at 14.0.2 because newer releases
+    # fail to import on the Python Shell 3.9 runtime (ImportError:
+    # S3RetryStrategy from pyarrow._s3fs), even though pyiceberg 0.10.0
+    # declares pyarrow>=17 — the tagging path only uses catalog/metadata
+    # APIs, not pyiceberg.io.pyarrow. This pair was verified end to end on a
+    # live Python Shell 3.9 job running tagging_job.py, including a real
+    # create_tag commit.
+    "--additional-python-modules" = "pyarrow==14.0.2,pyiceberg[glue]==0.10.0"
     "--DATABASE_NAME"             = var.glue_catalog_db_name
     "--WAREHOUSE_PATH"            = "s3://${var.s3_bucket_name}/warehouse/"
     "--TABLE_TAG_CONFIG"          = jsonencode(local.table_tag_config)
@@ -45,52 +52,16 @@ resource "aws_glue_job" "tagging" {
   depends_on = [aws_s3_object.tagging_script]
 }
 
-# Glue Trigger to schedule the tagging job. Cron resolves to daily
-# (cron(0 1 * * ? *)) or hourly (cron(0 * * * ? *)) based on the single
-# cadence shared by every table that has snapshot_tagging.enabled = true —
-# see terraform_data.tagging_cadence_check below for why it's guaranteed
-# to be single-valued.
+# Glue Trigger to schedule the tagging job daily at 01:00 UTC, offset from
+# the retention job's midnight run so the two don't contend for commits.
 resource "aws_glue_trigger" "tagging_schedule" {
   count = local.is_snapshot_tagging_enabled ? 1 : 0
 
   name     = "${local.setup_naming_prefix}-tagging-schedule"
   type     = "SCHEDULED"
-  schedule = local.tagging_cron_schedule
+  schedule = "cron(0 1 * * ? *)"
 
   actions {
     job_name = aws_glue_job.tagging[0].name
-  }
-}
-
-# CloudWatch Log Group for tagging job logs.
-# NOTE: a pythonshell Glue job writes to the account-wide
-# /aws-glue/python-jobs/{output,error} log groups, not this one — this
-# group exists for naming/retention parity with retention_logs. Any future
-# alarming on this job's failures must target /aws-glue/python-jobs/*
-# (filtered to this job's name), not this group.
-resource "aws_cloudwatch_log_group" "tagging_logs" {
-  count = local.is_snapshot_tagging_enabled ? 1 : 0
-
-  name              = "/aws-glue/jobs/${local.setup_naming_prefix}-tagging-job"
-  retention_in_days = 7
-}
-
-# Enforces that every table with snapshot_tagging.enabled = true agrees on
-# cadence. One Glue trigger has exactly one cron schedule, so a mismatch
-# across default_table_setting and partition_tables can't be honored.
-# Implemented as a resource-level precondition (not a variable validation{}
-# block) because the rule spans two separate variables, which variable
-# validation blocks cannot see in Terraform >= 1.6.0 (the version floor
-# declared in this repo's README) — that capability wasn't added until 1.9.
-resource "terraform_data" "tagging_cadence_check" {
-  count = local.is_snapshot_tagging_enabled ? 1 : 0
-
-  input = "cadence-check"
-
-  lifecycle {
-    precondition {
-      condition     = length(local.tagging_cadences) <= 1
-      error_message = "All tables with snapshot_tagging.enabled = true must use the same cadence (one Glue trigger supports one cron schedule per setup). Found: ${join(", ", local.tagging_cadences)}."
-    }
   }
 }
