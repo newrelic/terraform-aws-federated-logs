@@ -26,9 +26,34 @@ jobs:
           node-version: 22
 
       - name: Install semantic-release plugins
-        run: npm install --no-save semantic-release@24 conventional-changelog-conventionalcommits@8 @semantic-release/exec @semantic-release/git
+        run: npm install --no-save semantic-release@24 conventional-changelog-conventionalcommits@8 @semantic-release/exec
+
 
       - name: Run semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx semantic-release
+
+
+      - name: Open PR to sync latest.json
+        if: hashFiles('latest.json') != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet -- latest.json; then
+            exit 0
+          fi
+          tag=$(jq -r .tag latest.json)
+          branch="update-latest-json-${tag}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add latest.json
+          git commit -m "chore(release): update latest.json to ${tag} [skip ci]"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" "$branch"
+          gh pr create \
+            --repo ${{ github.repository }} \
+            --title "chore(release): update latest.json to ${tag}" \
+            --body "Syncs latest.json with the ${tag} release." \
+            --base master \
+            --head "$branch"

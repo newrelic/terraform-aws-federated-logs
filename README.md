@@ -22,6 +22,7 @@ module "data_processing" {
   data_processing_module_name = "my-app-logs"
   newrelic_org_id             = "YOUR_NR_ORG_ID"
   fleet_entity_guid           = "YOUR_FLEET_ENTITY_GUID"
+  fleet_name                  = "YOUR_FLEET_NAME" # optional — shown in the fleet dropdown on our dashboard
 
   clusters = {
     "prod-cluster" = {

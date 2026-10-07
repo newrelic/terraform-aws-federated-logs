@@ -48,6 +48,12 @@ variable "fleet_entity_guid" {
   type        = string
 }
 
+variable "fleet_name" {
+  description = "Display name of the fleet, exposed as the 'fleet.entity.name' Flink application property. Optional — leave empty to omit it from the dashboard dropdown."
+  type        = string
+  default     = ""
+}
+
 variable "newrelic_org_id" {
   description = "New Relic organization ID"
   type        = string

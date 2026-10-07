@@ -30,6 +30,7 @@ export NEW_RELIC_LICENSE_KEY="your-new-relic-license-key"
 | `data_processing_module_name` | Name for this data processing setup (3–26 lowercase alphanumeric, hyphens allowed) | `string` | yes |
 | `newrelic_org_id` | New Relic organization ID | `string` | yes |
 | `fleet_entity_guid` | NGEP entity GUID of the PCG fleet | `string` | yes |
+| `fleet_name` | Display name of the fleet, exposed as the `fleet.entity.name` Flink application property (shown in the dashboard's fleet dropdown) | `string` | no (default: `""`, omitted from the Flink app if unset) |
 | `clusters` | Map of EKS cluster configs for base role trust policy (auth via IRSA or Pod Identity) | `map(object)` | yes |
 | `parallelism` | Flink parallelism setting | `number` | no (default: `1`) |
 | `parallelism_per_kpu` | Flink parallelism per KPU | `number` | no (default: `1`) |
@@ -69,6 +70,7 @@ Both require `NEW_RELIC_LICENSE_KEY` and `NEW_RELIC_API_KEY` in the runner env a
    - `data_processing_module_name` — a unique name for this fleet
    - `newrelic_org_id` — your New Relic org ID
    - `fleet_entity_guid` — the GUID of your PCG fleet entity
+   - `fleet_name` — optional; the fleet's display name, shown in the dashboard's fleet dropdown
    - `clusters` — your EKS cluster(s) with OIDC provider ARN or cluster name
 
 2. Update `providers.tf` with your AWS region and New Relic account ID.
