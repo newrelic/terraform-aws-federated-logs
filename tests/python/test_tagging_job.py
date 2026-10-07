@@ -48,7 +48,7 @@ _spec.loader.exec_module(tagging_job)
 Status = tagging_job.Status
 
 TAG = "backup-2026-10-07T01"
-RETAIN_MS = 15 * 24 * 60 * 60 * 1000
+RETAIN_MS = 7 * 24 * 60 * 60 * 1000
 
 
 class FakeCatalog:
@@ -173,7 +173,7 @@ def _run_main(monkeypatch, catalog):
         "getResolvedOptions",
         lambda argv, keys: {
             "DATABASE_NAME": "db",
-            "TABLE_TAG_CONFIG": '{"good": {"retain_days": 15}, "bad": {"retain_days": 15}}',
+            "TABLE_TAG_CONFIG": '{"good": {"retain_days": 7}, "bad": {"retain_days": 7}}',
             "WAREHOUSE_PATH": "s3://bucket/warehouse/",
         },
     )

@@ -84,7 +84,7 @@ module "federated_logs" {
       # snapshot_retention policy above. Each tag pins a snapshot for
       # retain_days, so expect ~retain_days pinned snapshots per table.
       snapshot_tagging = {
-        retain_days = 15
+        retain_days = 7
       }
     }
   }

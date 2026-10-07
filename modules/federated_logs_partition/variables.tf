@@ -34,7 +34,7 @@ variable "glue_service_role_arn" {
 #     min_input_files                      = 5
 #     delete_file_threshold                = 1
 #   snapshot_tagging (only used when snapshot_tagging_enabled = true):
-#     retain_days                          = 15  # one daily tag per table, each kept
+#     retain_days                          = 7   # one daily tag per table, each kept
 #                                                # retain_days, so ~retain_days pinned
 #                                                # snapshots per table
 #──────────────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ variable "default_table_setting" {
         delete_file_threshold = optional(number, 1)
       }), {})
       snapshot_tagging = optional(object({
-        retain_days = optional(number, 15)
+        retain_days = optional(number, 7)
       }), {})
 
     }), {})
@@ -111,7 +111,7 @@ variable "partition_tables" {
         delete_file_threshold = optional(number, 1)
       }), {})
       snapshot_tagging = optional(object({
-        retain_days = optional(number, 15)
+        retain_days = optional(number, 7)
       }), {})
     }), {})
   }))

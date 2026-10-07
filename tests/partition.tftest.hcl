@@ -72,7 +72,7 @@ run "test_validation_rejects_reserved_name_mixed_case" {
 # Asserts on the --TABLE_TAG_CONFIG the module renders (not on the input
 # variable), so it also pins the sanitized-key contract tagging_job.py relies
 # on: keys are full Glue table names, covering both default_table_setting and
-# every partition table, with retain_days defaulting to 15 when omitted.
+# every partition table, with retain_days defaulting to 7 when omitted.
 run "test_snapshot_tagging_renders_table_tag_config" {
   command = plan
 
@@ -101,10 +101,10 @@ run "test_snapshot_tagging_renders_table_tag_config" {
 
   assert {
     condition = jsondecode(aws_glue_job.tagging[0].default_arguments["--TABLE_TAG_CONFIG"]) == {
-      newrelic_fed_logs_inttest_partition_log_federated   = { retain_days = 15 }
+      newrelic_fed_logs_inttest_partition_log_federated   = { retain_days = 7 }
       newrelic_fed_logs_inttest_partition_log_backup_test = { retain_days = 14 }
     }
-    error_message = "TABLE_TAG_CONFIG must map every sanitized table name to its retain_days (default 15), got ${aws_glue_job.tagging[0].default_arguments["--TABLE_TAG_CONFIG"]}"
+    error_message = "TABLE_TAG_CONFIG must map every sanitized table name to its retain_days (default 7), got ${aws_glue_job.tagging[0].default_arguments["--TABLE_TAG_CONFIG"]}"
   }
 }
 
