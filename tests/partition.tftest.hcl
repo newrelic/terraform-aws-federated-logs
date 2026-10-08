@@ -69,3 +69,57 @@ run "test_validation_rejects_reserved_name_mixed_case" {
 
   expect_failures = [var.partition_tables]
 }
+
+# =============================================================================
+# CODE-ARTIFACTS BUCKET TESTS (plan-only)
+# =============================================================================
+# The code-artifacts bucket holds Glue ETL scripts and the PCG schema
+# registry's objects. It must exist regardless of data_retention_enabled.
+
+run "test_code_artifacts_bucket_exists_without_retention" {
+  command = plan
+
+  variables {
+    setup_name             = "inttest-partition"
+    s3_bucket_name         = "test-bucket"
+    glue_catalog_db_name   = "test_db"
+    glue_service_role_arn  = "arn:aws:iam::123456789012:role/test-role"
+    setup_id               = "mock-setup-id"
+    newrelic_account_id    = 12345678
+    data_retention_enabled = false
+    partition_tables       = {}
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  assert {
+    condition     = output.code_artifacts_bucket_name != null
+    error_message = "the code-artifacts bucket must exist (and this output must be non-null) even when data_retention_enabled is false"
+  }
+}
+
+run "test_code_artifacts_bucket_still_exists_with_retention" {
+  command = plan
+
+  variables {
+    setup_name             = "inttest-partition"
+    s3_bucket_name         = "test-bucket"
+    glue_catalog_db_name   = "test_db"
+    glue_service_role_arn  = "arn:aws:iam::123456789012:role/test-role"
+    setup_id               = "mock-setup-id"
+    newrelic_account_id    = 12345678
+    data_retention_enabled = true
+    partition_tables       = {}
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  assert {
+    condition     = output.code_artifacts_bucket_name != null
+    error_message = "the code-artifacts bucket must still exist when retention is on (regression guard — this is the pre-existing case)"
+  }
+}

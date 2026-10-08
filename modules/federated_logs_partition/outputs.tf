@@ -28,8 +28,8 @@ output "retention_job_name" {
 }
 
 output "code_artifacts_bucket_name" {
-  description = "Name of the S3 bucket holding Glue ETL scripts and other code artifacts (if retention is enabled)"
-  value       = local.is_data_retention_enabled ? aws_s3_bucket.retention_scripts[0].bucket : null
+  description = "Name of the S3 bucket holding Glue ETL scripts and other code artifacts (including the PCG schema registry's objects). Always available -- not gated on data_retention_enabled."
+  value       = aws_s3_bucket.retention_scripts.bucket
 }
 
 output "glue_optimizer_failures_alarm_arns" {
