@@ -42,6 +42,33 @@ module "partition" {
   newrelic_account_id    = var.newrelic_account_id
 }
 
+# Grants the PCG writer role access to the schema registry's objects on the
+# code-artifacts bucket (module.partition). This lives at the root, not inside
+# modules/federated_logs_role, because partition depends on role outputs --
+# wiring the bucket name into the role module would create a cycle.
+resource "aws_iam_role_policy" "pcg_writer_schema_registry_access" {
+  name = "schema-registry-access"
+  role = module.role.pcg_writer_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid    = "SchemaRegistryAccess"
+      Effect = "Allow"
+      Action = [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:ListBucket",
+        "s3:GetLifecycleConfiguration"
+      ]
+      Resource = [
+        "arn:aws:s3:::${module.partition.code_artifacts_bucket_name}",
+        "arn:aws:s3:::${module.partition.code_artifacts_bucket_name}/*"
+      ]
+    }]
+  })
+}
+
 module "monitoring" {
   count  = var.enable_dashboard ? 1 : 0
   source = "./modules/federated_logs_monitoring"
