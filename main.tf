@@ -67,7 +67,7 @@ resource "aws_iam_role_policy" "pcg_writer_schema_registry_access" {
         # unconditioned ListBucket grant.
         Sid      = "SchemaRegistryBucket"
         Effect   = "Allow"
-        Action   = ["s3:ListBucket", "s3:GetLifecycleConfiguration"]
+        Action   = ["s3:ListBucket"]
         Resource = "arn:aws:s3:::${module.partition.code_artifacts_bucket_name}"
       }
     ]

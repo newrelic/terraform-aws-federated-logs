@@ -61,8 +61,18 @@ run "test_pcg_writer_schema_registry_grant_is_prefix_scoped" {
   assert {
     condition = anytrue([
       for s in jsondecode(aws_iam_role_policy.pcg_writer_schema_registry_access.policy).Statement :
-      s.Resource == "arn:aws:s3:::newrelic-fed-logs-inttest-root-code-artifacts" && contains(s.Action, "s3:ListBucket") && contains(s.Action, "s3:GetLifecycleConfiguration")
+      s.Resource == "arn:aws:s3:::newrelic-fed-logs-inttest-root-code-artifacts" && contains(s.Action, "s3:ListBucket")
     ])
-    error_message = "ListBucket (needed for 404-on-miss and Refresh) and GetLifecycleConfiguration must be granted on the bucket ARN"
+    error_message = "ListBucket (needed for 404-on-miss and Refresh) must be granted on the bucket ARN"
+  }
+
+  # GetLifecycleConfiguration is no longer required: the gateway dropped its
+  # startup lifecycle assertion, so PCG no longer needs this permission.
+  assert {
+    condition = alltrue([
+      for s in jsondecode(aws_iam_role_policy.pcg_writer_schema_registry_access.policy).Statement :
+      !contains(s.Action, "s3:GetLifecycleConfiguration")
+    ])
+    error_message = "s3:GetLifecycleConfiguration should not be granted -- PCG no longer checks the lifecycle rule at startup"
   }
 }
