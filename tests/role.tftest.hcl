@@ -297,3 +297,45 @@ run "test_module_wiring" {
     error_message = "All role outputs should be populated when module wiring is correct"
   }
 }
+
+# =============================================================================
+# PCG WRITER ROLE NAME OUTPUT TEST
+# =============================================================================
+# The root module attaches the schema-registry grant to the PCG writer role by
+# name (aws_iam_role_policy.role takes a name, not an ARN).
+# =============================================================================
+
+run "setup_for_writer_role_name_test" {
+  command = plan
+
+  variables {
+    setup_name = "inttest-role-wname"
+  }
+
+  module {
+    source = "./modules/federated_logs_setup_resource"
+  }
+}
+
+run "test_pcg_writer_role_name_output_exists" {
+  command = plan
+
+  variables {
+    setup_name           = run.setup_for_writer_role_name_test.setup_name
+    s3_bucket_name       = run.setup_for_writer_role_name_test.s3_bucket_name
+    glue_catalog_db_name = run.setup_for_writer_role_name_test.glue_catalog_db_name
+    fleet_entity_guid    = var.fleet_entity_guid
+    newrelic_account_id  = var.newrelic_account_id
+    newrelic_org_id      = var.newrelic_org_id
+    newrelic_region      = var.newrelic_region
+  }
+
+  module {
+    source = "./modules/federated_logs_role"
+  }
+
+  assert {
+    condition     = output.pcg_writer_role_name == "newrelic-fed-logs-inttest-role-wname-pcg-writer"
+    error_message = "pcg_writer_role_name must be exposed (and follow {prefix}-pcg-writer) so root resources can attach policies to this role by name"
+  }
+}

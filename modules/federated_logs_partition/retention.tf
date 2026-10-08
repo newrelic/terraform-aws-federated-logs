@@ -1,6 +1,11 @@
-# Dedicated bucket for Glue ETL scripts
+# Bucket for Glue ETL scripts and other non-table-data code artifacts
+# (currently: the retention job's script below, and the schema
+# registry's objects -- see schema_registry.tf). Unconditional on
+# purpose: this bucket must exist regardless of whether the retention
+# feature (data_retention_enabled) is on, since the schema registry
+# does not depend on retention. See moved.tf for setups where this
+# bucket already existed under its old count-indexed address.
 resource "aws_s3_bucket" "retention_scripts" {
-  count  = local.is_data_retention_enabled ? 1 : 0
   bucket = "newrelic-fed-logs-${var.setup_name}-code-artifacts"
   region = data.aws_region.current.region
 }
@@ -8,7 +13,7 @@ resource "aws_s3_bucket" "retention_scripts" {
 # Bucket policy grants the Glue service role read access
 resource "aws_s3_bucket_policy" "retention_scripts" {
   count  = local.is_data_retention_enabled ? 1 : 0
-  bucket = aws_s3_bucket.retention_scripts[0].id
+  bucket = aws_s3_bucket.retention_scripts.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -20,8 +25,8 @@ resource "aws_s3_bucket_policy" "retention_scripts" {
       }
       Action = ["s3:GetObject", "s3:ListBucket"]
       Resource = [
-        "arn:aws:s3:::${aws_s3_bucket.retention_scripts[0].bucket}",
-        "arn:aws:s3:::${aws_s3_bucket.retention_scripts[0].bucket}/*",
+        "arn:aws:s3:::${aws_s3_bucket.retention_scripts.bucket}",
+        "arn:aws:s3:::${aws_s3_bucket.retention_scripts.bucket}/*",
       ]
     }]
   })
@@ -31,7 +36,7 @@ resource "aws_s3_bucket_policy" "retention_scripts" {
 resource "aws_s3_object" "retention_script" {
   count = local.is_data_retention_enabled ? 1 : 0
 
-  bucket = aws_s3_bucket.retention_scripts[0].id
+  bucket = aws_s3_bucket.retention_scripts.id
   key    = "scripts/retention_job.py"
   source = "${path.module}/scripts/retention_job.py"
   etag   = filemd5("${path.module}/scripts/retention_job.py")
@@ -47,7 +52,7 @@ resource "aws_glue_job" "retention" {
 
   command {
     name            = "glueetl"
-    script_location = "s3://${aws_s3_bucket.retention_scripts[0].bucket}/${aws_s3_object.retention_script[0].key}"
+    script_location = "s3://${aws_s3_bucket.retention_scripts.bucket}/${aws_s3_object.retention_script[0].key}"
     python_version  = "3"
   }
 

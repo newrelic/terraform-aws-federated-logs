@@ -8,6 +8,11 @@ output "pcg_writer_role_arn" {
   value       = aws_iam_role.pcg-writer-role.arn
 }
 
+output "pcg_writer_role_name" {
+  description = "Name of the IAM role for PCG to write federated logs (for attaching additional policies by name, e.g. the schema-registry grant on the code-artifacts bucket)"
+  value       = aws_iam_role.pcg-writer-role.name
+}
+
 output "nr_reader_role_arn" {
   description = "ARN of the IAM role for New Relic to query federated logs"
   value       = aws_iam_role.reader-role.arn

@@ -42,6 +42,38 @@ module "partition" {
   newrelic_account_id    = var.newrelic_account_id
 }
 
+# Grants the PCG writer role access to the schema registry's objects on the
+# code-artifacts bucket (module.partition). This lives at the root, not inside
+# modules/federated_logs_role, because partition depends on role outputs --
+# wiring the bucket name into the role module would create a cycle.
+resource "aws_iam_role_policy" "pcg_writer_schema_registry_access" {
+  name = "schema-registry-access"
+  role = module.role.pcg_writer_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        # Objects are limited to the registry prefix: the same bucket holds the
+        # Glue retention script, which runs as the Glue service role.
+        Sid      = "SchemaRegistryObjects"
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:PutObject"]
+        Resource = "arn:aws:s3:::${module.partition.code_artifacts_bucket_name}/${module.partition.schema_registry_prefix}/*"
+      },
+      {
+        # No s3:prefix condition on ListBucket: the registry relies on GetObject
+        # returning 404 (not 403) for missing keys, which requires an
+        # unconditioned ListBucket grant.
+        Sid      = "SchemaRegistryBucket"
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = "arn:aws:s3:::${module.partition.code_artifacts_bucket_name}"
+      }
+    ]
+  })
+}
+
 module "monitoring" {
   count  = var.enable_dashboard ? 1 : 0
   source = "./modules/federated_logs_monitoring"
