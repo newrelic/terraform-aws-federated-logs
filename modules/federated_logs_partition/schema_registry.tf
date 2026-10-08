@@ -7,10 +7,14 @@
 # job's script (scripts/retention_job.py) and may hold more scripts later.
 # A rule without this filter would expire those too.
 #
-# IMPORTANT: "newrelic-fed-logs-schemas/" must match the default
+# IMPORTANT: local.schema_registry_prefix must match the default
 # SchemaRegistryConfig.Prefix in pipeline-control-gateway
 # (exporter/icebergexporter/config.go). Nothing keeps the two in sync
 # automatically -- if the gateway's prefix changes, change this filter too.
+locals {
+  schema_registry_prefix = "newrelic-fed-logs-schemas"
+}
+
 resource "aws_s3_bucket_lifecycle_configuration" "schema_registry_entries" {
   bucket = aws_s3_bucket.retention_scripts.id
 
@@ -19,7 +23,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "schema_registry_entries" {
     status = "Enabled"
 
     filter {
-      prefix = "newrelic-fed-logs-schemas/"
+      prefix = "${local.schema_registry_prefix}/"
     }
 
     expiration {

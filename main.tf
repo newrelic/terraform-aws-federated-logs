@@ -52,20 +52,25 @@ resource "aws_iam_role_policy" "pcg_writer_schema_registry_access" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Sid    = "SchemaRegistryAccess"
-      Effect = "Allow"
-      Action = [
-        "s3:GetObject",
-        "s3:PutObject",
-        "s3:ListBucket",
-        "s3:GetLifecycleConfiguration"
-      ]
-      Resource = [
-        "arn:aws:s3:::${module.partition.code_artifacts_bucket_name}",
-        "arn:aws:s3:::${module.partition.code_artifacts_bucket_name}/*"
-      ]
-    }]
+    Statement = [
+      {
+        # Objects are limited to the registry prefix: the same bucket holds the
+        # Glue retention script, which runs as the Glue service role.
+        Sid      = "SchemaRegistryObjects"
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:PutObject"]
+        Resource = "arn:aws:s3:::${module.partition.code_artifacts_bucket_name}/${module.partition.schema_registry_prefix}/*"
+      },
+      {
+        # No s3:prefix condition on ListBucket: the registry relies on GetObject
+        # returning 404 (not 403) for missing keys, which requires an
+        # unconditioned ListBucket grant.
+        Sid      = "SchemaRegistryBucket"
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket", "s3:GetLifecycleConfiguration"]
+        Resource = "arn:aws:s3:::${module.partition.code_artifacts_bucket_name}"
+      }
+    ]
   })
 }
 

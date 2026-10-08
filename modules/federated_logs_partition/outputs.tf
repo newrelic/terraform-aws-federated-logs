@@ -32,6 +32,11 @@ output "code_artifacts_bucket_name" {
   value       = aws_s3_bucket.retention_scripts.bucket
 }
 
+output "schema_registry_prefix" {
+  description = "Key prefix (no trailing slash) under which the PCG schema registry writes objects in the code-artifacts bucket. Scopes both the 1-day lifecycle rule and the PCG writer grant."
+  value       = local.schema_registry_prefix
+}
+
 output "glue_optimizer_failures_alarm_arns" {
   description = "Map of optimizer type (compaction, retention, orphan_deletion) → ARN of the CloudWatch alarm that fires on that optimizer's failures in this setup. Wire these to an SNS topic or downstream system for notification."
   value       = { for k, v in aws_cloudwatch_metric_alarm.glue_optimizer_failures : k => v.arn }
