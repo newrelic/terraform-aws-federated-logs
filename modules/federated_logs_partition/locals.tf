@@ -97,6 +97,10 @@ locals {
   # Data retention configuration - enabled when data_retention_enabled is true at setup level
   is_data_retention_enabled = var.data_retention_enabled
 
+  # The code-artifacts bucket (aws_s3_bucket.retention_scripts) holds every
+  # Glue job script, so it exists whenever either job does.
+  is_code_artifacts_bucket_enabled = local.is_data_retention_enabled || local.is_snapshot_tagging_enabled
+
   # Map of table names to their retention periods (in days)
   table_retention_days = {
     for k, v in local.all_tables :
@@ -109,6 +113,16 @@ locals {
     compaction      = "Iceberg table compaction failure"
     retention       = "Iceberg table retention failure"
     orphan_deletion = "Iceberg table orphan_file_deletion failure"
+  }
+
+  # Snapshot tagging configuration - enabled when snapshot_tagging_enabled is true at setup level
+  is_snapshot_tagging_enabled = var.snapshot_tagging_enabled
+
+  # Map of table name -> {retain_days}, passed into the Glue job's --TABLE_TAG_CONFIG argument
+  table_tag_config = {
+    for k, v in local.all_tables : k => {
+      retain_days = v.optimizer_configuration.snapshot_tagging.retain_days
+    }
   }
 
 }

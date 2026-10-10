@@ -1,13 +1,14 @@
-# Dedicated bucket for Glue ETL scripts
+# Dedicated bucket for Glue job scripts (retention and snapshot tagging).
+# Named retention_scripts for state stability — it predates the tagging job.
 resource "aws_s3_bucket" "retention_scripts" {
-  count  = local.is_data_retention_enabled ? 1 : 0
+  count  = local.is_code_artifacts_bucket_enabled ? 1 : 0
   bucket = "newrelic-fed-logs-${var.setup_name}-code-artifacts"
   region = data.aws_region.current.region
 }
 
 # Bucket policy grants the Glue service role read access
 resource "aws_s3_bucket_policy" "retention_scripts" {
-  count  = local.is_data_retention_enabled ? 1 : 0
+  count  = local.is_code_artifacts_bucket_enabled ? 1 : 0
   bucket = aws_s3_bucket.retention_scripts[0].id
 
   policy = jsonencode({

@@ -28,8 +28,13 @@ output "retention_job_name" {
 }
 
 output "code_artifacts_bucket_name" {
-  description = "Name of the S3 bucket holding Glue ETL scripts and other code artifacts (if retention is enabled)"
-  value       = local.is_data_retention_enabled ? aws_s3_bucket.retention_scripts[0].bucket : null
+  description = "Name of the S3 bucket holding Glue job scripts and other code artifacts (if retention or snapshot tagging is enabled)"
+  value       = local.is_code_artifacts_bucket_enabled ? aws_s3_bucket.retention_scripts[0].bucket : null
+}
+
+output "tagging_job_name" {
+  description = "Name of the Glue snapshot tagging job (if enabled on any table)"
+  value       = local.is_snapshot_tagging_enabled ? aws_glue_job.tagging[0].name : null
 }
 
 output "glue_optimizer_failures_alarm_arns" {
