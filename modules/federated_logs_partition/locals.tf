@@ -64,7 +64,9 @@ locals {
     # and page-level predicate pushdown in standard query engines.
     "write.parquet.row-group-size-bytes" = "12582912" # 12 MB
     "write.parquet.page-size-bytes"      = "1048576"  # 1 MB
-    "write.parquet.page-version"         = "v2"
+    # Do not set write.parquet.page-version: with "v2", Glue compaction writes
+    # DataPageV2 files with RLE booleans that its own vectorized reader cannot
+    # read back, so later compaction runs on those partitions fail.
 
     # Manifest hygiene — reduces manifest count growth on high-write tables.
     "commit.manifest-merge.enabled"      = "true"
