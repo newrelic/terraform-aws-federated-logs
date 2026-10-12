@@ -91,6 +91,12 @@ variable "flink_iceberg_commit_worker_version" {
   }
 }
 
+variable "flink_jar_source_bucket" {
+  description = "S3 bucket to fetch the flink-iceberg-commit-worker JAR from. Defaults to the public prod downloads bucket. Override to nr-downloads-ohai-testing (with flink_iceberg_commit_worker_version = \"staging\") to run against an unreleased PR-staging build instead."
+  type        = string
+  default     = "nr-downloads-main"
+}
+
 variable "flink_runtime" {
   description = "Flink runtime environment version."
   type        = string

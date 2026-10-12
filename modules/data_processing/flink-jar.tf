@@ -2,7 +2,7 @@
 # Destination: Auto-created bucket in customer's account for Flink JAR storage
 
 locals {
-  flink_jar_source_bucket = "nr-downloads-main"
+  flink_jar_source_bucket = var.flink_jar_source_bucket
   flink_jar_filename      = "flink-iceberg-commit-worker-${var.flink_iceberg_commit_worker_version}.jar"
   flink_jar_source_key    = "pipeline-control-gateway/fed-logs/${local.flink_jar_filename}"
   flink_jar_dest_key      = "flink/${local.flink_jar_filename}"
