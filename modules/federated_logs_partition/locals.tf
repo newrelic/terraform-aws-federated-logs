@@ -99,9 +99,10 @@ locals {
   # Data retention configuration - enabled when data_retention_enabled is true at setup level
   is_data_retention_enabled = var.data_retention_enabled
 
-  # The code-artifacts bucket (aws_s3_bucket.retention_scripts) holds every
-  # Glue job script, so it exists whenever either job does.
-  is_code_artifacts_bucket_enabled = local.is_data_retention_enabled || local.is_snapshot_tagging_enabled
+  # Whether any Glue job (retention or snapshot tagging) runs a script from
+  # the code-artifacts bucket. Gates the Glue role's read policy on that
+  # bucket; the bucket itself is unconditional (schema registry).
+  is_any_glue_job_enabled = local.is_data_retention_enabled || local.is_snapshot_tagging_enabled
 
   # Map of table names to their retention periods (in days)
   table_retention_days = {
