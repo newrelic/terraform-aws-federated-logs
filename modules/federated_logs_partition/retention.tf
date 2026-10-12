@@ -1,18 +1,19 @@
-# Bucket for Glue ETL scripts and other non-table-data code artifacts
-# (currently: the retention job's script below, and the schema
-# registry's objects -- see schema_registry.tf). Unconditional on
-# purpose: this bucket must exist regardless of whether the retention
-# feature (data_retention_enabled) is on, since the schema registry
-# does not depend on retention. See moved.tf for setups where this
-# bucket already existed under its old count-indexed address.
+# Bucket for Glue job scripts (retention and snapshot tagging) and other
+# non-table-data code artifacts, including the schema registry's objects
+# (see schema_registry.tf). Named retention_scripts for state stability —
+# it predates the tagging job. Unconditional on purpose: the schema
+# registry depends on neither retention nor tagging. See moved.tf for
+# setups where this bucket already existed under its old count-indexed
+# address.
 resource "aws_s3_bucket" "retention_scripts" {
   bucket = "newrelic-fed-logs-${var.setup_name}-code-artifacts"
   region = data.aws_region.current.region
 }
 
-# Bucket policy grants the Glue service role read access
+# Bucket policy grants the Glue service role read access to the job
+# scripts, so it exists only while a Glue job does.
 resource "aws_s3_bucket_policy" "retention_scripts" {
-  count  = local.is_data_retention_enabled ? 1 : 0
+  count  = local.is_any_glue_job_enabled ? 1 : 0
   bucket = aws_s3_bucket.retention_scripts.id
 
   policy = jsonencode({

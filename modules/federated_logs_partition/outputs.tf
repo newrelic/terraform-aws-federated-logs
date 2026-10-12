@@ -28,13 +28,18 @@ output "retention_job_name" {
 }
 
 output "code_artifacts_bucket_name" {
-  description = "Name of the S3 bucket holding Glue ETL scripts and other code artifacts (including the PCG schema registry's objects). Always available -- not gated on data_retention_enabled."
+  description = "Name of the S3 bucket holding Glue job scripts and other code artifacts (including the PCG schema registry's objects). Always available -- not gated on retention or snapshot tagging."
   value       = aws_s3_bucket.retention_scripts.bucket
 }
 
 output "schema_registry_prefix" {
   description = "Key prefix (no trailing slash) under which the PCG schema registry writes objects in the code-artifacts bucket. Scopes both the 1-day lifecycle rule and the PCG writer grant."
   value       = local.schema_registry_prefix
+}
+
+output "tagging_job_name" {
+  description = "Name of the Glue snapshot tagging job (if enabled on any table)"
+  value       = local.is_snapshot_tagging_enabled ? aws_glue_job.tagging[0].name : null
 }
 
 output "glue_optimizer_failures_alarm_arns" {

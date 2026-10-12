@@ -40,6 +40,8 @@ module "partition" {
   region                 = var.region
   data_retention_enabled = var.data_retention_enabled
   newrelic_account_id    = var.newrelic_account_id
+
+  snapshot_tagging_enabled = var.snapshot_tagging_enabled
 }
 
 # Grants the PCG writer role access to the schema registry's objects on the
