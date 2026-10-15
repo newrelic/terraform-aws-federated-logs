@@ -12,3 +12,9 @@ variable "region" {
   type        = string
   default     = null
 }
+
+variable "force_destroy" {
+  description = "When true, sets aws_s3_bucket.force_destroy = true so the bucket can be deleted even when it holds objects. Default false keeps the bucket protected."
+  type        = bool
+  default     = false
+}
