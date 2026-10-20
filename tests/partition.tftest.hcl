@@ -21,6 +21,11 @@ mock_provider "newrelic" {}
 # Mock AWS provider for plan-only tests (no real credentials required)
 mock_provider "aws" {}
 
+# Shared by every run: the PCG writer role the schema-registry grant attaches to.
+variables {
+  pcg_writer_role_name = "newrelic-fed-logs-inttest-partition-pcg-writer"
+}
+
 # =============================================================================
 # VALIDATION TESTS (plan-only, no AWS resources needed)
 # =============================================================================
@@ -274,6 +279,59 @@ run "test_schema_registry_lifecycle_rule_is_prefix_scoped" {
   assert {
     condition     = aws_s3_bucket_lifecycle_configuration.schema_registry_entries.rule[0].status == "Enabled"
     error_message = "the rule must be enabled, not just defined"
+  }
+}
+
+# The PCG writer grant lives with the bucket it covers. Object access must be
+# scoped to the registry prefix: the same bucket holds the Glue job scripts,
+# which run as the Glue service role -- write access to them would let PCG run
+# code with that role's rights.
+run "test_pcg_writer_schema_registry_grant_is_prefix_scoped" {
+  command = plan
+
+  variables {
+    setup_name             = "inttest-partition"
+    s3_bucket_name         = "test-bucket"
+    glue_catalog_db_name   = "test_db"
+    glue_service_role_arn  = "arn:aws:iam::123456789012:role/test-role"
+    setup_id               = "mock-setup-id"
+    newrelic_account_id    = 12345678
+    data_retention_enabled = false
+    partition_tables       = {}
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  assert {
+    condition     = aws_iam_role_policy.pcg_writer_schema_registry_access.role == "newrelic-fed-logs-inttest-partition-pcg-writer"
+    error_message = "the grant must attach to the PCG writer role passed in as pcg_writer_role_name"
+  }
+
+  assert {
+    condition = alltrue([
+      for s in jsondecode(aws_iam_role_policy.pcg_writer_schema_registry_access.policy).Statement :
+      s.Resource == "arn:aws:s3:::newrelic-fed-logs-inttest-partition-code-artifacts/newrelic-fed-logs-schemas/*"
+      if contains(s.Action, "s3:PutObject") || contains(s.Action, "s3:GetObject")
+    ])
+    error_message = "object actions must be scoped to the newrelic-fed-logs-schemas/ prefix, not the whole code-artifacts bucket"
+  }
+
+  assert {
+    condition = anytrue([
+      for s in jsondecode(aws_iam_role_policy.pcg_writer_schema_registry_access.policy).Statement :
+      s.Resource == "arn:aws:s3:::newrelic-fed-logs-inttest-partition-code-artifacts" && contains(s.Action, "s3:ListBucket")
+    ])
+    error_message = "ListBucket (needed for 404-on-miss and Refresh) must be granted on the bucket ARN"
+  }
+
+  assert {
+    condition = alltrue([
+      for s in jsondecode(aws_iam_role_policy.pcg_writer_schema_registry_access.policy).Statement :
+      !contains(s.Action, "s3:GetLifecycleConfiguration")
+    ])
+    error_message = "s3:GetLifecycleConfiguration should not be granted -- PCG no longer checks the lifecycle rule at startup"
   }
 }
 

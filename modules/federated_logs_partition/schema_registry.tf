@@ -31,3 +31,32 @@ resource "aws_s3_bucket_lifecycle_configuration" "schema_registry_entries" {
     }
   }
 }
+
+# Grants the PCG writer role access to the schema registry's objects.
+resource "aws_iam_role_policy" "pcg_writer_schema_registry_access" {
+  name = "schema-registry-access"
+  role = var.pcg_writer_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        # Objects are limited to the registry prefix: the same bucket holds the
+        # Glue job scripts, which run as the Glue service role.
+        Sid      = "SchemaRegistryObjects"
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:PutObject"]
+        Resource = "arn:aws:s3:::${aws_s3_bucket.retention_scripts.bucket}/${local.schema_registry_prefix}/*"
+      },
+      {
+        # No s3:prefix condition on ListBucket: the registry relies on GetObject
+        # returning 404 (not 403) for missing keys, which requires an
+        # unconditioned ListBucket grant.
+        Sid      = "SchemaRegistryBucket"
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = "arn:aws:s3:::${aws_s3_bucket.retention_scripts.bucket}"
+      }
+    ]
+  })
+}

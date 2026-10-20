@@ -32,11 +32,6 @@ output "code_artifacts_bucket_name" {
   value       = aws_s3_bucket.retention_scripts.bucket
 }
 
-output "schema_registry_prefix" {
-  description = "Key prefix (no trailing slash) under which the PCG schema registry writes objects in the code-artifacts bucket. Scopes both the 1-day lifecycle rule and the PCG writer grant."
-  value       = local.schema_registry_prefix
-}
-
 output "tagging_job_name" {
   description = "Name of the Glue snapshot tagging job (if enabled on any table)"
   value       = local.is_snapshot_tagging_enabled ? aws_glue_job.tagging[0].name : null
