@@ -1,38 +1,8 @@
-# Dedicated bucket for Glue job scripts (retention and snapshot tagging).
-# Named retention_scripts for state stability — it predates the tagging job.
-resource "aws_s3_bucket" "retention_scripts" {
-  count  = local.is_code_artifacts_bucket_enabled ? 1 : 0
-  bucket = "newrelic-fed-logs-${var.setup_name}-code-artifacts"
-  region = data.aws_region.current.region
-}
-
-# Bucket policy grants the Glue service role read access
-resource "aws_s3_bucket_policy" "retention_scripts" {
-  count  = local.is_code_artifacts_bucket_enabled ? 1 : 0
-  bucket = aws_s3_bucket.retention_scripts[0].id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Sid    = "AllowGlueServiceRoleRead"
-      Effect = "Allow"
-      Principal = {
-        AWS = var.glue_service_role_arn
-      }
-      Action = ["s3:GetObject", "s3:ListBucket"]
-      Resource = [
-        "arn:aws:s3:::${aws_s3_bucket.retention_scripts[0].bucket}",
-        "arn:aws:s3:::${aws_s3_bucket.retention_scripts[0].bucket}/*",
-      ]
-    }]
-  })
-}
-
 # S3 object to store the Glue Spark ETL script
 resource "aws_s3_object" "retention_script" {
   count = local.is_data_retention_enabled ? 1 : 0
 
-  bucket = aws_s3_bucket.retention_scripts[0].id
+  bucket = aws_s3_bucket.newrelic_artifacts.id
   key    = "scripts/retention_job.py"
   source = "${path.module}/scripts/retention_job.py"
   etag   = filemd5("${path.module}/scripts/retention_job.py")
@@ -48,7 +18,7 @@ resource "aws_glue_job" "retention" {
 
   command {
     name            = "glueetl"
-    script_location = "s3://${aws_s3_bucket.retention_scripts[0].bucket}/${aws_s3_object.retention_script[0].key}"
+    script_location = "s3://${aws_s3_bucket.newrelic_artifacts.bucket}/${aws_s3_object.retention_script[0].key}"
     python_version  = "3"
   }
 
