@@ -1,43 +1,8 @@
-# Bucket for Glue job scripts (retention and snapshot tagging) and other
-# non-table-data code artifacts, including the schema registry's objects
-# (see schema_registry.tf). Named retention_scripts for state stability —
-# it predates the tagging job. Unconditional on purpose: the schema
-# registry depends on neither retention nor tagging. See moved.tf for
-# setups where this bucket already existed under its old count-indexed
-# address.
-resource "aws_s3_bucket" "retention_scripts" {
-  bucket = "newrelic-fed-logs-${var.setup_name}-code-artifacts"
-  region = data.aws_region.current.region
-}
-
-# Bucket policy grants the Glue service role read access to the job
-# scripts, so it exists only while a Glue job does.
-resource "aws_s3_bucket_policy" "retention_scripts" {
-  count  = local.is_any_glue_job_enabled ? 1 : 0
-  bucket = aws_s3_bucket.retention_scripts.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Sid    = "AllowGlueServiceRoleRead"
-      Effect = "Allow"
-      Principal = {
-        AWS = var.glue_service_role_arn
-      }
-      Action = ["s3:GetObject", "s3:ListBucket"]
-      Resource = [
-        "arn:aws:s3:::${aws_s3_bucket.retention_scripts.bucket}",
-        "arn:aws:s3:::${aws_s3_bucket.retention_scripts.bucket}/*",
-      ]
-    }]
-  })
-}
-
 # S3 object to store the Glue Spark ETL script
 resource "aws_s3_object" "retention_script" {
   count = local.is_data_retention_enabled ? 1 : 0
 
-  bucket = aws_s3_bucket.retention_scripts.id
+  bucket = aws_s3_bucket.code_artifacts.id
   key    = "scripts/retention_job.py"
   source = "${path.module}/scripts/retention_job.py"
   etag   = filemd5("${path.module}/scripts/retention_job.py")
@@ -53,7 +18,7 @@ resource "aws_glue_job" "retention" {
 
   command {
     name            = "glueetl"
-    script_location = "s3://${aws_s3_bucket.retention_scripts.bucket}/${aws_s3_object.retention_script[0].key}"
+    script_location = "s3://${aws_s3_bucket.code_artifacts.bucket}/${aws_s3_object.retention_script[0].key}"
     python_version  = "3"
   }
 

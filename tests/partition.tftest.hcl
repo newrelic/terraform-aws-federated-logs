@@ -154,7 +154,7 @@ run "test_snapshot_tagging_enabled_creates_glue_job" {
   }
 
   assert {
-    condition     = length(aws_s3_bucket_policy.retention_scripts) == 1
+    condition     = length(aws_s3_bucket_policy.code_artifacts) == 1
     error_message = "The Glue role's read policy on the code-artifacts bucket must exist for the tagging script even when data retention is disabled"
   }
 
@@ -187,7 +187,7 @@ run "test_snapshot_tagging_disabled_creates_nothing" {
   }
 
   assert {
-    condition     = length(aws_s3_bucket_policy.retention_scripts) == 0
+    condition     = length(aws_s3_bucket_policy.code_artifacts) == 0
     error_message = "With neither retention nor tagging enabled, no Glue read policy should be attached to the code-artifacts bucket (the bucket itself always exists, for the schema registry)"
   }
 }
@@ -217,6 +217,11 @@ run "test_code_artifacts_bucket_exists_without_retention" {
   }
 
   assert {
+    condition     = aws_s3_bucket.code_artifacts.bucket == "newrelic-fed-logs-inttest-partition-code-artifacts"
+    error_message = "the code-artifacts bucket must be aws_s3_bucket.code_artifacts, named newrelic-fed-logs-{setup_name}-code-artifacts"
+  }
+
+  assert {
     condition     = output.code_artifacts_bucket_name != null
     error_message = "the code-artifacts bucket must exist (and this output must be non-null) even when data_retention_enabled is false"
   }
@@ -238,6 +243,11 @@ run "test_code_artifacts_bucket_still_exists_with_retention" {
 
   module {
     source = "./modules/federated_logs_partition"
+  }
+
+  assert {
+    condition     = aws_s3_bucket.code_artifacts.bucket == "newrelic-fed-logs-inttest-partition-code-artifacts"
+    error_message = "the code-artifacts bucket must be aws_s3_bucket.code_artifacts, named newrelic-fed-logs-{setup_name}-code-artifacts"
   }
 
   assert {

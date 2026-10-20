@@ -29,7 +29,7 @@ output "retention_job_name" {
 
 output "code_artifacts_bucket_name" {
   description = "Name of the S3 bucket holding Glue job scripts and other code artifacts (including the PCG schema registry's objects). Always available -- not gated on retention or snapshot tagging."
-  value       = aws_s3_bucket.retention_scripts.bucket
+  value       = aws_s3_bucket.code_artifacts.bucket
 }
 
 output "tagging_job_name" {
