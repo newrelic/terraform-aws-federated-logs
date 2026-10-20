@@ -9,7 +9,7 @@ output "pcg_writer_role_arn" {
 }
 
 output "pcg_writer_role_name" {
-  description = "Name of the IAM role for PCG to write federated logs (for attaching additional policies by name, e.g. the schema-registry grant on the code-artifacts bucket)"
+  description = "Name of the IAM role for PCG to write federated logs (for attaching additional policies by name, e.g. the schema-registry grant on the artifacts bucket)"
   value       = aws_iam_role.pcg-writer-role.name
 }
 

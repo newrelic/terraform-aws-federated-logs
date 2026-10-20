@@ -27,9 +27,9 @@ output "retention_job_name" {
   value       = local.is_data_retention_enabled ? aws_glue_job.retention[0].name : null
 }
 
-output "code_artifacts_bucket_name" {
-  description = "Name of the S3 bucket holding Glue job scripts and other code artifacts (including the PCG schema registry's objects). Always available -- not gated on retention or snapshot tagging."
-  value       = aws_s3_bucket.code_artifacts.bucket
+output "artifacts_bucket_name" {
+  description = "Name of the S3 bucket holding non-table-data artifacts: Glue job scripts and the PCG schema registry's objects. Always available -- not gated on retention or snapshot tagging."
+  value       = aws_s3_bucket.newrelic_artifacts.bucket
 }
 
 output "tagging_job_name" {

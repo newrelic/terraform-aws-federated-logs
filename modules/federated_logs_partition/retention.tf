@@ -2,7 +2,7 @@
 resource "aws_s3_object" "retention_script" {
   count = local.is_data_retention_enabled ? 1 : 0
 
-  bucket = aws_s3_bucket.code_artifacts.id
+  bucket = aws_s3_bucket.newrelic_artifacts.id
   key    = "scripts/retention_job.py"
   source = "${path.module}/scripts/retention_job.py"
   etag   = filemd5("${path.module}/scripts/retention_job.py")
@@ -18,7 +18,7 @@ resource "aws_glue_job" "retention" {
 
   command {
     name            = "glueetl"
-    script_location = "s3://${aws_s3_bucket.code_artifacts.bucket}/${aws_s3_object.retention_script[0].key}"
+    script_location = "s3://${aws_s3_bucket.newrelic_artifacts.bucket}/${aws_s3_object.retention_script[0].key}"
     python_version  = "3"
   }
 

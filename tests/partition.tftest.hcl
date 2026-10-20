@@ -113,7 +113,7 @@ run "test_snapshot_tagging_renders_table_tag_config" {
   }
 }
 
-# Retention deliberately left disabled: the code-artifacts bucket must still
+# Retention deliberately left disabled: the artifacts bucket must still
 # be created for the tagging script alone.
 run "test_snapshot_tagging_enabled_creates_glue_job" {
   command = plan
@@ -154,13 +154,13 @@ run "test_snapshot_tagging_enabled_creates_glue_job" {
   }
 
   assert {
-    condition     = length(aws_s3_bucket_policy.code_artifacts) == 1
-    error_message = "The Glue role's read policy on the code-artifacts bucket must exist for the tagging script even when data retention is disabled"
+    condition     = length(aws_s3_bucket_policy.newrelic_artifacts) == 1
+    error_message = "The Glue role's read policy on the artifacts bucket must exist for the tagging script even when data retention is disabled"
   }
 
   assert {
-    condition     = aws_glue_job.tagging[0].command[0].script_location == "s3://newrelic-fed-logs-inttest-partition-code-artifacts/scripts/tagging_job.py"
-    error_message = "Tagging job must run the script from the code-artifacts bucket, got ${aws_glue_job.tagging[0].command[0].script_location}"
+    condition     = aws_glue_job.tagging[0].command[0].script_location == "s3://newrelic-fed-logs-inttest-partition-artifacts/scripts/tagging_job.py"
+    error_message = "Tagging job must run the script from the artifacts bucket, got ${aws_glue_job.tagging[0].command[0].script_location}"
   }
 }
 
@@ -187,18 +187,18 @@ run "test_snapshot_tagging_disabled_creates_nothing" {
   }
 
   assert {
-    condition     = length(aws_s3_bucket_policy.code_artifacts) == 0
-    error_message = "With neither retention nor tagging enabled, no Glue read policy should be attached to the code-artifacts bucket (the bucket itself always exists, for the schema registry)"
+    condition     = length(aws_s3_bucket_policy.newrelic_artifacts) == 0
+    error_message = "With neither retention nor tagging enabled, no Glue read policy should be attached to the artifacts bucket (the bucket itself always exists, for the schema registry)"
   }
 }
 
 # =============================================================================
 # CODE-ARTIFACTS BUCKET TESTS (plan-only)
 # =============================================================================
-# The code-artifacts bucket holds Glue ETL scripts and the PCG schema
+# The artifacts bucket holds Glue ETL scripts and the PCG schema
 # registry's objects. It must exist regardless of data_retention_enabled.
 
-run "test_code_artifacts_bucket_exists_without_retention" {
+run "test_artifacts_bucket_exists_without_retention" {
   command = plan
 
   variables {
@@ -217,17 +217,17 @@ run "test_code_artifacts_bucket_exists_without_retention" {
   }
 
   assert {
-    condition     = aws_s3_bucket.code_artifacts.bucket == "newrelic-fed-logs-inttest-partition-code-artifacts"
-    error_message = "the code-artifacts bucket must be aws_s3_bucket.code_artifacts, named newrelic-fed-logs-{setup_name}-code-artifacts"
+    condition     = aws_s3_bucket.newrelic_artifacts.bucket == "newrelic-fed-logs-inttest-partition-artifacts"
+    error_message = "the artifacts bucket must be aws_s3_bucket.newrelic_artifacts, named newrelic-fed-logs-{setup_name}-artifacts"
   }
 
   assert {
-    condition     = output.code_artifacts_bucket_name != null
-    error_message = "the code-artifacts bucket must exist (and this output must be non-null) even when data_retention_enabled is false"
+    condition     = output.artifacts_bucket_name != null
+    error_message = "the artifacts bucket must exist (and this output must be non-null) even when data_retention_enabled is false"
   }
 }
 
-run "test_code_artifacts_bucket_still_exists_with_retention" {
+run "test_artifacts_bucket_still_exists_with_retention" {
   command = plan
 
   variables {
@@ -246,13 +246,13 @@ run "test_code_artifacts_bucket_still_exists_with_retention" {
   }
 
   assert {
-    condition     = aws_s3_bucket.code_artifacts.bucket == "newrelic-fed-logs-inttest-partition-code-artifacts"
-    error_message = "the code-artifacts bucket must be aws_s3_bucket.code_artifacts, named newrelic-fed-logs-{setup_name}-code-artifacts"
+    condition     = aws_s3_bucket.newrelic_artifacts.bucket == "newrelic-fed-logs-inttest-partition-artifacts"
+    error_message = "the artifacts bucket must be aws_s3_bucket.newrelic_artifacts, named newrelic-fed-logs-{setup_name}-artifacts"
   }
 
   assert {
-    condition     = output.code_artifacts_bucket_name != null
-    error_message = "the code-artifacts bucket must still exist when retention is on (regression guard — this is the pre-existing case)"
+    condition     = output.artifacts_bucket_name != null
+    error_message = "the artifacts bucket must still exist when retention is on (regression guard — this is the pre-existing case)"
   }
 }
 
@@ -322,16 +322,16 @@ run "test_pcg_writer_schema_registry_grant_is_prefix_scoped" {
   assert {
     condition = alltrue([
       for s in jsondecode(aws_iam_role_policy.pcg_writer_schema_registry_access.policy).Statement :
-      s.Resource == "arn:aws:s3:::newrelic-fed-logs-inttest-partition-code-artifacts/newrelic-fed-logs-schemas/*"
+      s.Resource == "arn:aws:s3:::newrelic-fed-logs-inttest-partition-artifacts/newrelic-fed-logs-schemas/*"
       if contains(s.Action, "s3:PutObject") || contains(s.Action, "s3:GetObject")
     ])
-    error_message = "object actions must be scoped to the newrelic-fed-logs-schemas/ prefix, not the whole code-artifacts bucket"
+    error_message = "object actions must be scoped to the newrelic-fed-logs-schemas/ prefix, not the whole artifacts bucket"
   }
 
   assert {
     condition = anytrue([
       for s in jsondecode(aws_iam_role_policy.pcg_writer_schema_registry_access.policy).Statement :
-      s.Resource == "arn:aws:s3:::newrelic-fed-logs-inttest-partition-code-artifacts" && contains(s.Action, "s3:ListBucket")
+      s.Resource == "arn:aws:s3:::newrelic-fed-logs-inttest-partition-artifacts" && contains(s.Action, "s3:ListBucket")
     ])
     error_message = "ListBucket (needed for 404-on-miss and Refresh) must be granted on the bucket ARN"
   }

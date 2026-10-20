@@ -1,4 +1,4 @@
-# The code-artifacts bucket also serves the PCG schema registry: the gateway
+# The artifacts bucket also serves the PCG schema registry: the gateway
 # writes one small JSON object per newly-seen column under the
 # newrelic-fed-logs-schemas/ prefix. Those objects are only useful until the
 # Glue catalog itself learns the column, so they expire after 1 day.
@@ -16,7 +16,7 @@ locals {
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "schema_registry_entries" {
-  bucket = aws_s3_bucket.code_artifacts.id
+  bucket = aws_s3_bucket.newrelic_artifacts.id
 
   rule {
     id     = "expire-schema-registry-entries"
@@ -46,7 +46,7 @@ resource "aws_iam_role_policy" "pcg_writer_schema_registry_access" {
         Sid      = "SchemaRegistryObjects"
         Effect   = "Allow"
         Action   = ["s3:GetObject", "s3:PutObject"]
-        Resource = "arn:aws:s3:::${aws_s3_bucket.code_artifacts.bucket}/${local.schema_registry_prefix}/*"
+        Resource = "arn:aws:s3:::${aws_s3_bucket.newrelic_artifacts.bucket}/${local.schema_registry_prefix}/*"
       },
       {
         # No s3:prefix condition on ListBucket: the registry relies on GetObject
@@ -55,7 +55,7 @@ resource "aws_iam_role_policy" "pcg_writer_schema_registry_access" {
         Sid      = "SchemaRegistryBucket"
         Effect   = "Allow"
         Action   = ["s3:ListBucket"]
-        Resource = "arn:aws:s3:::${aws_s3_bucket.code_artifacts.bucket}"
+        Resource = "arn:aws:s3:::${aws_s3_bucket.newrelic_artifacts.bucket}"
       }
     ]
   })

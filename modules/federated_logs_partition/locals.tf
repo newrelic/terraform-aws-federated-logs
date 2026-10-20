@@ -100,7 +100,7 @@ locals {
   is_data_retention_enabled = var.data_retention_enabled
 
   # Whether any Glue job (retention or snapshot tagging) runs a script from
-  # the code-artifacts bucket. Gates the Glue role's read policy on that
+  # the artifacts bucket. Gates the Glue role's read policy on that
   # bucket; the bucket itself is unconditional (schema registry).
   is_any_glue_job_enabled = local.is_data_retention_enabled || local.is_snapshot_tagging_enabled
 

@@ -20,7 +20,7 @@ variable "glue_service_role_arn" {
 }
 
 variable "pcg_writer_role_name" {
-  description = "Name of the PCG writer IAM role. The module attaches an inline policy to it granting access to the schema registry's objects in the code-artifacts bucket."
+  description = "Name of the PCG writer IAM role. The module attaches an inline policy to it granting access to the schema registry's objects in the artifacts bucket."
   type        = string
 }
 
