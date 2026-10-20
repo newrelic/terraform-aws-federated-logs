@@ -1,8 +1,7 @@
 # Bucket for non-table-data code artifacts: the Glue job scripts
 # (retention.tf, tagging.tf) and the schema registry's objects
 # (schema_registry.tf). Unconditional on purpose: the schema registry
-# depends on neither retention nor tagging. See moved.tf for setups where
-# this bucket already exists under its previous address.
+# depends on neither retention nor tagging.
 resource "aws_s3_bucket" "code_artifacts" {
   bucket = "newrelic-fed-logs-${var.setup_name}-code-artifacts"
   region = data.aws_region.current.region
