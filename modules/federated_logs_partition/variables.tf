@@ -19,6 +19,11 @@ variable "glue_service_role_arn" {
   type        = string
 }
 
+variable "pcg_writer_role_name" {
+  description = "Name of the PCG writer IAM role. The module attaches an inline policy to it granting access to the schema registry's objects in the artifacts bucket."
+  type        = string
+}
+
 #──────────────────────────────────────────────────────────────
 # Optimizer configuration defaults (for both variables below):
 #   orphan_file_deletion:
@@ -33,10 +38,20 @@ variable "glue_service_role_arn" {
 #     strategy                             = "binpack"
 #     min_input_files                      = 5
 #     delete_file_threshold                = 1
+#   snapshot_tagging (only used when snapshot_tagging_enabled = true):
+#     retain_days                          = 7   # one daily tag per table, each kept
+#                                                # retain_days, so ~retain_days pinned
+#                                                # snapshots per table
 #──────────────────────────────────────────────────────────────
 
 variable "data_retention_enabled" {
   description = "Enable data retention feature. When true, creates Glue job to delete old data based on per-table retention_in_days."
+  type        = bool
+  default     = false
+}
+
+variable "snapshot_tagging_enabled" {
+  description = "Enable snapshot tagging feature. When true, creates a Glue job that tags each table's current Iceberg snapshot daily at 01:00 UTC, keeping each tag for the table's snapshot_tagging.retain_days."
   type        = bool
   default     = false
 }
@@ -63,10 +78,18 @@ variable "default_table_setting" {
         min_input_files       = optional(number, 5)
         delete_file_threshold = optional(number, 1)
       }), {})
+      snapshot_tagging = optional(object({
+        retain_days = optional(number, 7)
+      }), {})
 
     }), {})
   })
   default = {}
+
+  validation {
+    condition     = var.default_table_setting.optimizer_configuration.snapshot_tagging.retain_days >= 1
+    error_message = "default_table_setting.optimizer_configuration.snapshot_tagging.retain_days must be at least 1."
+  }
 }
 
 variable "partition_tables" {
@@ -92,6 +115,9 @@ variable "partition_tables" {
         min_input_files       = optional(number, 5)
         delete_file_threshold = optional(number, 1)
       }), {})
+      snapshot_tagging = optional(object({
+        retain_days = optional(number, 7)
+      }), {})
     }), {})
   }))
   default = {}
@@ -104,6 +130,13 @@ variable "partition_tables" {
   validation {
     condition     = alltrue([for k in keys(var.partition_tables) : startswith(k, "Log_")])
     error_message = "All partition table names must start with 'Log_' (e.g., 'Log_my_partition')."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.partition_tables : v.optimizer_configuration.snapshot_tagging.retain_days >= 1
+    ])
+    error_message = "optimizer_configuration.snapshot_tagging.retain_days must be at least 1 for every partition table."
   }
 }
 
