@@ -152,6 +152,259 @@ resource "newrelic_one_dashboard" "this" {
   # Page 2 — Event Pipeline (SQS + Flink)
   # ══════════════════════════════════════════════════════════════════════════
   page {
+    name = "PCG Metrics"
+
+    # ── Section 1: Health Snapshot ────────────────────────────────────────
+
+    widget_stacked_bar {
+      title  = "Backpressure Active"
+      row    = 1
+      column = 1
+      width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "FROM Metric SELECT latest(pcg_backpressure_active) AS 'Backpressure' WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET podName SINCE 1 hour ago TIMESERIES AUTO"
+      }
+    }
+
+    widget_line {
+      title  = "Ingest Channel Depth"
+      row    = 1
+      column = 7
+      width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT latest(otelcol_icebergexporter_ingest_channel_depth) AS 'Ingest Depth' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET podName SINCE 5 minutes ago TIMESERIES AUTO"
+      }
+    }
+
+    widget_line {
+      title  = "CPU Utilization (%)"
+      row    = 4
+      column = 1
+      width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT latest(pcg_instance_cpu_utilization) * 100 AS 'CPU %' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET podName SINCE 5 minutes ago TIMESERIES AUTO"
+      }
+    }
+
+    widget_line {
+      title  = "Memory Utilization (%)"
+      row    = 4
+      column = 7
+      width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT latest(pcg_instance_memory_utilization) * 100 AS 'Memory %' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET podName SINCE 5 minutes ago TIMESERIES AUTO"
+      }
+    }
+
+    # ── Section 2: Throughput ─────────────────────────────────────────────
+
+    widget_line {
+      title  = "Records/sec & Files/min"
+      row    = 7
+      column = 1
+      width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT rate(sum(otelcol_icebergexporter_batch_sent_records), 1 SECOND) AS 'Records/sec', rate(sum(otelcol_icebergexporter_files_written), 1 MINUTE) AS 'Files/min' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
+      }
+    }
+
+    widget_line {
+      title  = "Throughput — Incoming vs S3 Written (MB/s)"
+      row    = 7
+      column = 7
+      width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT rate(sum(otelcol_icebergexporter_batch_sent_bytes), 1 SECOND) / 1000000 AS 'Incoming MB/s', rate(sum(otelcol_icebergexporter_s3_bytes_sent), 1 SECOND) / 1000000 AS 'S3 Written MB/s' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
+      }
+    }
+
+    # ── Section 3: Latency ────────────────────────────────────────────────
+
+    widget_line {
+      title  = "PCG Total Latency Percentiles (ms)"
+      row    = 10
+      column = 1
+      width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT percentile(otelcol_icebergexporter_pcg_total_latency_ms, 50) AS 'P50', percentile(otelcol_icebergexporter_pcg_total_latency_ms, 95) AS 'P95', percentile(otelcol_icebergexporter_pcg_total_latency_ms, 99) AS 'P99' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
+      }
+    }
+
+    widget_line {
+      title  = "S3 Write Latency Percentiles (ms)"
+      row    = 10
+      column = 7
+      width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT percentile(otelcol_icebergexporter_write_latency_ms, 50) AS 'P50', percentile(otelcol_icebergexporter_write_latency_ms, 95) AS 'P95', percentile(otelcol_icebergexporter_write_latency_ms, 99) AS 'P99' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
+      }
+    }
+
+    widget_line {
+      title  = "Latency Breakdown by Stage (avg ms)"
+      row    = 13
+      column = 1
+      width  = 12
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT average(otelcol_icebergexporter_buffering_latency_ms) AS 'Buffering', average(otelcol_icebergexporter_conversion_latency_ms) AS 'Arrow Conversion', average(otelcol_icebergexporter_write_latency_ms) AS 'S3 Write' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
+      }
+    }
+
+    # ── Section 4: Errors & Backpressure ─────────────────────────────────
+
+    widget_line {
+      title  = "Backpressure Rejection Rate"
+      row    = 16
+      column = 1
+      width  = 4
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT rate(sum(pcg_backpressure_rejections_total), 1 SECOND) AS 'Rejections/sec' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
+      }
+    }
+
+    widget_line {
+      title  = "Refused Log Records"
+      row    = 16
+      column = 5
+      width  = 4
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT rate(sum(otelcol_receiver_refused_log_records), 1 SECOND) AS 'Refused/sec' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
+      }
+    }
+
+    widget_pie {
+      title  = "Batch Flush Reasons"
+      row    = 16
+      column = 9
+      width  = 4
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT sum(otelcol_icebergexporter_batches_flushed_by_reason) FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET flush_reason SINCE 6 hours ago"
+      }
+    }
+  }
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # Page 6 — Pipeline Funnel
+  # ══════════════════════════════════════════════════════════════════════════
+  page {
+    name = "Data Storage - S3 & EventBridge"
+
+    widget_line {
+      title             = "S3 Bucket Size"
+      row               = 1
+      column            = 1
+      width             = 6
+      height            = 3
+      ignore_time_range = true
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT max(`aws.s3.BucketSizeBytes`) AS 'Bucket Size' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 7 days ago TIMESERIES 1 day"
+      }
+
+      units {
+        unit = "bytes"
+      }
+    }
+
+    widget_line {
+      title             = "S3 Object Count"
+      row               = 1
+      column            = 7
+      width             = 6
+      height            = 3
+      ignore_time_range = true
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT max(`aws.s3.NumberOfObjects`) AS 'Objects' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 7 days ago TIMESERIES 1 day"
+      }
+
+      units {
+        unit = "count"
+      }
+    }
+
+    widget_line {
+      title  = "EventBridge — Parquet Events Routed"
+      row    = 4
+      column = 1
+      width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT sum(`aws.events.TriggeredRules`) AS 'Triggered', sum(`aws.events.MatchedEvents`) AS 'Matched' FROM Metric WHERE `aws.events.RuleName` = '${local.eventbridge_rule_name}' SINCE 6 hours ago TIMESERIES AUTO"
+      }
+    }
+
+    widget_line {
+      title  = "EventBridge — Success vs Failed Invocations"
+      row    = 4
+      column = 7
+      width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT sum(`aws.events.SuccessfulInvocationAttempts`) AS 'Succeeded', sum(`aws.events.FailedInvocations`) AS 'Failed' FROM Metric WHERE `aws.events.RuleName` = '${local.eventbridge_rule_name}' SINCE 6 hours ago TIMESERIES AUTO"
+      }
+    }
+
+    widget_line {
+      title  = "EventBridge — S3 to SQS Delivery Latency (ms)"
+      row    = 7
+      column = 1
+      width  = 12
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT average(`aws.events.IngestionToInvocationSuccessLatency`) AS 'S3→SQS Latency (ms)' FROM Metric WHERE `aws.events.RuleName` = '${local.eventbridge_rule_name}' SINCE 6 hours ago TIMESERIES AUTO"
+      }
+    }
+  }
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # Page 4 — Glue & Optimizer Health
+  # ══════════════════════════════════════════════════════════════════════════
+  page {
     name = "Data Processing - SQS & Flink"
 
     widget_line {
@@ -373,88 +626,6 @@ resource "newrelic_one_dashboard" "this" {
   # Page 3 — Storage & Events (S3 + EventBridge)
   # ══════════════════════════════════════════════════════════════════════════
   page {
-    name = "Data Storage - S3 & EventBridge"
-
-    widget_line {
-      title             = "S3 Bucket Size"
-      row               = 1
-      column            = 1
-      width             = 6
-      height            = 3
-      ignore_time_range = true
-
-      nrql_query {
-        account_id = var.newrelic_account_id
-        query      = "SELECT max(`aws.s3.BucketSizeBytes`) AS 'Bucket Size' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 7 days ago TIMESERIES 1 day"
-      }
-
-      units {
-        unit = "bytes"
-      }
-    }
-
-    widget_line {
-      title             = "S3 Object Count"
-      row               = 1
-      column            = 7
-      width             = 6
-      height            = 3
-      ignore_time_range = true
-
-      nrql_query {
-        account_id = var.newrelic_account_id
-        query      = "SELECT max(`aws.s3.NumberOfObjects`) AS 'Objects' FROM Metric WHERE `aws.s3.BucketName` = '${var.s3_bucket_name}' SINCE 7 days ago TIMESERIES 1 day"
-      }
-
-      units {
-        unit = "count"
-      }
-    }
-
-    widget_line {
-      title  = "EventBridge — Parquet Events Routed"
-      row    = 4
-      column = 1
-      width  = 6
-      height = 3
-
-      nrql_query {
-        account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.events.TriggeredRules`) AS 'Triggered', sum(`aws.events.MatchedEvents`) AS 'Matched' FROM Metric WHERE `aws.events.RuleName` = '${local.eventbridge_rule_name}' SINCE 6 hours ago TIMESERIES AUTO"
-      }
-    }
-
-    widget_line {
-      title  = "EventBridge — Success vs Failed Invocations"
-      row    = 4
-      column = 7
-      width  = 6
-      height = 3
-
-      nrql_query {
-        account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.events.SuccessfulInvocationAttempts`) AS 'Succeeded', sum(`aws.events.FailedInvocations`) AS 'Failed' FROM Metric WHERE `aws.events.RuleName` = '${local.eventbridge_rule_name}' SINCE 6 hours ago TIMESERIES AUTO"
-      }
-    }
-
-    widget_line {
-      title  = "EventBridge — S3 to SQS Delivery Latency (ms)"
-      row    = 7
-      column = 1
-      width  = 12
-      height = 3
-
-      nrql_query {
-        account_id = var.newrelic_account_id
-        query      = "SELECT average(`aws.events.IngestionToInvocationSuccessLatency`) AS 'S3→SQS Latency (ms)' FROM Metric WHERE `aws.events.RuleName` = '${local.eventbridge_rule_name}' SINCE 6 hours ago TIMESERIES AUTO"
-      }
-    }
-  }
-
-  # ══════════════════════════════════════════════════════════════════════════
-  # Page 4 — Glue & Optimizer Health
-  # ══════════════════════════════════════════════════════════════════════════
-  page {
     name = "Glue & Optimizer Health"
 
     widget_billboard {
@@ -554,180 +725,230 @@ resource "newrelic_one_dashboard" "this" {
   # Page 5 — PCG Metrics (only when pcg_cluster_name is provided)
   # ══════════════════════════════════════════════════════════════════════════
   page {
-    name = "PCG Metrics"
-
-    # ── Section 1: Health Snapshot ────────────────────────────────────────
+    name = "Pipeline Funnel"
 
     widget_billboard {
-      title  = "Backpressure Active"
+      title  = "PCG→S3 (files written)"
       row    = 1
+      column = 1
+      width  = 3
+      height = 2
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "FROM Metric SELECT sum(otelcol_icebergexporter_files_written) AS 'Files' WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour AGO"
+      }
+    }
+
+    widget_billboard {
+      title  = "EventBridge (matched)"
+      row    = 1
+      column = 4
+      width  = 3
+      height = 2
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "FROM Metric SELECT sum(`aws.events.MatchedEvents`) AS 'Files' WHERE `aws.events.RuleName` = '${local.eventbridge_rule_name}' SINCE 1 hour AGO"
+      }
+    }
+
+    widget_billboard {
+      title  = "SQS (messages received)"
+      row    = 1
+      column = 7
+      width  = 3
+      height = 2
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "FROM Metric SELECT sum(`aws.sqs.NumberOfMessagesSent`) AS 'Files' WHERE `aws.sqs.QueueName` = '${local.sqs_queue_name}' SINCE 1 hour AGO"
+      }
+    }
+
+    widget_billboard {
+      title  = "Flink (messages consumed)"
+      row    = 1
+      column = 10
+      width  = 3
+      height = 2
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "FROM Metric SELECT sum(`aws.sqs.NumberOfMessagesDeleted`) AS 'Files' WHERE `aws.sqs.QueueName` = '${local.sqs_queue_name}' SINCE 1 hour AGO"
+      }
+    }
+
+    widget_billboard {
+      title  = "Iceberg (files committed)"
+      row    = 3
       column = 1
       width  = 3
       height = 3
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT latest(pcg_backpressure_active) AS 'Backpressure' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET podName SINCE 5 minutes ago"
+        query      = "FROM Metric SELECT sum(iceberg.commit.file_count) AS 'Files' WHERE service.name = 'flink-iceberg-commit-worker' AND tableId = {{table_id}} SINCE 1 hour AGO"
       }
-
-      critical = 0.5
     }
 
-    widget_billboard {
-      title  = "CPU Utilization (%)"
-      row    = 1
+    widget_line {
+      title  = "Bytes: PCG Raw In vs S3/Iceberg Parquet Out"
+      row    = 3
+      column = 4
+      width  = 9
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "FROM Metric SELECT sum(otelcol_icebergexporter_batch_sent_bytes) AS 'Raw In', sum(otelcol_icebergexporter_s3_bytes_sent) AS 'Parquet Out (S3/Iceberg)' WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
+      }
+
+      units {
+        unit = "bytes"
+      }
+    }
+
+    widget_line {
+      title  = "PCG Backpressure Rejections"
+      row    = 14
+      column = 1
+      width  = 3
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "FROM Metric SELECT rate(sum(pcg_backpressure_rejections_total), 1 MINUTE) AS 'Rejections/min' WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
+      }
+    }
+
+    widget_line {
+      title  = "Refused Log Records"
+      row    = 14
       column = 4
       width  = 3
       height = 3
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT latest(pcg_instance_cpu_utilization) * 100 AS 'CPU %' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET podName SINCE 5 minutes ago"
+        query      = "FROM Metric SELECT rate(sum(otelcol_receiver_refused_log_records), 1 MINUTE) AS 'Dropped/min' WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
       }
-
-      warning  = 70
-      critical = 85
     }
 
-    widget_billboard {
-      title  = "Memory Utilization (%)"
-      row    = 1
+    widget_line {
+      title  = "DLQ — Lost Messages"
+      row    = 14
       column = 7
       width  = 3
       height = 3
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT latest(pcg_instance_memory_utilization) * 100 AS 'Memory %' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET podName SINCE 5 minutes ago"
+        query      = "FROM Metric SELECT sum(`aws.sqs.ApproximateNumberOfMessagesVisible`) AS 'DLQ Depth' WHERE `aws.sqs.QueueName` = '${local.sqs_dlq_name}' SINCE 1 hour ago TIMESERIES AUTO"
       }
-
-      warning  = 60
-      critical = 75
     }
 
-    widget_billboard {
-      title  = "Ingest Channel Depth"
-      row    = 1
+    widget_line {
+      title  = "Iceberg Commit Failures"
+      row    = 14
       column = 10
       width  = 3
       height = 3
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT latest(otelcol_icebergexporter_ingest_channel_depth) AS 'Ingest Depth' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET podName SINCE 5 minutes ago"
+        query      = "FROM Metric SELECT filter(count(iceberg.commit.success), WHERE iceberg.commit.success = 0) AS 'Failures' WHERE service.name = 'flink-iceberg-commit-worker' AND tableId = {{table_id}} SINCE 1 hour ago TIMESERIES AUTO"
       }
-
-      warning  = 25000
-      critical = 40000
     }
 
-    # ── Section 2: Throughput ─────────────────────────────────────────────
-
-    widget_line {
-      title  = "Records/sec & Files/min"
-      row    = 4
+    widget_billboard {
+      title  = "PCG Internal Drop-off"
+      row    = 17
       column = 1
       width  = 6
       height = 3
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT rate(sum(otelcol_icebergexporter_batch_sent_records), 1 SECOND) AS 'Records/sec', rate(sum(otelcol_icebergexporter_files_written), 1 MINUTE) AS 'Files/min' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
+        query      = "FROM Metric SELECT sum(otelcol_receiver_accepted_log_records) AS 'PCG Received Records', sum(otelcol_icebergexporter_batch_sent_records) AS 'PCG Batched Records', sum(otelcol_icebergexporter_records_dropped) AS 'PCG Dropped Records', sum(otelcol_icebergexporter_batches_flushed_by_reason) AS 'PCG Batches Flushed', sum(otelcol_icebergexporter_batch_sent_records) / sum(otelcol_receiver_accepted_log_records) * 100 AS 'PCG Yield %' WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour AGO"
       }
     }
 
-    widget_line {
-      title  = "Throughput — Incoming vs S3 Written (MB/s)"
-      row    = 4
-      column = 7
-      width  = 6
-      height = 3
-
-      nrql_query {
-        account_id = var.newrelic_account_id
-        query      = "SELECT rate(sum(otelcol_icebergexporter_batch_sent_bytes), 1 SECOND) / 1000000 AS 'Incoming MB/s', rate(sum(otelcol_icebergexporter_s3_bytes_sent), 1 SECOND) / 1000000 AS 'S3 Written MB/s' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
-      }
-    }
-
-    # ── Section 3: Latency ────────────────────────────────────────────────
-
-    widget_line {
-      title  = "PCG Total Latency Percentiles (ms)"
-      row    = 7
+    widget_area {
+      title  = "Pipeline Stage File Count (funnel view)"
+      row    = 6
       column = 1
-      width  = 6
-      height = 3
+      width  = 12
+      height = 4
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT percentile(otelcol_icebergexporter_pcg_total_latency_ms, 50) AS 'P50', percentile(otelcol_icebergexporter_pcg_total_latency_ms, 95) AS 'P95', percentile(otelcol_icebergexporter_pcg_total_latency_ms, 99) AS 'P99' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
+        query      = "FROM Metric SELECT sum(otelcol_icebergexporter_files_written) AS 'PCG→S3' WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
+      }
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "FROM Metric SELECT sum(`aws.events.MatchedEvents`) AS 'EventBridge' WHERE `aws.events.RuleName` = '${local.eventbridge_rule_name}' SINCE 1 hour ago TIMESERIES AUTO"
+      }
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "FROM Metric SELECT sum(`aws.sqs.NumberOfMessagesSent`) AS 'SQS' WHERE `aws.sqs.QueueName` = '${local.sqs_queue_name}' SINCE 1 hour ago TIMESERIES AUTO"
+      }
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "FROM Metric SELECT sum(`aws.sqs.NumberOfMessagesDeleted`) AS 'Flink' WHERE `aws.sqs.QueueName` = '${local.sqs_queue_name}' SINCE 1 hour ago TIMESERIES AUTO"
+      }
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "FROM Metric SELECT sum(iceberg.commit.file_count) AS 'Iceberg' WHERE service.name = 'flink-iceberg-commit-worker' AND tableId = {{table_id}} SINCE 1 hour ago TIMESERIES AUTO"
       }
     }
 
     widget_line {
-      title  = "S3 Write Latency Percentiles (ms)"
-      row    = 7
-      column = 7
-      width  = 6
-      height = 3
-
-      nrql_query {
-        account_id = var.newrelic_account_id
-        query      = "SELECT percentile(otelcol_icebergexporter_write_latency_ms, 50) AS 'P50', percentile(otelcol_icebergexporter_write_latency_ms, 95) AS 'P95', percentile(otelcol_icebergexporter_write_latency_ms, 99) AS 'P99' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
-      }
-    }
-
-    widget_line {
-      title  = "Latency Breakdown by Stage (avg ms)"
+      title  = "Latency Per Pipeline Stage — P99 (ms)"
       row    = 10
       column = 1
       width  = 12
-      height = 3
+      height = 4
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT average(otelcol_icebergexporter_buffering_latency_ms) AS 'Buffering', average(otelcol_icebergexporter_conversion_latency_ms) AS 'Arrow Conversion', average(otelcol_icebergexporter_write_latency_ms) AS 'S3 Write' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
+        query      = "FROM Metric SELECT percentile(otelcol_icebergexporter_pcg_total_latency_ms, 99) AS 'PCG Total (P99)' WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
+      }
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "FROM Metric SELECT average(`aws.events.IngestionToInvocationSuccessLatency`) AS 'EventBridge Delivery' WHERE `aws.events.RuleName` = '${local.eventbridge_rule_name}' SINCE 1 hour ago TIMESERIES AUTO"
+      }
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "FROM Metric SELECT max(`aws.sqs.ApproximateAgeOfOldestMessage`) * 1000 AS 'SQS Wait (ms)' WHERE `aws.sqs.QueueName` = '${local.sqs_queue_name}' SINCE 1 hour ago TIMESERIES AUTO"
+      }
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "FROM Metric SELECT percentile(iceberg.commit.e2e_latency_ms, 99) AS 'Iceberg E2E (P99)' WHERE service.name = 'flink-iceberg-commit-worker' AND tableId = {{table_id}} SINCE 1 hour ago TIMESERIES AUTO"
+      }
+
+      units {
+        unit = "ms"
       }
     }
 
-    # ── Section 4: Errors & Backpressure ─────────────────────────────────
-
-    widget_line {
-      title  = "Backpressure Rejection Rate"
-      row    = 13
-      column = 1
-      width  = 4
+    widget_table {
+      title  = "Per-Partition Health"
+      row    = 17
+      column = 7
+      width  = 6
       height = 3
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT rate(sum(pcg_backpressure_rejections_total), 1 SECOND) AS 'Rejections/sec' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
-      }
-    }
-
-    widget_line {
-      title  = "Refused Log Records"
-      row    = 13
-      column = 5
-      width  = 4
-      height = 3
-
-      nrql_query {
-        account_id = var.newrelic_account_id
-        query      = "SELECT rate(sum(otelcol_receiver_refused_log_records), 1 SECOND) AS 'Refused/sec' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
-      }
-    }
-
-    widget_pie {
-      title  = "Batch Flush Reasons"
-      row    = 13
-      column = 9
-      width  = 4
-      height = 3
-
-      nrql_query {
-        account_id = var.newrelic_account_id
-        query      = "SELECT sum(otelcol_icebergexporter_batches_flushed_by_reason) FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET flush_reason SINCE 6 hours ago"
+        query      = "FROM Metric SELECT filter(count(iceberg.commit.success), WHERE iceberg.commit.success = 1) AS 'Commits', filter(count(iceberg.commit.success), WHERE iceberg.commit.success = 0) AS 'Failures', filter(count(iceberg.commit.success), WHERE iceberg.commit.success = 1) / count(iceberg.commit.success) * 100 AS 'Success Rate %' WHERE service.name = 'flink-iceberg-commit-worker' AND ${local.partition_table_id_filter} FACET tableId SINCE 1 hour AGO"
       }
     }
   }
