@@ -127,6 +127,74 @@ run "test_base_role_naming_and_abac" {
     ][0] == "test-fleet-name"
     error_message = "Flink application must expose fleet_name as the 'fleet.entity.name' FlinkApplicationProperties key"
   }
+
+  # Commit batching defaults when the caller doesn't set them
+  assert {
+    condition = [
+      for pg in aws_kinesisanalyticsv2_application.flink_iceberg_commit_worker.application_configuration[0].environment_properties[0].property_group :
+      [pg.property_map["iceberg.commit.batch.size"], pg.property_map["iceberg.commit.batch.timeout.ms"]] if pg.property_group_id == "FlinkApplicationProperties"
+    ][0] == ["100", "10000"]
+    error_message = "Commit batching must default to 100 files / 10000 ms"
+  }
+}
+
+run "test_commit_batch_overrides" {
+  command = plan
+
+  variables {
+    data_processing_module_name = "inttest-dp-commit-batch"
+    fleet_entity_guid           = var.fleet_entity_guid
+    newrelic_org_id             = var.newrelic_org_id
+    newrelic_account_id         = var.newrelic_account_id
+    newrelic_region             = var.newrelic_region
+    commit_batch_size           = 500
+    commit_batch_timeout_ms     = 60000
+    clusters = {
+      "test-cluster" = {
+        k8s_namespace            = "federated-logs"
+        k8s_service_account_name = "pcg-writer-sa"
+        oidc_provider_arn        = var.test_oidc_arn
+      }
+    }
+  }
+
+  module {
+    source = "./modules/data_processing"
+  }
+
+  assert {
+    condition = [
+      for pg in aws_kinesisanalyticsv2_application.flink_iceberg_commit_worker.application_configuration[0].environment_properties[0].property_group :
+      [pg.property_map["iceberg.commit.batch.size"], pg.property_map["iceberg.commit.batch.timeout.ms"]] if pg.property_group_id == "FlinkApplicationProperties"
+    ][0] == ["500", "60000"]
+    error_message = "commit_batch_size / commit_batch_timeout_ms must flow into the iceberg.commit.batch.* Flink properties"
+  }
+}
+
+run "test_validation_rejects_zero_commit_batch_timeout" {
+  command = plan
+
+  variables {
+    data_processing_module_name = "inttest-dp-bad-timeout"
+    fleet_entity_guid           = var.fleet_entity_guid
+    newrelic_org_id             = var.newrelic_org_id
+    newrelic_account_id         = var.newrelic_account_id
+    newrelic_region             = var.newrelic_region
+    commit_batch_timeout_ms     = 0
+    clusters = {
+      "test-cluster" = {
+        k8s_namespace            = "federated-logs"
+        k8s_service_account_name = "pcg-writer-sa"
+        oidc_provider_arn        = var.test_oidc_arn
+      }
+    }
+  }
+
+  module {
+    source = "./modules/data_processing"
+  }
+
+  expect_failures = [var.commit_batch_timeout_ms]
 }
 
 run "test_fleet_name_omitted_when_empty" {
