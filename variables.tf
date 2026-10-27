@@ -56,7 +56,10 @@ variable "newrelic_region" {
 #     orphan_file_retention_period_in_days = 3
 #     run_rate_in_hours                    = 24
 #   snapshot_retention:
-#     snapshot_retention_period_in_days    = 1
+#     snapshot_retention_period_in_days    = null  # set it to fall back to whole-day retention;
+#                                                  # when set, Glue ignores max_snapshot_age_ms
+#     max_snapshot_age_ms                  = 3600000  # 1 h; written to the table as
+#                                                     # history.expire.max-snapshot-age-ms
 #     number_of_snapshots_to_retain        = 1
 #     clean_expired_files                  = false
 #     run_rate_in_hours                    = 3
@@ -93,7 +96,8 @@ variable "default_table_setting" {
         run_rate_in_hours                    = optional(number, 24)
       }), {})
       snapshot_retention = optional(object({
-        snapshot_retention_period_in_days = optional(number, 1)
+        snapshot_retention_period_in_days = optional(number)
+        max_snapshot_age_ms               = optional(number, 3600000)
         number_of_snapshots_to_retain     = optional(number, 1)
         clean_expired_files               = optional(bool, false)
         run_rate_in_hours                 = optional(number, 3)
@@ -114,6 +118,14 @@ variable "default_table_setting" {
     condition     = var.default_table_setting.optimizer_configuration.snapshot_tagging.retain_days >= 1
     error_message = "default_table_setting.optimizer_configuration.snapshot_tagging.retain_days must be at least 1."
   }
+
+  validation {
+    condition = (
+      var.default_table_setting.optimizer_configuration.snapshot_retention.max_snapshot_age_ms >= 1000 &&
+      var.default_table_setting.optimizer_configuration.snapshot_retention.max_snapshot_age_ms % 1000 == 0
+    )
+    error_message = "default_table_setting.optimizer_configuration.snapshot_retention.max_snapshot_age_ms must be a positive multiple of 1000 (it is applied to existing tables in whole seconds)."
+  }
 }
 
 
@@ -130,7 +142,8 @@ variable "partition_tables" {
         run_rate_in_hours                    = optional(number, 24)
       }), {})
       snapshot_retention = optional(object({
-        snapshot_retention_period_in_days = optional(number, 1)
+        snapshot_retention_period_in_days = optional(number)
+        max_snapshot_age_ms               = optional(number, 3600000)
         number_of_snapshots_to_retain     = optional(number, 1)
         clean_expired_files               = optional(bool, false)
         run_rate_in_hours                 = optional(number, 3)
@@ -157,6 +170,15 @@ variable "partition_tables" {
       for k, v in var.partition_tables : v.optimizer_configuration.snapshot_tagging.retain_days >= 1
     ])
     error_message = "optimizer_configuration.snapshot_tagging.retain_days must be at least 1 for every partition table."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.partition_tables :
+      v.optimizer_configuration.snapshot_retention.max_snapshot_age_ms >= 1000 &&
+      v.optimizer_configuration.snapshot_retention.max_snapshot_age_ms % 1000 == 0
+    ])
+    error_message = "optimizer_configuration.snapshot_retention.max_snapshot_age_ms must be a positive multiple of 1000 for every partition table (it is applied to existing tables in whole seconds)."
   }
 }
 

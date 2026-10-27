@@ -77,10 +77,17 @@ locals {
     "schema.name-mapping.default" = local.iceberg_schema_name_mapping
   }
 
-  # For each table: defaults ← user params (user wins on overlap)
+  # For each table: defaults ← snapshot max age ← user params (user wins on
+  # overlap). Only reaches the table at creation (open_table_format_input is
+  # ignored afterwards); existing tables get the max age from
+  # null_resource.snapshot_max_age_property in optimizer.tf.
   resolved_table_params = {
     for k, v in local.all_tables :
-    k => merge(local.default_iceberg_params, v.table_parameters)
+    k => merge(
+      local.default_iceberg_params,
+      { "history.expire.max-snapshot-age-ms" = tostring(v.optimizer_configuration.snapshot_retention.max_snapshot_age_ms) },
+      v.table_parameters,
+    )
   }
 
   # Compaction configuration for each table (used in null_resource provisioner)
