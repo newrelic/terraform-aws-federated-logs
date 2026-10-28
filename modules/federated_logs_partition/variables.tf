@@ -30,10 +30,13 @@ variable "pcg_writer_role_name" {
 #     orphan_file_retention_period_in_days = 3
 #     run_rate_in_hours                    = 24
 #   snapshot_retention:
-#     snapshot_retention_period_in_days    = null  # set it to fall back to whole-day retention;
-#                                                  # when set, Glue ignores max_snapshot_age_ms
-#     max_snapshot_age_ms                  = 3600000  # 1 h; written to the table as
+#     snapshot_retention_period_in_days    = null  # null: tables created by this version use
+#                                                  # max_snapshot_age_ms; tables created
+#                                                  # earlier keep 1 day. Set it to force
+#                                                  # whole-day retention on every table.
+#     max_snapshot_age_ms                  = 3600000  # 1 h; set as the table's
 #                                                     # history.expire.max-snapshot-age-ms
+#                                                     # at creation only
 #     number_of_snapshots_to_retain        = 1
 #     clean_expired_files                  = false
 #     run_rate_in_hours                    = 3
@@ -97,10 +100,10 @@ variable "default_table_setting" {
 
   validation {
     condition = (
-      var.default_table_setting.optimizer_configuration.snapshot_retention.max_snapshot_age_ms >= 1000 &&
-      var.default_table_setting.optimizer_configuration.snapshot_retention.max_snapshot_age_ms % 1000 == 0
+      var.default_table_setting.optimizer_configuration.snapshot_retention.max_snapshot_age_ms > 0 &&
+      floor(var.default_table_setting.optimizer_configuration.snapshot_retention.max_snapshot_age_ms) == var.default_table_setting.optimizer_configuration.snapshot_retention.max_snapshot_age_ms
     )
-    error_message = "default_table_setting.optimizer_configuration.snapshot_retention.max_snapshot_age_ms must be a positive multiple of 1000 (it is applied to existing tables in whole seconds)."
+    error_message = "default_table_setting.optimizer_configuration.snapshot_retention.max_snapshot_age_ms must be a positive integer."
   }
 }
 
@@ -155,10 +158,10 @@ variable "partition_tables" {
   validation {
     condition = alltrue([
       for k, v in var.partition_tables :
-      v.optimizer_configuration.snapshot_retention.max_snapshot_age_ms >= 1000 &&
-      v.optimizer_configuration.snapshot_retention.max_snapshot_age_ms % 1000 == 0
+      v.optimizer_configuration.snapshot_retention.max_snapshot_age_ms > 0 &&
+      floor(v.optimizer_configuration.snapshot_retention.max_snapshot_age_ms) == v.optimizer_configuration.snapshot_retention.max_snapshot_age_ms
     ])
-    error_message = "optimizer_configuration.snapshot_retention.max_snapshot_age_ms must be a positive multiple of 1000 for every partition table (it is applied to existing tables in whole seconds)."
+    error_message = "optimizer_configuration.snapshot_retention.max_snapshot_age_ms must be a positive integer for every partition table."
   }
 }
 

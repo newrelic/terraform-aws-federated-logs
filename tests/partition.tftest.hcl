@@ -378,9 +378,11 @@ run "test_snapshot_tagging_rejects_zero_retain_days" {
   expect_failures = [var.partition_tables]
 }
 
-# Default retention: no whole-day period on the optimizer (Glue then reads the
-# table's history.expire.max-snapshot-age-ms), the 1 h max age in the
-# create-time properties, and the Athena step that sets it on existing tables.
+# Default retention for a table created by this module version: no whole-day
+# period on the optimizer (Glue then reads the table's
+# history.expire.max-snapshot-age-ms) and the 1 h max age in the create-time
+# properties. Tables created earlier keep 1 day; that path needs prior state,
+# which plan-only tests can't provide.
 run "test_snapshot_retention_defaults_to_max_age" {
   command = plan
 
@@ -407,14 +409,10 @@ run "test_snapshot_retention_defaults_to_max_age" {
     error_message = "New tables must be created with history.expire.max-snapshot-age-ms = 3600000"
   }
 
-  assert {
-    condition     = null_resource.snapshot_max_age_property["newrelic_fed_logs_inttest_partition_log_federated"].triggers.max_snapshot_age_ms == "3600000"
-    error_message = "The max-age step must run for every table with the configured max age"
-  }
 }
 
 # An explicit whole-day period still reaches the optimizer, and a per-table
-# max age flows through to both the create-time property and the Athena step.
+# max age flows through to the create-time property.
 run "test_snapshot_retention_overrides" {
   command = plan
 
@@ -457,13 +455,9 @@ run "test_snapshot_retention_overrides" {
     error_message = "A per-table max_snapshot_age_ms must reach the create-time properties"
   }
 
-  assert {
-    condition     = null_resource.snapshot_max_age_property["newrelic_fed_logs_inttest_partition_log_fast"].triggers.max_snapshot_age_ms == "7200000"
-    error_message = "A per-table max_snapshot_age_ms must reach the Athena step"
-  }
 }
 
-run "test_snapshot_retention_rejects_sub_second_max_age" {
+run "test_snapshot_retention_rejects_zero_max_age" {
   command = plan
 
   variables {
@@ -476,7 +470,7 @@ run "test_snapshot_retention_rejects_sub_second_max_age" {
     default_table_setting = {
       optimizer_configuration = {
         snapshot_retention = {
-          max_snapshot_age_ms = 1500
+          max_snapshot_age_ms = 0
         }
       }
     }
