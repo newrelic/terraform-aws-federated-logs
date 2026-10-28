@@ -27,7 +27,10 @@ resource "aws_glue_catalog_table_optimizer" "retention" {
     enabled  = true
     retention_configuration {
       iceberg_configuration {
-        snapshot_retention_period_in_days = each.value.optimizer_configuration.snapshot_retention.snapshot_retention_period_in_days
+        # null omits the field, so Glue reads the table's
+        # history.expire.max-snapshot-age-ms instead. See
+        # local.snapshot_retention_period_in_days for which tables get null.
+        snapshot_retention_period_in_days = local.snapshot_retention_period_in_days[each.key]
         number_of_snapshots_to_retain     = each.value.optimizer_configuration.snapshot_retention.number_of_snapshots_to_retain
         clean_expired_files               = each.value.optimizer_configuration.snapshot_retention.clean_expired_files
         run_rate_in_hours                 = each.value.optimizer_configuration.snapshot_retention.run_rate_in_hours

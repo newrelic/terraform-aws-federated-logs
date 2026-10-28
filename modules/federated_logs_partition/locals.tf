@@ -77,10 +77,34 @@ locals {
     "schema.name-mapping.default" = local.iceberg_schema_name_mapping
   }
 
-  # For each table: defaults ← user params (user wins on overlap)
+  # For each table: defaults ← snapshot max age ← user params (user wins on
+  # overlap). Only reaches the table at creation: open_table_format_input is
+  # ignored afterwards, so existing tables never get the max age from here.
   resolved_table_params = {
     for k, v in local.all_tables :
-    k => merge(local.default_iceberg_params, v.table_parameters)
+    k => merge(
+      local.default_iceberg_params,
+      { "history.expire.max-snapshot-age-ms" = tostring(v.optimizer_configuration.snapshot_retention.max_snapshot_age_ms) },
+      v.table_parameters,
+    )
+  }
+
+  # Glue's retention optimizer reads history.expire.max-snapshot-age-ms only
+  # when snapshotRetentionPeriodInDays is omitted (null), and falls back to 5
+  # days if the property is missing too. So omit it only for tables created
+  # with the property. Because open_table_format_input is ignored after
+  # creation, an existing table's state keeps the properties it was created
+  # with: tables created before this change keep whole-day retention (1 day)
+  # and are left untouched. An explicit snapshot_retention_period_in_days
+  # always wins.
+  snapshot_retention_period_in_days = {
+    for k, v in local.all_tables : k => (
+      v.optimizer_configuration.snapshot_retention.snapshot_retention_period_in_days != null
+      ? v.optimizer_configuration.snapshot_retention.snapshot_retention_period_in_days
+      : contains(keys(try(aws_glue_catalog_table.iceberg_table[k].open_table_format_input[0].iceberg_input[0].iceberg_table_input[0].properties, {})), "history.expire.max-snapshot-age-ms")
+      ? null
+      : 1
+    )
   }
 
   # Compaction configuration for each table (used in null_resource provisioner)

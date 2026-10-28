@@ -377,3 +377,108 @@ run "test_snapshot_tagging_rejects_zero_retain_days" {
 
   expect_failures = [var.partition_tables]
 }
+
+# Default retention for a table created by this module version: no whole-day
+# period on the optimizer (Glue then reads the table's
+# history.expire.max-snapshot-age-ms) and the 1 h max age in the create-time
+# properties. Tables created earlier keep 1 day; that path needs prior state,
+# which plan-only tests can't provide.
+run "test_snapshot_retention_defaults_to_max_age" {
+  command = plan
+
+  variables {
+    setup_name            = "inttest-partition"
+    s3_bucket_name        = "test-bucket"
+    glue_catalog_db_name  = "test_db"
+    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
+    setup_id              = "mock-setup-id"
+    newrelic_account_id   = 12345678
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  assert {
+    condition     = aws_glue_catalog_table_optimizer.retention["newrelic_fed_logs_inttest_partition_log_federated"].configuration[0].retention_configuration[0].iceberg_configuration[0].snapshot_retention_period_in_days == null
+    error_message = "snapshot_retention_period_in_days must be omitted by default so Glue uses history.expire.max-snapshot-age-ms"
+  }
+
+  assert {
+    condition     = aws_glue_catalog_table.iceberg_table["newrelic_fed_logs_inttest_partition_log_federated"].open_table_format_input[0].iceberg_input[0].iceberg_table_input[0].properties["history.expire.max-snapshot-age-ms"] == "3600000"
+    error_message = "New tables must be created with history.expire.max-snapshot-age-ms = 3600000"
+  }
+
+}
+
+# An explicit whole-day period still reaches the optimizer, and a per-table
+# max age flows through to the create-time property.
+run "test_snapshot_retention_overrides" {
+  command = plan
+
+  variables {
+    setup_name            = "inttest-partition"
+    s3_bucket_name        = "test-bucket"
+    glue_catalog_db_name  = "test_db"
+    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
+    setup_id              = "mock-setup-id"
+    newrelic_account_id   = 12345678
+    default_table_setting = {
+      optimizer_configuration = {
+        snapshot_retention = {
+          snapshot_retention_period_in_days = 2
+        }
+      }
+    }
+    partition_tables = {
+      "Log_fast" = {
+        optimizer_configuration = {
+          snapshot_retention = {
+            max_snapshot_age_ms = 7200000
+          }
+        }
+      }
+    }
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  assert {
+    condition     = aws_glue_catalog_table_optimizer.retention["newrelic_fed_logs_inttest_partition_log_federated"].configuration[0].retention_configuration[0].iceberg_configuration[0].snapshot_retention_period_in_days == 2
+    error_message = "An explicit snapshot_retention_period_in_days must reach the optimizer"
+  }
+
+  assert {
+    condition     = aws_glue_catalog_table.iceberg_table["newrelic_fed_logs_inttest_partition_log_fast"].open_table_format_input[0].iceberg_input[0].iceberg_table_input[0].properties["history.expire.max-snapshot-age-ms"] == "7200000"
+    error_message = "A per-table max_snapshot_age_ms must reach the create-time properties"
+  }
+
+}
+
+run "test_snapshot_retention_rejects_zero_max_age" {
+  command = plan
+
+  variables {
+    setup_name            = "inttest-partition"
+    s3_bucket_name        = "test-bucket"
+    glue_catalog_db_name  = "test_db"
+    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
+    setup_id              = "mock-setup-id"
+    newrelic_account_id   = 12345678
+    default_table_setting = {
+      optimizer_configuration = {
+        snapshot_retention = {
+          max_snapshot_age_ms = 0
+        }
+      }
+    }
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  expect_failures = [var.default_table_setting]
+}

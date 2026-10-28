@@ -30,7 +30,13 @@ variable "pcg_writer_role_name" {
 #     orphan_file_retention_period_in_days = 3
 #     run_rate_in_hours                    = 24
 #   snapshot_retention:
-#     snapshot_retention_period_in_days    = 1
+#     snapshot_retention_period_in_days    = null  # null: tables created by this version use
+#                                                  # max_snapshot_age_ms; tables created
+#                                                  # earlier keep 1 day. Set it to force
+#                                                  # whole-day retention on every table.
+#     max_snapshot_age_ms                  = 3600000  # 1 h; set as the table's
+#                                                     # history.expire.max-snapshot-age-ms
+#                                                     # at creation only
 #     number_of_snapshots_to_retain        = 1
 #     clean_expired_files                  = false
 #     run_rate_in_hours                    = 3
@@ -67,7 +73,8 @@ variable "default_table_setting" {
         run_rate_in_hours                    = optional(number, 24)
       }), {})
       snapshot_retention = optional(object({
-        snapshot_retention_period_in_days = optional(number, 1)
+        snapshot_retention_period_in_days = optional(number)
+        max_snapshot_age_ms               = optional(number, 3600000)
         number_of_snapshots_to_retain     = optional(number, 1)
         clean_expired_files               = optional(bool, false)
         run_rate_in_hours                 = optional(number, 3)
@@ -90,6 +97,14 @@ variable "default_table_setting" {
     condition     = var.default_table_setting.optimizer_configuration.snapshot_tagging.retain_days >= 1
     error_message = "default_table_setting.optimizer_configuration.snapshot_tagging.retain_days must be at least 1."
   }
+
+  validation {
+    condition = (
+      var.default_table_setting.optimizer_configuration.snapshot_retention.max_snapshot_age_ms > 0 &&
+      floor(var.default_table_setting.optimizer_configuration.snapshot_retention.max_snapshot_age_ms) == var.default_table_setting.optimizer_configuration.snapshot_retention.max_snapshot_age_ms
+    )
+    error_message = "default_table_setting.optimizer_configuration.snapshot_retention.max_snapshot_age_ms must be a positive integer."
+  }
 }
 
 variable "partition_tables" {
@@ -105,7 +120,8 @@ variable "partition_tables" {
         run_rate_in_hours                    = optional(number, 24)
       }), {})
       snapshot_retention = optional(object({
-        snapshot_retention_period_in_days = optional(number, 1)
+        snapshot_retention_period_in_days = optional(number)
+        max_snapshot_age_ms               = optional(number, 3600000)
         number_of_snapshots_to_retain     = optional(number, 1)
         clean_expired_files               = optional(bool, false)
         run_rate_in_hours                 = optional(number, 3)
@@ -137,6 +153,15 @@ variable "partition_tables" {
       for k, v in var.partition_tables : v.optimizer_configuration.snapshot_tagging.retain_days >= 1
     ])
     error_message = "optimizer_configuration.snapshot_tagging.retain_days must be at least 1 for every partition table."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.partition_tables :
+      v.optimizer_configuration.snapshot_retention.max_snapshot_age_ms > 0 &&
+      floor(v.optimizer_configuration.snapshot_retention.max_snapshot_age_ms) == v.optimizer_configuration.snapshot_retention.max_snapshot_age_ms
+    ])
+    error_message = "optimizer_configuration.snapshot_retention.max_snapshot_age_ms must be a positive integer for every partition table."
   }
 }
 

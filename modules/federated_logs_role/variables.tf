@@ -78,7 +78,8 @@ variable "default_table_setting" {
         run_rate_in_hours                    = optional(number, 24)
       }), {})
       snapshot_retention = optional(object({
-        snapshot_retention_period_in_days = optional(number, 1)
+        snapshot_retention_period_in_days = optional(number)
+        max_snapshot_age_ms               = optional(number, 3600000)
         number_of_snapshots_to_retain     = optional(number, 1)
         clean_expired_files               = optional(bool, false)
         run_rate_in_hours                 = optional(number, 3)
