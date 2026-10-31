@@ -7,6 +7,7 @@
 #   2. Base role tags (fleet_entity_guid for ABAC)
 #   3. ABAC policy content (fleet_entity_guid condition key)
 #   4. Input validation (clusters must have non-empty fields, correct auth_mode)
+#   5. Flink JAR upload trigger (source_hash is the unquoted source ETag)
 #
 # All tests use command = plan to avoid triggering the NGEP null_resource
 # provisioner, which makes NR API calls. No NR credentials are required to
@@ -272,4 +273,47 @@ run "test_validation_rejects_mixed_auth_modes" {
   }
 
   expect_failures = [var.clusters]
+}
+
+# =============================================================================
+# FLINK JAR UPLOAD TRIGGER
+# =============================================================================
+
+# The source ETag header arrives quoted. source_hash must strip the quotes so it is
+# stable across applies; with object_version pinned, a value that changes on every
+# apply would re-upload the JAR and restart Flink each time.
+run "test_flink_jar_source_hash_is_unquoted_etag" {
+  command = plan
+
+  variables {
+    data_processing_module_name = "inttest-dp-jar"
+    fleet_entity_guid           = var.fleet_entity_guid
+    newrelic_org_id             = var.newrelic_org_id
+    newrelic_account_id         = var.newrelic_account_id
+    newrelic_region             = var.newrelic_region
+    clusters = {
+      "test-cluster" = {
+        k8s_namespace            = "federated-logs"
+        k8s_service_account_name = "pcg-writer-sa"
+        oidc_provider_arn        = var.test_oidc_arn
+      }
+    }
+  }
+
+  module {
+    source = "./modules/data_processing"
+  }
+
+  override_data {
+    target = data.http.flink_jar_metadata
+    values = {
+      status_code      = 200
+      response_headers = { Etag = "\"bc5db85d65e8fb112d9830d64001e823-10\"" }
+    }
+  }
+
+  assert {
+    condition     = aws_s3_object.flink_jar.source_hash == "bc5db85d65e8fb112d9830d64001e823-10"
+    error_message = "source_hash must be the source ETag without its surrounding quotes"
+  }
 }

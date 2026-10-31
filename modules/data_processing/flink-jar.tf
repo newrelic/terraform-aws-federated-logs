@@ -137,7 +137,13 @@ resource "aws_s3_object" "flink_jar" {
   bucket = aws_s3_bucket.flink_jar.id
   key    = local.flink_jar_dest_key
   source = local.flink_jar_local_path
-  etag   = data.http.flink_jar_metadata.response_headers["Etag"]
+
+  # Re-upload only when the published JAR changes. The object's own etag can't be
+  # compared: the header keeps its literal quotes, and a multipart etag depends on
+  # the part size (the source is "-10", the provider's upload gave "-16"). With
+  # etag here every apply re-uploaded, and with object_version pinned in main.tf
+  # every apply would also restart Flink. source_hash lives only in state.
+  source_hash = trim(data.http.flink_jar_metadata.response_headers["Etag"], "\"")
 
   depends_on = [
     null_resource.flink_jar_fetch,
