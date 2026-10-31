@@ -226,7 +226,7 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
           # application. On the default unpinned config the destination key is the
           # constant "flink/flink-iceberg-commit-worker-latest.jar", so when a new
           # release is published upstream the object's bytes are refreshed (the
-          # data.http ETag trigger in flink-jar.tf handles that correctly) but every
+          # source_hash trigger in flink-jar.tf re-uploads only then) but every
           # attribute Terraform tracks on this resource stays identical — same bucket,
           # same key. Terraform therefore plans no change and never calls KDA's
           # UpdateApplication, leaving the old code running indefinitely. Nothing else
