@@ -3,8 +3,8 @@
 
 locals {
   # Each module release pins the JAR version it was tested with, plus the sha256 of
-  # every known version. A scheduled workflow (flink-jar-bump.yml) opens the PR that
-  # moves the default when a new JAR is published.
+  # every known version. Moving to a new JAR is a manual PR to flink-jar-versions.json:
+  # set "default" and add its sha256 (published next to the JAR as <jar>.sha256).
   flink_jar_versions = jsondecode(file("${path.module}/flink-jar-versions.json"))
   flink_jar_version  = coalesce(var.flink_iceberg_commit_worker_version, local.flink_jar_versions.default)
   flink_jar_sha256   = lookup(local.flink_jar_versions.sha256, local.flink_jar_version, null)

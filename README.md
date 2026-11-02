@@ -136,6 +136,8 @@ Each release of this module pins the `flink-iceberg-commit-worker` JAR version i
 
 Leave `flink_iceberg_commit_worker_version` unset. Set it only to roll back, or to run a fix New Relic gives you before it is in a module release. `"latest"` still works but is deprecated: the plan warns, the JAR is not checksum-verified, and it no longer receives new builds.
 
+**Maintainers: moving the module to a new commit worker JAR.** In a PR to `development`, edit `modules/data_processing/flink-jar-versions.json`: set `default` to the new version and add its sha256 under `sha256`. Take the sha256 from `https://nr-downloads-main.s3.amazonaws.com/pipeline-control-gateway/fed-logs/flink-iceberg-commit-worker-<version>.jar.sha256`, and confirm it matches `sha256sum` of the downloaded JAR. Use `fix:` for a patch JAR and `feat:` for a minor or major one, and note the version change in the PR, since it ships in the next module release.
+
 ## Requirements
 
 | Name | Version |
