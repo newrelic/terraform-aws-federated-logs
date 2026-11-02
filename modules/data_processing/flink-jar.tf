@@ -160,12 +160,13 @@ resource "aws_s3_object" "flink_jar" {
   key    = local.flink_jar_dest_key
   source = local.flink_jar_local_path
 
-  # Re-upload only when the published JAR changes. The object's own etag can't be
-  # compared: the header keeps its literal quotes, and a multipart etag depends on
-  # the part size (the source is "-10", the provider's upload gave "-16"). With
-  # etag here every apply re-uploaded, and with object_version pinned in main.tf
-  # every apply would also restart Flink. source_hash lives only in state.
-  source_hash = trim(data.http.flink_jar_metadata.response_headers["Etag"], "\"")
+  # Re-upload only when the JAR changes. A pinned version uses its sha256 from
+  # flink-jar-versions.json; an unknown version ("latest", an override) falls back
+  # to the source ETag. The object's own etag can't be compared: the header keeps
+  # its literal quotes, and a multipart etag depends on the part size (the source
+  # is "-10", the provider's upload gave "-16"), so with etag here every apply
+  # re-uploaded the 83 MB JAR. source_hash lives only in state.
+  source_hash = coalesce(local.flink_jar_sha256, trim(data.http.flink_jar_metadata.response_headers["Etag"], "\""))
 
   depends_on = [
     null_resource.flink_jar_fetch,

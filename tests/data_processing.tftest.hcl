@@ -7,7 +7,7 @@
 #   2. Base role tags (fleet_entity_guid for ABAC)
 #   3. ABAC policy content (fleet_entity_guid condition key)
 #   4. Input validation (clusters must have non-empty fields, correct auth_mode)
-#   5. Flink JAR upload trigger (source_hash is the unquoted source ETag)
+#   5. Flink JAR upload trigger (source_hash: pinned sha256, else the unquoted source ETag)
 #   6. Flink JAR version pin (default from flink-jar-versions.json; "latest" warns)
 #
 # All tests use command = plan to avoid triggering the NGEP null_resource
@@ -280,18 +280,19 @@ run "test_validation_rejects_mixed_auth_modes" {
 # FLINK JAR UPLOAD TRIGGER
 # =============================================================================
 
-# The source ETag header arrives quoted. source_hash must strip the quotes so it is
-# stable across applies; with object_version pinned, a value that changes on every
-# apply would re-upload the JAR and restart Flink each time.
+# A version with no known sha256 falls back to the source ETag, which arrives quoted.
+# source_hash must strip the quotes so it is stable across applies; a value that
+# changes on every apply would re-upload the 83 MB JAR each time.
 run "test_flink_jar_source_hash_is_unquoted_etag" {
   command = plan
 
   variables {
-    data_processing_module_name = "inttest-dp-jar"
-    fleet_entity_guid           = var.fleet_entity_guid
-    newrelic_org_id             = var.newrelic_org_id
-    newrelic_account_id         = var.newrelic_account_id
-    newrelic_region             = var.newrelic_region
+    data_processing_module_name         = "inttest-dp-jar"
+    fleet_entity_guid                   = var.fleet_entity_guid
+    newrelic_org_id                     = var.newrelic_org_id
+    newrelic_account_id                 = var.newrelic_account_id
+    newrelic_region                     = var.newrelic_region
+    flink_iceberg_commit_worker_version = "latest"
     clusters = {
       "test-cluster" = {
         k8s_namespace            = "federated-logs"
@@ -312,6 +313,8 @@ run "test_flink_jar_source_hash_is_unquoted_etag" {
       response_headers = { Etag = "\"bc5db85d65e8fb112d9830d64001e823-10\"" }
     }
   }
+
+  expect_failures = [check.flink_jar_version_pinned]
 
   assert {
     condition     = aws_s3_object.flink_jar.source_hash == "bc5db85d65e8fb112d9830d64001e823-10"
@@ -368,6 +371,12 @@ run "test_flink_jar_defaults_to_pinned_version" {
   assert {
     condition     = contains(keys(jsondecode(file("modules/data_processing/flink-jar-versions.json")).sha256), output.flink_iceberg_commit_worker_version)
     error_message = "The pinned default must have a sha256 in flink-jar-versions.json"
+  }
+
+  # A pinned version re-uploads only when its sha256 changes, independent of the ETag.
+  assert {
+    condition     = aws_s3_object.flink_jar.source_hash == jsondecode(file("modules/data_processing/flink-jar-versions.json")).sha256[output.flink_iceberg_commit_worker_version]
+    error_message = "For a pinned version, source_hash must be its sha256"
   }
 }
 
