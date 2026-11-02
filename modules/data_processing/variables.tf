@@ -81,12 +81,12 @@ variable "fleet_ingest_connection_description" {
 # =============================================================================
 
 variable "flink_iceberg_commit_worker_version" {
-  description = "Version of the flink-iceberg-commit-worker JAR to deploy (e.g. v1.0.0). Defaults to latest."
+  description = "Override for the flink-iceberg-commit-worker JAR version (e.g. 2.0.0). Leave unset to deploy the version this module release was tested with (flink-jar-versions.json); upgrading the module upgrades the JAR. \"latest\" is deprecated."
   type        = string
-  default     = "latest"
+  default     = null
 
   validation {
-    condition     = can(regex("^[a-zA-Z0-9._-]+$", var.flink_iceberg_commit_worker_version))
+    condition     = var.flink_iceberg_commit_worker_version == null || can(regex("^[a-zA-Z0-9._-]+$", var.flink_iceberg_commit_worker_version))
     error_message = "Version must contain only alphanumeric characters, dots, hyphens, and underscores."
   }
 }
