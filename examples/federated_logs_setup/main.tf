@@ -17,7 +17,7 @@ module "federated_logs" {
     retention_in_days = 30
     table_parameters = {
       "write.parquet.compression-codec"            = "zstd"
-      "write.target-file-size-bytes"               = "67108864" # 64 MB
+      "write.target-file-size-bytes"               = "33554432" # 32 MB
       "write.metadata.delete-after-commit.enabled" = "true"
       "write.metadata.previous-versions-max"       = "10"
     }

@@ -349,6 +349,46 @@ run "test_pcg_writer_schema_registry_grant_is_prefix_scoped" {
 # instant it's written — the job reports SUCCESS while protecting nothing.
 # Placed last in the file deliberately: a failing run aborts every run after
 # it, so new runs go at the end rather than in the middle.
+# The Glue compaction target file size defaults to 32 MB for every table, and a
+# per-table table_parameters entry still wins over the default.
+run "test_target_file_size_defaults_to_32mb_and_is_overridable" {
+  command = plan
+
+  variables {
+    setup_name            = "inttest-partition"
+    s3_bucket_name        = "test-bucket"
+    glue_catalog_db_name  = "test_db"
+    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
+    setup_id              = "mock-setup-id"
+    newrelic_account_id   = 12345678
+    partition_tables = {
+      "Log_override" = {
+        table_parameters = {
+          "write.target-file-size-bytes" = "67108864"
+        }
+      }
+    }
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  assert {
+    condition = (
+      aws_glue_catalog_table.iceberg_table["newrelic_fed_logs_inttest_partition_log_federated"].open_table_format_input[0].iceberg_input[0].iceberg_table_input[0].properties["write.target-file-size-bytes"] == "33554432"
+    )
+    error_message = "the default table must target 32 MB files (33554432 bytes)"
+  }
+
+  assert {
+    condition = (
+      aws_glue_catalog_table.iceberg_table["newrelic_fed_logs_inttest_partition_log_override"].open_table_format_input[0].iceberg_input[0].iceberg_table_input[0].properties["write.target-file-size-bytes"] == "67108864"
+    )
+    error_message = "a per-table write.target-file-size-bytes must override the 32 MB default"
+  }
+}
+
 run "test_snapshot_tagging_rejects_zero_retain_days" {
   command = plan
 
