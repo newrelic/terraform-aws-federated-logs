@@ -3,8 +3,9 @@ data "aws_region" "current" {
 }
 
 resource "aws_s3_bucket" "this" {
-  bucket = local.setup_naming_prefix
-  region = data.aws_region.current.region
+  bucket        = local.setup_naming_prefix
+  region        = data.aws_region.current.region
+  force_destroy = var.force_destroy
 
   lifecycle {
     prevent_destroy = true
