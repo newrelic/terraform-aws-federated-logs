@@ -261,8 +261,8 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
           "sqs.batch.size" = tostring(var.sqs_batch_size)
 
           "iceberg.catalog.type"            = "glue"
-          "iceberg.commit.batch.size"       = "100"
-          "iceberg.commit.batch.timeout.ms" = "2000"
+          "iceberg.commit.batch.size"       = tostring(var.commit_batch_size)
+          "iceberg.commit.batch.timeout.ms" = tostring(var.commit_batch_timeout_ms)
 
           "commit.initial.retry.delay.ms" = "500"
           "commit.max.retries"            = "5"

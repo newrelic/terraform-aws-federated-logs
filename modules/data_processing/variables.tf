@@ -121,6 +121,28 @@ variable "checkpoint_interval_ms" {
   default     = 60000
 }
 
+variable "commit_batch_size" {
+  description = "Number of buffered data files per table that triggers an Iceberg commit before commit_batch_timeout_ms elapses."
+  type        = number
+  default     = 100
+
+  validation {
+    condition     = var.commit_batch_size > 0 && floor(var.commit_batch_size) == var.commit_batch_size
+    error_message = "commit_batch_size must be a positive integer."
+  }
+}
+
+variable "commit_batch_timeout_ms" {
+  description = "Milliseconds after the first buffered data file before a table's batch is committed. Each commit is one Iceberg snapshot, so raising this lowers the snapshot count (and metadata.json size) at the cost of time-to-glass. Keep it well below sqs_visibility_timeout: messages are acked only after the commit succeeds."
+  type        = number
+  default     = 10000
+
+  validation {
+    condition     = var.commit_batch_timeout_ms > 0 && floor(var.commit_batch_timeout_ms) == var.commit_batch_timeout_ms
+    error_message = "commit_batch_timeout_ms must be a positive integer."
+  }
+}
+
 variable "snapshots_enabled" {
   description = "Whether Flink application snapshots are enabled."
   type        = bool
