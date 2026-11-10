@@ -230,10 +230,36 @@ resource "newrelic_one_dashboard" "this" {
     # ── Section 1: Health Snapshot ────────────────────────────────────────
 
     widget_stacked_bar {
-      title  = "Backpressure Active"
+      title  = "PCG Pod Health"
+      row    = 1
+      column = 7
+      width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT latest(otelcol_nrreceiver_health_status) FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET podName SINCE 1 hour ago TIMESERIES AUTO"
+      }
+    }
+
+    widget_billboard {
+      title  = "PCG Version"
       row    = 1
       column = 1
       width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT latest(service.version) FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET podName SINCE 5 minutes ago"
+      }
+    }
+
+    widget_stacked_bar {
+      title  = "Backpressure Active"
+      row    = 4
+      column = 1
+      width  = 4
       height = 3
 
       nrql_query {
@@ -242,11 +268,24 @@ resource "newrelic_one_dashboard" "this" {
       }
     }
 
+    widget_table {
+      title  = "Backpressure Reason"
+      row    = 4
+      column = 5
+      width  = 4
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT sum(pcg_backpressure_active) FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET podName, reason SINCE 1 hour ago"
+      }
+    }
+
     widget_line {
       title  = "Ingest Channel Depth"
-      row    = 1
-      column = 7
-      width  = 6
+      row    = 4
+      column = 9
+      width  = 4
       height = 3
 
       nrql_query {
@@ -255,9 +294,48 @@ resource "newrelic_one_dashboard" "this" {
       }
     }
 
+    widget_table {
+      title  = "Write Failures"
+      row    = 19
+      column = 1
+      width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT sum(otelcol_icebergexporter_append_errors) FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET error_type SINCE 1 hour ago"
+      }
+    }
+
+    widget_table {
+      title  = "Write Failure Cause"
+      row    = 19
+      column = 7
+      width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT sum(otelcol_icebergexporter_s3_errors) FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET error_type SINCE 1 hour ago"
+      }
+    }
+
+    widget_stacked_bar {
+      title  = "Schema Conflicts"
+      row    = 22
+      column = 1
+      width  = 12
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT sum(otelcol_icebergexporter_schema_conflicts) FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET conflict_type SINCE 1 hour ago TIMESERIES AUTO"
+      }
+    }
+
     widget_line {
       title  = "CPU Utilization (%)"
-      row    = 4
+      row    = 7
       column = 1
       width  = 6
       height = 3
@@ -270,7 +348,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_line {
       title  = "Memory Utilization (%)"
-      row    = 4
+      row    = 7
       column = 7
       width  = 6
       height = 3
@@ -285,7 +363,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_line {
       title  = "Records/sec & Files/min"
-      row    = 7
+      row    = 10
       column = 1
       width  = 6
       height = 3
@@ -298,7 +376,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_line {
       title  = "Throughput — Incoming vs S3 Written (MB/s)"
-      row    = 7
+      row    = 10
       column = 7
       width  = 6
       height = 3
@@ -313,7 +391,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_line {
       title  = "PCG Total Latency Percentiles (ms)"
-      row    = 10
+      row    = 13
       column = 1
       width  = 6
       height = 3
@@ -326,7 +404,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_line {
       title  = "S3 Write Latency Percentiles (ms)"
-      row    = 10
+      row    = 13
       column = 7
       width  = 6
       height = 3
@@ -339,7 +417,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_line {
       title  = "Latency Breakdown by Stage (avg ms)"
-      row    = 13
+      row    = 16
       column = 1
       width  = 12
       height = 3
@@ -354,7 +432,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_line {
       title  = "Backpressure Rejection Rate"
-      row    = 16
+      row    = 25
       column = 1
       width  = 4
       height = 3
@@ -367,7 +445,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_line {
       title  = "Refused Log Records"
-      row    = 16
+      row    = 25
       column = 5
       width  = 4
       height = 3
@@ -380,7 +458,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_pie {
       title  = "Batch Flush Reasons"
-      row    = 16
+      row    = 25
       column = 9
       width  = 4
       height = 3
