@@ -81,12 +81,15 @@ variable "fleet_ingest_connection_description" {
 # =============================================================================
 
 variable "flink_iceberg_commit_worker_version" {
-  description = "Override for the flink-iceberg-commit-worker JAR version (e.g. 2.0.0). Leave unset to deploy the version this module release was tested with (flink-jar-versions.json); upgrading the module upgrades the JAR. \"latest\" is deprecated."
+  description = "Version of the flink-iceberg-commit-worker JAR to deploy. The default is the version this module release was tested with, so upgrading the module upgrades the JAR. Override it only to run a fix New Relic gives you before it is in a module release: any other version is deployed without sha256 verification, and the plan warns. \"latest\" is deprecated."
   type        = string
-  default     = null
+  # Bump together with flink-jar-versions.json, which holds this version's sha256.
+  # tests/data_processing.tftest.hcl fails if the two disagree.
+  default  = "2.0.0"
+  nullable = false
 
   validation {
-    condition     = var.flink_iceberg_commit_worker_version == null || can(regex("^[a-zA-Z0-9._-]+$", var.flink_iceberg_commit_worker_version))
+    condition     = can(regex("^[a-zA-Z0-9._-]+$", var.flink_iceberg_commit_worker_version))
     error_message = "Version must contain only alphanumeric characters, dots, hyphens, and underscores."
   }
 }
