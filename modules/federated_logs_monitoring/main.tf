@@ -133,7 +133,7 @@ resource "newrelic_one_dashboard" "this" {
     }
 
     widget_line {
-      title  = "Oldest Message Age"
+      title  = "SQS Oldest Message Age"
       row    = 7
       column = 4
       width  = 9
@@ -624,7 +624,7 @@ resource "newrelic_one_dashboard" "this" {
     }
 
     widget_line {
-      title  = "Oldest Message Age"
+      title  = "SQS Oldest Message Age"
       row    = 4
       column = 1
       width  = 6
