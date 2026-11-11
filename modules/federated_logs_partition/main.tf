@@ -25,7 +25,8 @@ resource "aws_glue_catalog_table" "iceberg_table" {
     prevent_destroy = true
     ignore_changes = [
       # Prevent TF from fighting with Athena/Iceberg over these dynamic keys
-      parameters
+      parameters,
+      open_table_format_input[0].iceberg_input[0].iceberg_table_input[0].schema
     ]
   }
 
