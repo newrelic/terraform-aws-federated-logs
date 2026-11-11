@@ -451,9 +451,9 @@ run "test_snapshot_retention_defaults_to_max_age" {
 
 }
 
-# An explicit whole-day period still reaches the optimizer, and a per-table
-# max age flows through to the create-time property.
-run "test_snapshot_retention_overrides" {
+# A per-table max age in table_parameters reaches the create-time properties,
+# and that table's optimizer still omits the whole-day period.
+run "test_snapshot_retention_max_age_override" {
   command = plan
 
   variables {
@@ -463,19 +463,10 @@ run "test_snapshot_retention_overrides" {
     glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
     setup_id              = "mock-setup-id"
     newrelic_account_id   = 12345678
-    default_table_setting = {
-      optimizer_configuration = {
-        snapshot_retention = {
-          snapshot_retention_period_in_days = 2
-        }
-      }
-    }
     partition_tables = {
       "Log_fast" = {
-        optimizer_configuration = {
-          snapshot_retention = {
-            max_snapshot_age_ms = 7200000
-          }
+        table_parameters = {
+          "history.expire.max-snapshot-age-ms" = "7200000"
         }
       }
     }
@@ -486,18 +477,20 @@ run "test_snapshot_retention_overrides" {
   }
 
   assert {
-    condition     = aws_glue_catalog_table_optimizer.retention["newrelic_fed_logs_inttest_partition_log_federated"].configuration[0].retention_configuration[0].iceberg_configuration[0].snapshot_retention_period_in_days == 2
-    error_message = "An explicit snapshot_retention_period_in_days must reach the optimizer"
+    condition     = aws_glue_catalog_table.iceberg_table["newrelic_fed_logs_inttest_partition_log_fast"].open_table_format_input[0].iceberg_input[0].iceberg_table_input[0].properties["history.expire.max-snapshot-age-ms"] == "7200000"
+    error_message = "A per-table history.expire.max-snapshot-age-ms must reach the create-time properties"
   }
 
   assert {
-    condition     = aws_glue_catalog_table.iceberg_table["newrelic_fed_logs_inttest_partition_log_fast"].open_table_format_input[0].iceberg_input[0].iceberg_table_input[0].properties["history.expire.max-snapshot-age-ms"] == "7200000"
-    error_message = "A per-table max_snapshot_age_ms must reach the create-time properties"
+    condition     = aws_glue_catalog_table_optimizer.retention["newrelic_fed_logs_inttest_partition_log_fast"].configuration[0].retention_configuration[0].iceberg_configuration[0].snapshot_retention_period_in_days == null
+    error_message = "A table created with history.expire.max-snapshot-age-ms must omit snapshot_retention_period_in_days"
   }
 
 }
 
-run "test_snapshot_retention_rejects_zero_max_age" {
+# 3600 is 1 h in seconds, the unit of Athena's vacuum_max_snapshot_age_seconds.
+# As milliseconds it would be 3.6 s, so the 1 h minimum rejects it.
+run "test_snapshot_retention_rejects_max_age_below_1h" {
   command = plan
 
   variables {
@@ -508,10 +501,8 @@ run "test_snapshot_retention_rejects_zero_max_age" {
     setup_id              = "mock-setup-id"
     newrelic_account_id   = 12345678
     default_table_setting = {
-      optimizer_configuration = {
-        snapshot_retention = {
-          max_snapshot_age_ms = 0
-        }
+      table_parameters = {
+        "history.expire.max-snapshot-age-ms" = "3600"
       }
     }
   }
@@ -521,4 +512,30 @@ run "test_snapshot_retention_rejects_zero_max_age" {
   }
 
   expect_failures = [var.default_table_setting]
+}
+
+run "test_snapshot_retention_rejects_non_integer_max_age" {
+  command = plan
+
+  variables {
+    setup_name            = "inttest-partition"
+    s3_bucket_name        = "test-bucket"
+    glue_catalog_db_name  = "test_db"
+    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
+    setup_id              = "mock-setup-id"
+    newrelic_account_id   = 12345678
+    partition_tables = {
+      "Log_fast" = {
+        table_parameters = {
+          "history.expire.max-snapshot-age-ms" = "1h"
+        }
+      }
+    }
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  expect_failures = [var.partition_tables]
 }

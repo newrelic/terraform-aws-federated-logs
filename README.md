@@ -62,6 +62,9 @@ module "federated_logs" {
       "write.target-file-size-bytes"               = "33554432" # 32 MB
       "write.metadata.delete-after-commit.enabled" = "true"
       "write.metadata.previous-versions-max"       = "10"
+      # Each snapshot_retention run (at most every 3 h) expires snapshots
+      # older than this, so a table holds 1–4 h of snapshots. At least 1 h.
+      "history.expire.max-snapshot-age-ms" = "3600000" # 1 h
     }
     optimizer_configuration = {
       orphan_file_deletion = {
@@ -69,10 +72,9 @@ module "federated_logs" {
         run_rate_in_hours                    = 24
       }
       snapshot_retention = {
-        max_snapshot_age_ms = 3600000 # 1 h
-        number_of_snapshots_to_retain     = 1
-        clean_expired_files               = false
-        run_rate_in_hours                 = 3
+        number_of_snapshots_to_retain = 1
+        clean_expired_files           = false
+        run_rate_in_hours             = 3
       }
       compaction = {
         strategy              = "binpack"

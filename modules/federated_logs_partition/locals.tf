@@ -77,18 +77,19 @@ locals {
 
     # Case-sensitive name → field-ID mapping for data files without field IDs.
     "schema.name-mapping.default" = local.iceberg_schema_name_mapping
+
+    # Snapshot expiry age for Glue's retention optimizer (see
+    # snapshot_retention_period_in_days below). Each optimizer run expires
+    # snapshots older than this; runs are at least 3 h apart, so a table holds
+    # 1–4 h of snapshots. Override per table in table_parameters (at least
+    # 3600000). Like every key here, it applies only when a table is created.
+    "history.expire.max-snapshot-age-ms" = "3600000" # 1 h
   }
 
-  # For each table: defaults ← snapshot max age ← user params (user wins on
-  # overlap). Only reaches the table at creation: open_table_format_input is
-  # ignored afterwards, so existing tables never get the max age from here.
+  # For each table: defaults ← user params (user wins on overlap)
   resolved_table_params = {
     for k, v in local.all_tables :
-    k => merge(
-      local.default_iceberg_params,
-      { "history.expire.max-snapshot-age-ms" = tostring(v.optimizer_configuration.snapshot_retention.max_snapshot_age_ms) },
-      v.table_parameters,
-    )
+    k => merge(local.default_iceberg_params, v.table_parameters)
   }
 
   # Glue's retention optimizer reads history.expire.max-snapshot-age-ms only
@@ -97,13 +98,10 @@ locals {
   # with the property. Because open_table_format_input is ignored after
   # creation, an existing table's state keeps the properties it was created
   # with: tables created before this change keep whole-day retention (1 day)
-  # and are left untouched. An explicit snapshot_retention_period_in_days
-  # always wins.
+  # and are left untouched.
   snapshot_retention_period_in_days = {
-    for k, v in local.all_tables : k => (
-      v.optimizer_configuration.snapshot_retention.snapshot_retention_period_in_days != null
-      ? v.optimizer_configuration.snapshot_retention.snapshot_retention_period_in_days
-      : contains(keys(try(aws_glue_catalog_table.iceberg_table[k].open_table_format_input[0].iceberg_input[0].iceberg_table_input[0].properties, {})), "history.expire.max-snapshot-age-ms")
+    for k in keys(local.all_tables) : k => (
+      contains(keys(try(aws_glue_catalog_table.iceberg_table[k].open_table_format_input[0].iceberg_input[0].iceberg_table_input[0].properties, {})), "history.expire.max-snapshot-age-ms")
       ? null
       : 1
     )
