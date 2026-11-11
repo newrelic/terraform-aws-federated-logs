@@ -42,7 +42,7 @@ resource "newrelic_one_dashboard" "this" {
     name = "Overview"
 
     widget_billboard {
-      title  = "PCG Internal Drop-off"
+      title  = "PCG Logs Accepted vs Federated vs Dropped"
       row    = 1
       column = 1
       width  = 6
@@ -50,7 +50,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "FROM Metric SELECT sum(otelcol_receiver_accepted_log_records) AS 'PCG Received Records', sum(otelcol_icebergexporter_batch_sent_records) AS 'PCG Federated Records', sum(otelcol_icebergexporter_records_dropped) AS 'PCG Dropped Records', sum(otelcol_icebergexporter_batch_sent_records) / sum(otelcol_receiver_accepted_log_records) * 100 AS 'PCG Yield %' WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour AGO"
+        query      = "FROM Metric SELECT sum(otelcol_receiver_accepted_log_records) AS 'PCG Received Records', sum(otelcol_icebergexporter_batch_sent_records) AS 'PCG Federated Records', sum(otelcol_icebergexporter_records_dropped) AS 'PCG Dropped Records' WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour AGO"
       }
     }
 
@@ -63,7 +63,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "FROM Metric SELECT sum(otelcol_icebergexporter_batches_flushed_by_reason) AS 'PCG Federated Batches Pushed' WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour AGO"
+        query      = "FROM Metric SELECT sum(otelcol_icebergexporter_batches_flushed_by_reason) AS 'PCG Federated Batches Flushed' WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour AGO"
       }
     }
 
@@ -840,7 +840,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT uniqueCount(`aws.glue.JobRunId`) AS 'Total Runs' FROM Metric WHERE aws.Namespace = 'Glue' AND `aws.glue.JobName` = '${local.glue_retention_job}' AND `aws.glue.JobRunId` != 'ALL' SINCE 7 days ago"
+        query      = "SELECT uniqueCount(`aws.glue.JobRunId`) AS 'Total Runs' FROM Metric WHERE `aws.Namespace` = 'Glue' AND `aws.glue.JobName` = '${local.glue_retention_job}' AND `aws.glue.JobRunId` != 'ALL' SINCE 7 days ago"
       }
     }
 
