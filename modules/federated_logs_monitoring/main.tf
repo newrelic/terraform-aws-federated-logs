@@ -80,9 +80,48 @@ resource "newrelic_one_dashboard" "this" {
       }
     }
 
+    widget_line {
+      title  = "PCG Logs Accepted vs Federated vs Dropped Rate"
+      row    = 4
+      column = 1
+      width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "FROM Metric SELECT sum(otelcol_receiver_accepted_log_records) AS 'PCG Received Records', sum(otelcol_icebergexporter_batch_sent_records) AS 'PCG Federated Records', sum(otelcol_icebergexporter_records_dropped) AS 'PCG Dropped Records' WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour AGO TIMESERIES AUTO"
+      }
+    }
+
+    widget_line {
+      title  = "PCG Federated Batches Rate"
+      row    = 4
+      column = 7
+      width  = 3
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "FROM Metric SELECT sum(otelcol_icebergexporter_batches_flushed_by_reason) AS 'PCG Federated Batches Flushed' WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour AGO TIMESERIES AUTO"
+      }
+    }
+
+    widget_line {
+      title  = "PCG S3 Output Rate"
+      row    = 4
+      column = 10
+      width  = 3
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "FROM Metric SELECT sum(otelcol_icebergexporter_files_written) AS 'PCG Files Written to S3' WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour AGO TIMESERIES AUTO"
+      }
+    }
+
     widget_billboard {
       title  = "Glue Optimizer Failures"
-      row    = 4
+      row    = 7
       column = 1
       width  = 3
       height = 3
@@ -94,21 +133,21 @@ resource "newrelic_one_dashboard" "this" {
     }
 
     widget_line {
-      title  = "SQS Throughput — Messages Sent & Deleted"
-      row    = 4
+      title  = "Oldest Message Age"
+      row    = 7
       column = 4
       width  = 9
       height = 3
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.sqs.NumberOfMessagesSent`) AS 'Sent', sum(`aws.sqs.NumberOfMessagesDeleted`) AS 'Deleted' FROM Metric WHERE `aws.sqs.QueueName` = '${local.sqs_queue_name}' SINCE 3 hours ago TIMESERIES AUTO"
+        query      = "SELECT max(`aws.sqs.ApproximateAgeOfOldestMessage`) AS 'Age (s)' FROM Metric WHERE `aws.sqs.QueueName` = '${local.sqs_queue_name}' SINCE 1 hour ago TIMESERIES AUTO"
       }
     }
 
     widget_line {
       title  = "Bytes: PCG Raw In vs S3/Iceberg Parquet Out"
-      row    = 7
+      row    = 13
       column = 1
       width  = 12
       height = 3
@@ -125,7 +164,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_line {
       title  = "Latency Per Pipeline Stage — P99 (ms)"
-      row    = 10
+      row    = 16
       column = 1
       width  = 12
       height = 4
@@ -157,7 +196,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_line {
       title  = "PCG Backpressure Rejections"
-      row    = 14
+      row    = 10
       column = 1
       width  = 3
       height = 3
@@ -169,8 +208,8 @@ resource "newrelic_one_dashboard" "this" {
     }
 
     widget_line {
-      title  = "Refused Log Records"
-      row    = 14
+      title  = "PCG Refused Log Records"
+      row    = 10
       column = 4
       width  = 3
       height = 3
@@ -182,8 +221,8 @@ resource "newrelic_one_dashboard" "this" {
     }
 
     widget_line {
-      title  = "DLQ — Lost Messages"
-      row    = 14
+      title  = "DLQ — Lost Messages (Flink)"
+      row    = 10
       column = 7
       width  = 3
       height = 3
@@ -195,8 +234,8 @@ resource "newrelic_one_dashboard" "this" {
     }
 
     widget_line {
-      title  = "Iceberg Commit Failures"
-      row    = 14
+      title  = "Iceberg Commit Failures (Flink)"
+      row    = 10
       column = 10
       width  = 3
       height = 3
@@ -209,7 +248,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_table {
       title  = "Per-Partition Health"
-      row    = 17
+      row    = 20
       column = 1
       width  = 12
       height = 3
@@ -243,7 +282,7 @@ resource "newrelic_one_dashboard" "this" {
     }
 
     widget_billboard {
-      title  = "PCG Version"
+      title  = "PCG Version per Pod"
       row    = 1
       column = 1
       width  = 6
@@ -296,7 +335,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_table {
       title  = "Write Failures"
-      row    = 19
+      row    = 7
       column = 1
       width  = 6
       height = 3
@@ -309,7 +348,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_table {
       title  = "Write Failure Cause"
-      row    = 19
+      row    = 7
       column = 7
       width  = 6
       height = 3
@@ -322,7 +361,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_stacked_bar {
       title  = "Schema Conflicts"
-      row    = 22
+      row    = 10
       column = 1
       width  = 12
       height = 3
@@ -334,28 +373,28 @@ resource "newrelic_one_dashboard" "this" {
     }
 
     widget_line {
-      title  = "CPU Utilization (%)"
-      row    = 7
+      title  = "CPU Utilization (% of Limit)"
+      row    = 13
       column = 1
       width  = 6
       height = 3
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT latest(pcg_instance_cpu_utilization) * 100 AS 'CPU %' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET podName SINCE 5 minutes ago TIMESERIES AUTO"
+        query      = "SELECT latest(pcg_instance_cpu_utilization) * 100 AS 'CPU % of Limit' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET podName SINCE 5 minutes ago TIMESERIES AUTO"
       }
     }
 
     widget_line {
-      title  = "Memory Utilization (%)"
-      row    = 7
+      title  = "Memory Utilization (% of Limit)"
+      row    = 13
       column = 7
       width  = 6
       height = 3
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT latest(pcg_instance_memory_utilization) * 100 AS 'Memory %' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET podName SINCE 5 minutes ago TIMESERIES AUTO"
+        query      = "SELECT latest(pcg_instance_memory_utilization) * 100 AS 'Memory % of Limit' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} FACET podName SINCE 5 minutes ago TIMESERIES AUTO"
       }
     }
 
@@ -363,7 +402,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_line {
       title  = "Records/sec & Files/min"
-      row    = 10
+      row    = 16
       column = 1
       width  = 6
       height = 3
@@ -375,15 +414,15 @@ resource "newrelic_one_dashboard" "this" {
     }
 
     widget_line {
-      title  = "Throughput — Incoming vs S3 Written (MB/s)"
-      row    = 10
+      title  = "Throughput — Uncompressed In vs Parquet Out (MB/s)"
+      row    = 16
       column = 7
       width  = 6
       height = 3
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT rate(sum(otelcol_icebergexporter_batch_sent_bytes), 1 SECOND) / 1000000 AS 'Incoming MB/s', rate(sum(otelcol_icebergexporter_s3_bytes_sent), 1 SECOND) / 1000000 AS 'S3 Written MB/s' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
+        query      = "SELECT rate(sum(otelcol_icebergexporter_batch_sent_bytes), 1 SECOND) / 1000000 AS 'Uncompressed In (MB/s)', rate(sum(otelcol_icebergexporter_s3_bytes_sent), 1 SECOND) / 1000000 AS 'Parquet Out (MB/s)' FROM Metric WHERE service.name = 'pipeline-control-gateway' AND clusterName = {{cluster_name}} SINCE 1 hour ago TIMESERIES AUTO"
       }
     }
 
@@ -391,7 +430,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_line {
       title  = "PCG Total Latency Percentiles (ms)"
-      row    = 13
+      row    = 19
       column = 1
       width  = 6
       height = 3
@@ -404,7 +443,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_line {
       title  = "S3 Write Latency Percentiles (ms)"
-      row    = 13
+      row    = 19
       column = 7
       width  = 6
       height = 3
@@ -417,7 +456,7 @@ resource "newrelic_one_dashboard" "this" {
 
     widget_line {
       title  = "Latency Breakdown by Stage (avg ms)"
-      row    = 16
+      row    = 22
       column = 1
       width  = 12
       height = 3
@@ -444,7 +483,7 @@ resource "newrelic_one_dashboard" "this" {
     }
 
     widget_line {
-      title  = "Refused Log Records"
+      title  = "PCG Refused Log Records"
       row    = 25
       column = 5
       width  = 4
