@@ -116,6 +116,31 @@ module "federated_logs" {
 }
 ```
 
+## Changing tables after creation
+
+These table settings apply only when the module creates a table:
+
+- `table_parameters` and the module's default Iceberg properties
+- the seed schema and the partition spec
+
+After that, Terraform ignores them: changing them in your configuration shows no plan diff and does not change the table. Applying them through Terraform would reset the table's schema to the seed and hide every column added since creation. A module upgrade that changes a default property doesn't change existing tables either. `optimizer_configuration` is separate and still updates existing tables.
+
+To change or remove a property on an existing table, make an Iceberg commit:
+
+- **Athena** `ALTER TABLE … SET TBLPROPERTIES`, for the [properties Athena supports](https://docs.aws.amazon.com/athena/latest/ug/querying-iceberg-creating-tables.html).
+- **PyIceberg or Spark**, for any other property:
+
+  ```python
+  from pyiceberg.catalog.glue import GlueCatalog
+
+  # Uses your default AWS credentials and region.
+  table = GlueCatalog("glue").load_table("<database>.<table>")
+  with table.transaction() as tx:
+      tx.set_properties({"write.target-file-size-bytes": "33554432"})
+  ```
+
+Removing a key from `table_parameters` never removes it from the table. Use `tx.remove_properties("<key>")`.
+
 ## Prerequisites
 
 Export your New Relic credentials as environment variables before running Terraform:
