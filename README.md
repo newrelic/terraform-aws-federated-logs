@@ -72,7 +72,6 @@ module "federated_logs" {
         run_rate_in_hours                    = 24
       }
       snapshot_retention = {
-        number_of_snapshots_to_retain = 1
         clean_expired_files           = false
         run_rate_in_hours             = 3
       }

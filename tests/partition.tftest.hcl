@@ -449,6 +449,11 @@ run "test_snapshot_retention_defaults_to_max_age" {
     error_message = "New tables must be created with history.expire.max-snapshot-age-ms = 3600000"
   }
 
+  assert {
+    condition     = aws_glue_catalog_table_optimizer.retention["newrelic_fed_logs_inttest_partition_log_federated"].configuration[0].retention_configuration[0].iceberg_configuration[0].number_of_snapshots_to_retain == 12
+    error_message = "number_of_snapshots_to_retain must default to 12"
+  }
+
 }
 
 # A per-table max age in table_parameters reaches the create-time properties,
