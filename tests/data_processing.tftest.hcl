@@ -7,6 +7,8 @@
 #   2. Base role tags (fleet_entity_guid for ABAC)
 #   3. ABAC policy content (fleet_entity_guid condition key)
 #   4. Input validation (clusters must have non-empty fields, correct auth_mode)
+#   5. Flink JAR upload trigger (source_hash: pinned sha256, else the unquoted source ETag)
+#   6. Flink JAR version pin (variable default matches flink-jar-versions.json; "latest" warns)
 #
 # All tests use command = plan to avoid triggering the NGEP null_resource
 # provisioner, which makes NR API calls. No NR credentials are required to
@@ -340,4 +342,110 @@ run "test_validation_rejects_mixed_auth_modes" {
   }
 
   expect_failures = [var.clusters]
+}
+
+# =============================================================================
+# FLINK JAR VERSION PIN AND UPLOAD TRIGGER
+# =============================================================================
+
+# With no override, the module deploys the version its variable default pins, so the
+# JAR changes only when the customer upgrades the module.
+run "test_flink_jar_defaults_to_pinned_version" {
+  command = plan
+
+  variables {
+    data_processing_module_name = "inttest-dp-pin"
+    fleet_entity_guid           = var.fleet_entity_guid
+    newrelic_org_id             = var.newrelic_org_id
+    newrelic_account_id         = var.newrelic_account_id
+    newrelic_region             = var.newrelic_region
+    clusters = {
+      "test-cluster" = {
+        k8s_namespace            = "federated-logs"
+        k8s_service_account_name = "pcg-writer-sa"
+        oidc_provider_arn        = var.test_oidc_arn
+      }
+    }
+  }
+
+  module {
+    source = "./modules/data_processing"
+  }
+
+  override_data {
+    target = data.http.flink_jar_metadata
+    values = {
+      status_code      = 200
+      response_headers = { Etag = "\"bc5db85d65e8fb112d9830d64001e823-10\"" }
+    }
+  }
+
+  assert {
+    condition     = aws_s3_object.flink_jar.key == "flink/flink-iceberg-commit-worker-${output.flink_iceberg_commit_worker_version}.jar"
+    error_message = "The JAR key must carry the concrete version, never latest"
+  }
+
+  # A JAR bump changes the variable default and flink-jar-versions.json together;
+  # this fails if only one of them was changed.
+  assert {
+    condition = (
+      length(jsondecode(file("modules/data_processing/flink-jar-versions.json")).sha256) == 1 &&
+      contains(keys(jsondecode(file("modules/data_processing/flink-jar-versions.json")).sha256), output.flink_iceberg_commit_worker_version)
+    )
+    error_message = "flink-jar-versions.json must hold exactly one sha256, for the default flink_iceberg_commit_worker_version; bump both together"
+  }
+
+  # A pinned version re-uploads only when its sha256 changes, independent of the ETag.
+  assert {
+    condition     = aws_s3_object.flink_jar.source_hash == jsondecode(file("modules/data_processing/flink-jar-versions.json")).sha256[output.flink_iceberg_commit_worker_version]
+    error_message = "For a pinned version, source_hash must be its sha256"
+  }
+}
+
+# "latest" still works but has no checksum, so the flink_jar_version_pinned check warns.
+# With no sha256, source_hash falls back to the source ETag, which arrives quoted; it
+# must strip the quotes so it is stable across applies, or every apply would
+# re-upload the 83 MB JAR.
+run "test_flink_jar_latest_override_warns" {
+  command = plan
+
+  variables {
+    data_processing_module_name         = "inttest-dp-latest"
+    fleet_entity_guid                   = var.fleet_entity_guid
+    newrelic_org_id                     = var.newrelic_org_id
+    newrelic_account_id                 = var.newrelic_account_id
+    newrelic_region                     = var.newrelic_region
+    flink_iceberg_commit_worker_version = "latest"
+    clusters = {
+      "test-cluster" = {
+        k8s_namespace            = "federated-logs"
+        k8s_service_account_name = "pcg-writer-sa"
+        oidc_provider_arn        = var.test_oidc_arn
+      }
+    }
+  }
+
+  module {
+    source = "./modules/data_processing"
+  }
+
+  override_data {
+    target = data.http.flink_jar_metadata
+    values = {
+      status_code      = 200
+      response_headers = { Etag = "\"bc5db85d65e8fb112d9830d64001e823-10\"" }
+    }
+  }
+
+  expect_failures = [check.flink_jar_version_pinned]
+
+  assert {
+    condition     = aws_s3_object.flink_jar.key == "flink/flink-iceberg-commit-worker-latest.jar"
+    error_message = "An explicit override must still be honoured"
+  }
+
+  assert {
+    condition     = aws_s3_object.flink_jar.source_hash == "bc5db85d65e8fb112d9830d64001e823-10"
+    error_message = "source_hash must be the source ETag without its surrounding quotes"
+  }
 }

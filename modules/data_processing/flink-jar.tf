@@ -2,8 +2,17 @@
 # Destination: Auto-created bucket in customer's account for Flink JAR storage
 
 locals {
+  # The default of var.flink_iceberg_commit_worker_version is the JAR version this
+  # module release was tested with, and flink-jar-versions.json holds that version's
+  # sha256. Moving to a new JAR is a manual PR that changes both; a test fails if they
+  # disagree. Any other version ("latest", an override) has no sha256 here and is
+  # deployed unverified.
+  flink_jar_sha256_by_version = jsondecode(file("${path.module}/flink-jar-versions.json")).sha256
+  flink_jar_version           = var.flink_iceberg_commit_worker_version
+  flink_jar_sha256            = lookup(local.flink_jar_sha256_by_version, local.flink_jar_version, null)
+
   flink_jar_source_bucket = "nr-downloads-main"
-  flink_jar_filename      = "flink-iceberg-commit-worker-${var.flink_iceberg_commit_worker_version}.jar"
+  flink_jar_filename      = "flink-iceberg-commit-worker-${local.flink_jar_version}.jar"
   flink_jar_source_key    = "pipeline-control-gateway/fed-logs/${local.flink_jar_filename}"
   flink_jar_dest_key      = "flink/${local.flink_jar_filename}"
 
@@ -68,7 +77,7 @@ data "http" "flink_jar_metadata" {
     }
     postcondition {
       condition     = self.status_code != 404
-      error_message = "JAR not found at ${local.flink_jar_source_url} (HTTP 404). Verify that version '${var.flink_iceberg_commit_worker_version}' exists in the nr-downloads-main bucket."
+      error_message = "JAR not found at ${local.flink_jar_source_url} (HTTP 404). Verify that version '${local.flink_jar_version}' exists in the nr-downloads-main bucket."
     }
     postcondition {
       condition     = contains([200, 401, 403, 404], self.status_code)
@@ -77,56 +86,27 @@ data "http" "flink_jar_metadata" {
   }
 }
 
-# Download the JAR from the public HTTPS endpoint into the module's .terraform/tmp dir;
-# bypasses the VPC gateway endpoint that blocks cross-region S3 calls.
-# Python keeps this OS-agnostic (macOS / Linux / Windows / CI).
+# Download the JAR from the public HTTPS endpoint into the module's .terraform/tmp dir
+# and check its sha256 (scripts/fetch_flink_jar.py); bypasses the VPC gateway endpoint
+# that blocks cross-region S3 calls. Python keeps this OS-agnostic (macOS / Linux /
+# Windows / CI).
 resource "null_resource" "flink_jar_fetch" {
+  # sha256 is a trigger so that a change to the expected hash re-downloads and
+  # re-verifies the JAR, instead of uploading a cached copy that was never checked
+  # against it.
   triggers = {
-    url  = local.flink_jar_source_url
-    etag = data.http.flink_jar_metadata.response_headers["Etag"]
+    url    = local.flink_jar_source_url
+    etag   = data.http.flink_jar_metadata.response_headers["Etag"]
+    sha256 = local.flink_jar_sha256 == null ? "" : local.flink_jar_sha256
   }
 
   provisioner "local-exec" {
-    interpreter = ["python3", "-c"]
     environment = {
-      FLINK_JAR_URL  = local.flink_jar_source_url
-      FLINK_JAR_DEST = local.flink_jar_local_path
+      FLINK_JAR_URL    = local.flink_jar_source_url
+      FLINK_JAR_DEST   = local.flink_jar_local_path
+      FLINK_JAR_SHA256 = local.flink_jar_sha256 == null ? "" : local.flink_jar_sha256
     }
-    command = <<-PY
-      import os, pathlib, urllib.request, urllib.error, socket, time, sys
-      MAX_NO_RETRY = 3
-      RETRY_DELAY_SECONDS = 5
-      SOCKET_TIMEOUT_SECONDS = 60
-      dest = pathlib.Path(os.environ["FLINK_JAR_DEST"])
-      dest.parent.mkdir(parents=True, exist_ok=True)
-      url = os.environ["FLINK_JAR_URL"]
-      socket.setdefaulttimeout(SOCKET_TIMEOUT_SECONDS)
-      for attempt in range(MAX_NO_RETRY):
-          try:
-              urllib.request.urlretrieve(url, dest)
-              if not dest.exists():
-                  raise RuntimeError("Downloaded file does not exist")
-              if dest.stat().st_size > 0:
-                  sys.exit(0)
-              raise RuntimeError("Downloaded file is empty")
-          except urllib.error.HTTPError as e:
-              if e.code < 500:
-                  sys.exit(f"ERROR: {url} returned HTTP {e.code} (not retryable)")
-              if attempt < MAX_NO_RETRY - 1:
-                  time.sleep(RETRY_DELAY_SECONDS)
-              else:
-                  sys.exit(f"ERROR: Failed to download {url} after {MAX_NO_RETRY} attempts: HTTP {e.code}")
-          except urllib.error.URLError as e:
-              if attempt < MAX_NO_RETRY - 1:
-                  time.sleep(RETRY_DELAY_SECONDS)
-              else:
-                  sys.exit(f"ERROR: Failed to download {url} after {MAX_NO_RETRY} attempts: {e.reason}")
-          except Exception as e:
-              if attempt < MAX_NO_RETRY - 1:
-                  time.sleep(RETRY_DELAY_SECONDS)
-              else:
-                  sys.exit(f"ERROR: Failed to download {url} after {MAX_NO_RETRY} attempts: {e}")
-    PY
+    command = "python3 ${path.module}/scripts/fetch_flink_jar.py"
   }
 
   depends_on = [aws_s3_bucket.flink_jar]
@@ -137,7 +117,14 @@ resource "aws_s3_object" "flink_jar" {
   bucket = aws_s3_bucket.flink_jar.id
   key    = local.flink_jar_dest_key
   source = local.flink_jar_local_path
-  etag   = data.http.flink_jar_metadata.response_headers["Etag"]
+
+  # Re-upload only when the JAR changes. A pinned version uses its sha256 from
+  # flink-jar-versions.json; an unknown version ("latest", an override) falls back
+  # to the source ETag. The object's own etag can't be compared: the header keeps
+  # its literal quotes, and a multipart etag depends on the part size (the source
+  # is "-10", the provider's upload gave "-16"), so with etag here every apply
+  # re-uploaded the 83 MB JAR. source_hash lives only in state.
+  source_hash = coalesce(local.flink_jar_sha256, trim(data.http.flink_jar_metadata.response_headers["Etag"], "\""))
 
   depends_on = [
     null_resource.flink_jar_fetch,
@@ -145,6 +132,22 @@ resource "aws_s3_object" "flink_jar" {
     aws_s3_bucket_server_side_encryption_configuration.flink_jar,
     aws_s3_bucket_public_access_block.flink_jar,
   ]
+
+  # A version change moves the key. Upload the new JAR and repoint the Flink
+  # application before the old object is deleted, so the running app's code
+  # location stays valid if the application update fails.
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Warns (does not fail) when the deployed version has no checksum in this module
+# release: any override of the default, including "latest".
+check "flink_jar_version_pinned" {
+  assert {
+    condition     = local.flink_jar_sha256 != null
+    error_message = "flink_iceberg_commit_worker_version = \"${local.flink_jar_version}\" is not the version this module release was tested with, so the JAR is deployed without sha256 verification. \"latest\" is deprecated: it changes without a module upgrade, and a routine apply can deploy a new JAR. Remove the override to deploy the tested version."
+  }
 }
 
 
@@ -157,6 +160,11 @@ output "flink_jar_bucket_name" {
 output "flink_jar_bucket_arn" {
   description = "ARN of the S3 bucket created for Flink JAR storage."
   value       = aws_s3_bucket.flink_jar.arn
+}
+
+output "flink_iceberg_commit_worker_version" {
+  description = "Version of the flink-iceberg-commit-worker JAR this configuration deploys."
+  value       = local.flink_jar_version
 }
 
 output "flink_jar_s3_uri" {
