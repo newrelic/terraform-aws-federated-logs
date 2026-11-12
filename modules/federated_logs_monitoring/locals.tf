@@ -11,4 +11,6 @@ locals {
   fleet_prefix   = replace(local.sqs_queue_name, "-flink-sqs-queue", "")
   sqs_dlq_name   = "${local.fleet_prefix}-flink-sqs-dlq"
   flink_app_name = "${local.fleet_prefix}-flink-application"
+
+  partition_table_id_filter = length(var.partition_table_ids) > 0 ? "tableId IN (${join(",", [for k in keys(var.partition_table_ids) : "'${k}'"])})" : "tableId LIKE '${var.glue_catalog_db_name}.%'"
 }
