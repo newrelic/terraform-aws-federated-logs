@@ -123,7 +123,7 @@ These table settings apply only when the module creates a table:
 - `table_parameters` and the module's default Iceberg properties
 - the seed schema and the partition spec
 
-After that, Terraform ignores them: changing them in your configuration shows no plan diff and does not change the table. Applying them through Terraform would reset the table's schema to the seed and hide every column added since creation. A module upgrade that changes a default property doesn't change existing tables either. `optimizer_configuration` is separate and still updates existing tables.
+After that, Terraform ignores them: changing them in your configuration shows no plan diff and does not change the table. This keeps Terraform from overwriting changes made outside it, such as columns added since creation. A module upgrade that changes a default property doesn't change existing tables either. `optimizer_configuration` is separate and still updates existing tables.
 
 To change or remove a property on an existing table, make an Iceberg commit:
 
