@@ -61,9 +61,7 @@ variable "newrelic_region" {
 #     run_rate_in_hours                    = 3
 #     (The expiry age is the table property history.expire.max-snapshot-age-ms:
 #     3600000 (1 h) by default, at least 3600000, set per table in
-#     table_parameters, applied only when the table is created. With 3 h runs
-#     a table holds 1–4 h of snapshots. Tables created before this property
-#     was added keep 1-day retention.)
+#     table_parameters. With 3 h runs a table holds 1–4 h of snapshots.)
 #   compaction:
 #     strategy                             = "binpack"
 #     min_input_files                      = 5

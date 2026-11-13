@@ -421,8 +421,7 @@ run "test_snapshot_tagging_rejects_zero_retain_days" {
 # Default retention for a table created by this module version: no whole-day
 # period on the optimizer (Glue then reads the table's
 # history.expire.max-snapshot-age-ms) and the 1 h max age in the create-time
-# properties. Tables created earlier keep 1 day; that path needs prior state,
-# which plan-only tests can't provide.
+# properties.
 run "test_snapshot_retention_defaults_to_max_age" {
   command = plan
 
