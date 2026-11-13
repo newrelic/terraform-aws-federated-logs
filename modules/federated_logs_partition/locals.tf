@@ -77,6 +77,13 @@ locals {
 
     # Case-sensitive name → field-ID mapping for data files without field IDs.
     "schema.name-mapping.default" = local.iceberg_schema_name_mapping
+
+    # Snapshot expiry age. The retention optimizer omits
+    # snapshot_retention_period_in_days, so Glue reads this property. Each run
+    # expires snapshots older than this; runs are at least 3 h apart, so a
+    # table holds 1–4 h of snapshots. Override per table in table_parameters
+    # (at least 3600000).
+    "history.expire.max-snapshot-age-ms" = "3600000" # 1 h
   }
 
   # For each table: defaults ← user params (user wins on overlap)
