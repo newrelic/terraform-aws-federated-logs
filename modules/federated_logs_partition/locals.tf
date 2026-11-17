@@ -92,19 +92,6 @@ locals {
     k => merge(local.default_iceberg_params, v.table_parameters)
   }
 
-  # Compaction configuration for each table (used in null_resource provisioner)
-  compaction_configs = {
-    for k, v in local.all_tables : k => merge(
-      { strategy = v.optimizer_configuration.compaction.strategy },
-      v.optimizer_configuration.compaction.min_input_files != null
-      ? { minInputFiles = v.optimizer_configuration.compaction.min_input_files }
-      : {},
-      v.optimizer_configuration.compaction.delete_file_threshold != null
-      ? { deleteFileThreshold = v.optimizer_configuration.compaction.delete_file_threshold }
-      : {}
-    )
-  }
-
   # Data retention configuration - enabled when data_retention_enabled is true at setup level
   is_data_retention_enabled = var.data_retention_enabled
 

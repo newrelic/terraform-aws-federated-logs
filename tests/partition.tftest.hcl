@@ -543,3 +543,72 @@ run "test_snapshot_retention_rejects_non_integer_max_age" {
 
   expect_failures = [var.partition_tables]
 }
+
+# =============================================================================
+# COMPACTION SETTINGS ON THE OPTIMIZER RESOURCE
+# =============================================================================
+# The compaction settings are part of aws_glue_catalog_table_optimizer itself
+# (provider >= 6.58.0), not a separate CLI step. A CLI step only re-ran when its
+# own triggers changed, so when Terraform replaced the optimizer the new one came
+# up with Glue's defaults (minInputFiles 100) and compaction never started.
+
+run "test_compaction_settings_are_set_on_the_optimizer" {
+  command = plan
+
+  variables {
+    setup_name            = "inttest-partition"
+    s3_bucket_name        = "test-bucket"
+    glue_catalog_db_name  = "test_db"
+    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
+    setup_id              = "mock-setup-id"
+    newrelic_account_id   = 12345678
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  assert {
+    condition     = aws_glue_catalog_table_optimizer.compaction["newrelic_fed_logs_inttest_partition_log_federated"].configuration[0].compaction_configuration[0].iceberg_configuration[0].strategy == "binpack"
+    error_message = "The compaction optimizer must carry strategy = binpack"
+  }
+
+  assert {
+    condition     = aws_glue_catalog_table_optimizer.compaction["newrelic_fed_logs_inttest_partition_log_federated"].configuration[0].compaction_configuration[0].iceberg_configuration[0].min_input_files == 5
+    error_message = "The compaction optimizer must carry min_input_files = 5 by default (Glue's own default is 100)"
+  }
+
+  assert {
+    condition     = aws_glue_catalog_table_optimizer.compaction["newrelic_fed_logs_inttest_partition_log_federated"].configuration[0].compaction_configuration[0].iceberg_configuration[0].delete_file_threshold == 1
+    error_message = "The compaction optimizer must carry delete_file_threshold = 1 by default"
+  }
+}
+
+run "test_compaction_settings_follow_table_setting" {
+  command = plan
+
+  variables {
+    setup_name            = "inttest-partition"
+    s3_bucket_name        = "test-bucket"
+    glue_catalog_db_name  = "test_db"
+    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
+    setup_id              = "mock-setup-id"
+    newrelic_account_id   = 12345678
+    default_table_setting = {
+      optimizer_configuration = {
+        compaction = {
+          min_input_files = 20
+        }
+      }
+    }
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  assert {
+    condition     = aws_glue_catalog_table_optimizer.compaction["newrelic_fed_logs_inttest_partition_log_federated"].configuration[0].compaction_configuration[0].iceberg_configuration[0].min_input_files == 20
+    error_message = "min_input_files from default_table_setting must reach the compaction optimizer"
+  }
+}

@@ -3,7 +3,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = ">= 6.36.0"
+      version = ">= 6.58.0" # compaction_configuration on aws_glue_catalog_table_optimizer
     }
     null = {
       source  = "hashicorp/null"

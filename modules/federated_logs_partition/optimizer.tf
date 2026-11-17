@@ -11,6 +11,18 @@ resource "aws_glue_catalog_table_optimizer" "compaction" {
   configuration {
     role_arn = var.glue_service_role_arn
     enabled  = true
+
+    # Part of the optimizer itself (provider >= 6.58.0), so a replaced optimizer
+    # comes back with these settings and drift shows in the plan. Without
+    # min_input_files Glue waits for 100 files in one partition, which an hourly
+    # partition at low volume never reaches.
+    compaction_configuration {
+      iceberg_configuration {
+        strategy              = each.value.optimizer_configuration.compaction.strategy
+        min_input_files       = each.value.optimizer_configuration.compaction.min_input_files
+        delete_file_threshold = each.value.optimizer_configuration.compaction.delete_file_threshold
+      }
+    }
   }
 }
 
@@ -56,51 +68,5 @@ resource "aws_glue_catalog_table_optimizer" "orphan_deletion" {
         run_rate_in_hours                    = each.value.optimizer_configuration.orphan_file_deletion.run_rate_in_hours
       }
     }
-  }
-}
-
-# null_resource is used here because aws_glue_catalog_table_optimizer does not yet support
-# compaction_configuration in the Terraform AWS provider. This calls update-table-optimizer
-# via the AWS CLI to set strategy/min_input_files/delete_file_threshold.
-resource "null_resource" "compaction_configuration" {
-  for_each = local.all_tables
-
-  triggers = {
-    table_key             = each.key
-    strategy              = each.value.optimizer_configuration.compaction.strategy
-    min_input_files       = each.value.optimizer_configuration.compaction.min_input_files != null ? tostring(each.value.optimizer_configuration.compaction.min_input_files) : ""
-    delete_file_threshold = each.value.optimizer_configuration.compaction.delete_file_threshold != null ? tostring(each.value.optimizer_configuration.compaction.delete_file_threshold) : ""
-    role_arn              = var.glue_service_role_arn
-  }
-
-  depends_on = [aws_glue_catalog_table_optimizer.compaction]
-
-  provisioner "local-exec" {
-    environment = {
-      CONFIG = jsonencode({
-        roleArn = var.glue_service_role_arn
-        enabled = true
-        compactionConfiguration = {
-          icebergConfiguration = local.compaction_configs[each.key]
-        }
-      })
-    }
-    command = <<-EOT
-      set -e
-      # A provider-level assume_role does not reach provisioner subprocesses, so this
-      # CLI call would otherwise run as the runner's own identity and get AccessDenied
-      # against another account's catalog. Callers that assume a role may leave an env
-      # file exporting session credentials; source it when present.
-      if [ -f /tmp/nr_env.sh ]; then . /tmp/nr_env.sh; fi
-      echo "Configuring compaction for table ${each.key} (strategy: ${each.value.optimizer_configuration.compaction.strategy})..."
-      aws glue update-table-optimizer \
-        --catalog-id ${data.aws_caller_identity.current.account_id} \
-        --database-name ${var.glue_catalog_db_name} \
-        --table-name ${each.key} \
-        --table-optimizer-configuration "$CONFIG" \
-        --type compaction \
-        --region ${data.aws_region.current.region}
-      echo "Compaction configured for ${each.key}."
-    EOT
   }
 }
