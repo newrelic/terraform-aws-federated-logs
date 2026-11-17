@@ -449,3 +449,97 @@ run "test_flink_jar_latest_override_warns" {
     error_message = "source_hash must be the source ETag without its surrounding quotes"
   }
 }
+
+# =============================================================================
+# WRITER-ROLE OVERRIDE (aws.role.arn, commit worker 2.1.0 or later, NR-610412)
+# =============================================================================
+
+run "test_writer_role_override_omitted_by_default" {
+  command = plan
+
+  variables {
+    data_processing_module_name = "inttest-dp-no-override"
+    fleet_entity_guid           = var.fleet_entity_guid
+    newrelic_org_id             = var.newrelic_org_id
+    newrelic_account_id         = var.newrelic_account_id
+    newrelic_region             = var.newrelic_region
+    clusters = {
+      "test-cluster" = {
+        k8s_namespace            = "federated-logs"
+        k8s_service_account_name = "pcg-writer-sa"
+        oidc_provider_arn        = var.test_oidc_arn
+      }
+    }
+  }
+
+  module {
+    source = "./modules/data_processing"
+  }
+
+  # Unset means the per-file role path; AWS also rejects empty-string values.
+  assert {
+    condition = ![
+      for pg in aws_kinesisanalyticsv2_application.flink_iceberg_commit_worker.application_configuration[0].environment_properties[0].property_group :
+      contains(keys(pg.property_map), "aws.role.arn") if pg.property_group_id == "FlinkApplicationProperties"
+    ][0]
+    error_message = "aws.role.arn must be omitted from FlinkApplicationProperties when writer_role_arn_override is unset"
+  }
+}
+
+run "test_writer_role_override_sets_aws_role_arn" {
+  command = plan
+
+  variables {
+    data_processing_module_name = "inttest-dp-override"
+    fleet_entity_guid           = var.fleet_entity_guid
+    newrelic_org_id             = var.newrelic_org_id
+    newrelic_account_id         = var.newrelic_account_id
+    newrelic_region             = var.newrelic_region
+    clusters = {
+      "test-cluster" = {
+        k8s_namespace            = "federated-logs"
+        k8s_service_account_name = "pcg-writer-sa"
+        oidc_provider_arn        = var.test_oidc_arn
+      }
+    }
+    writer_role_arn_override = "arn:aws:iam::123456789012:role/newrelic-fed-logs-setup123-pcg-writer"
+  }
+
+  module {
+    source = "./modules/data_processing"
+  }
+
+  assert {
+    condition = [
+      for pg in aws_kinesisanalyticsv2_application.flink_iceberg_commit_worker.application_configuration[0].environment_properties[0].property_group :
+      lookup(pg.property_map, "aws.role.arn", "") if pg.property_group_id == "FlinkApplicationProperties"
+    ][0] == "arn:aws:iam::123456789012:role/newrelic-fed-logs-setup123-pcg-writer"
+    error_message = "writer_role_arn_override must be passed to the Flink application as aws.role.arn"
+  }
+}
+
+run "test_validation_rejects_malformed_writer_role_arn" {
+  command = plan
+
+  variables {
+    data_processing_module_name = "inttest-dp-bad-override"
+    fleet_entity_guid           = var.fleet_entity_guid
+    newrelic_org_id             = var.newrelic_org_id
+    newrelic_account_id         = var.newrelic_account_id
+    newrelic_region             = var.newrelic_region
+    clusters = {
+      "test-cluster" = {
+        k8s_namespace            = "federated-logs"
+        k8s_service_account_name = "pcg-writer-sa"
+        oidc_provider_arn        = var.test_oidc_arn
+      }
+    }
+    writer_role_arn_override = "newrelic-fed-logs-setup123-pcg-writer"
+  }
+
+  module {
+    source = "./modules/data_processing"
+  }
+
+  expect_failures = [var.writer_role_arn_override]
+}

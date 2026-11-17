@@ -256,9 +256,9 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
       property_group {
         property_group_id = "FlinkApplicationProperties"
 
-        # fleet.entity.name is merged in conditionally: AWS rejects an empty-string
-        # value here ("Member must have length greater than or equal to 1"), and
-        # fleet_name is optional/defaults to "".
+        # fleet.entity.name and aws.role.arn are merged in conditionally: AWS rejects
+        # an empty-string value here ("Member must have length greater than or equal
+        # to 1"), and fleet_name / writer_role_arn_override default to "".
         property_map = merge({
           "aws.region" = data.aws_region.current.region
 
@@ -287,7 +287,8 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
           "newrelic.license.key"          = data.external.license_key.result.license_key
           "newrelic.metrics.api.endpoint" = var.newrelic_metrics_endpoint
           "newrelic.metrics.enabled"      = tostring(var.enable_metrics)
-          }, var.fleet_name != "" ? { "fleet.entity.name" = var.fleet_name } : {}
+          }, var.fleet_name != "" ? { "fleet.entity.name" = var.fleet_name } : {},
+          var.writer_role_arn_override != "" ? { "aws.role.arn" = var.writer_role_arn_override } : {}
         )
       }
     }

@@ -94,6 +94,18 @@ variable "flink_iceberg_commit_worker_version" {
   }
 }
 
+variable "writer_role_arn_override" {
+  description = "IAM role ARN the Flink commit worker assumes for every file, instead of the role-arn PCG attaches to it (Flink property aws.role.arn, NR-610412). Use it when the gateway writes under a role Flink cannot assume, e.g. a shared SAP writer role. Needs flink-iceberg-commit-worker 2.1.0 or later; older jars ignore it. Leave empty to use each file's own role."
+  type        = string
+  default     = ""
+  nullable    = false
+
+  validation {
+    condition     = var.writer_role_arn_override == "" || can(regex("^arn:aws[a-z-]*:iam::[0-9]{12}:role/.+$", var.writer_role_arn_override))
+    error_message = "writer_role_arn_override must be empty or an IAM role ARN (arn:aws:iam::<account-id>:role/<name>)."
+  }
+}
+
 variable "flink_runtime" {
   description = "Flink runtime environment version."
   type        = string
