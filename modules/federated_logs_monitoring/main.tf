@@ -619,7 +619,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT average(`aws.sqs.ApproximateNumberOfMessagesVisible`) AS 'Visible', average(`aws.sqs.ApproximateNumberOfMessagesNotVisible`) AS 'In-Flight' FROM Metric WHERE `aws.sqs.QueueName` = '${local.sqs_queue_name}' SINCE 1 hour ago TIMESERIES AUTO"
+        query      = "SELECT max(`aws.sqs.ApproximateNumberOfMessagesVisible`) AS 'Visible', max(`aws.sqs.ApproximateNumberOfMessagesNotVisible`) AS 'In-Flight' FROM Metric WHERE `aws.sqs.QueueName` = '${local.sqs_queue_name}' SINCE 1 hour ago TIMESERIES AUTO"
       }
     }
 
@@ -871,7 +871,7 @@ resource "newrelic_one_dashboard" "this" {
     }
 
     widget_billboard {
-      title  = "Data Retention Job - Total Runs"
+      title  = "Data Retention Job — Overview"
       row    = 4
       column = 9
       width  = 4
@@ -879,7 +879,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT uniqueCount(`aws.glue.JobRunId`) AS 'Total Runs' FROM Metric WHERE `aws.Namespace` = 'Glue' AND `aws.glue.JobName` = '${local.glue_retention_job}' AND `aws.glue.JobRunId` != 'ALL' SINCE 7 days ago"
+        query      = "SELECT uniqueCount(`aws.glue.JobRunId`) AS 'Total Runs', sum(`aws.glue.glue.driver.aggregate.numFailedTasks`) AS 'Failed Tasks', sum(`aws.glue.glue.driver.aggregate.numKilledTasks`) AS 'Killed Tasks' FROM Metric WHERE `aws.Namespace` = 'Glue' AND `aws.glue.JobName` = '${local.glue_retention_job}' AND `aws.glue.JobRunId` != 'ALL' SINCE 7 days ago"
       }
     }
 
@@ -905,10 +905,11 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.glue.Number of files compacted`) AS 'Files Compacted', sum(`aws.glue.Number of data files removed`) AS 'Files Removed (Snapshot Retention)', sum(`aws.glue.Number of orphan files deleted`) AS 'Orphan Files Deleted' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 7 days ago TIMESERIES AUTO"
+        query      = "SELECT sum(`aws.glue.Number of files compacted`) AS 'Files Compacted', sum(`aws.glue.Number of data files deleted`) AS 'Files Deleted (Snapshot Retention)', sum(`aws.glue.Number of orphan files deleted`) AS 'Orphan Files Deleted' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 7 days ago TIMESERIES AUTO"
       }
     }
 
   }
 }
+
 
