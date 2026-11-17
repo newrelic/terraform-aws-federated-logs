@@ -35,6 +35,8 @@ export NEW_RELIC_LICENSE_KEY="your-new-relic-license-key"
 | `parallelism` | Flink parallelism setting | `number` | no (default: `1`) |
 | `parallelism_per_kpu` | Flink parallelism per KPU | `number` | no (default: `1`) |
 | `auto_scaling_enabled` | Enable Flink auto scaling | `bool` | no (default: `true`) |
+| `commit_batch_size` | Buffered data files per table that trigger an Iceberg commit early | `number` | no (default: `100`) |
+| `commit_batch_timeout_ms` | Milliseconds after the first buffered file before a table's batch is committed. Higher means fewer snapshots but slower time-to-glass; keep well below `sqs_visibility_timeout` | `number` | no (default: `10000`) |
 | `allowed_source_account_ids` | Cross-account only: AWS account ID(s) where the `federated_logs` setup lives, allowed to send EventBridge events to the SQS queue | `list(string)` | no (default: `[]`) |
 | `e2e_validation_config` | Optional end-to-end validation Lambda, run from this account (see below) | `object` | no (default: disabled) |
 

@@ -349,6 +349,46 @@ run "test_pcg_writer_schema_registry_grant_is_prefix_scoped" {
 # instant it's written — the job reports SUCCESS while protecting nothing.
 # Placed last in the file deliberately: a failing run aborts every run after
 # it, so new runs go at the end rather than in the middle.
+# The Glue compaction target file size defaults to 32 MB for every table, and a
+# per-table table_parameters entry still wins over the default.
+run "test_target_file_size_defaults_to_32mb_and_is_overridable" {
+  command = plan
+
+  variables {
+    setup_name            = "inttest-partition"
+    s3_bucket_name        = "test-bucket"
+    glue_catalog_db_name  = "test_db"
+    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
+    setup_id              = "mock-setup-id"
+    newrelic_account_id   = 12345678
+    partition_tables = {
+      "Log_override" = {
+        table_parameters = {
+          "write.target-file-size-bytes" = "67108864"
+        }
+      }
+    }
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  assert {
+    condition = (
+      aws_glue_catalog_table.iceberg_table["newrelic_fed_logs_inttest_partition_log_federated"].open_table_format_input[0].iceberg_input[0].iceberg_table_input[0].properties["write.target-file-size-bytes"] == "33554432"
+    )
+    error_message = "the default table must target 32 MB files (33554432 bytes)"
+  }
+
+  assert {
+    condition = (
+      aws_glue_catalog_table.iceberg_table["newrelic_fed_logs_inttest_partition_log_override"].open_table_format_input[0].iceberg_input[0].iceberg_table_input[0].properties["write.target-file-size-bytes"] == "67108864"
+    )
+    error_message = "a per-table write.target-file-size-bytes must override the 32 MB default"
+  }
+}
+
 run "test_snapshot_tagging_rejects_zero_retain_days" {
   command = plan
 
@@ -366,6 +406,132 @@ run "test_snapshot_tagging_rejects_zero_retain_days" {
           snapshot_tagging = {
             retain_days = 0
           }
+        }
+      }
+    }
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  expect_failures = [var.partition_tables]
+}
+
+# Default retention for a table created by this module version: no whole-day
+# period on the optimizer (Glue then reads the table's
+# history.expire.max-snapshot-age-ms) and the 1 h max age in the create-time
+# properties.
+run "test_snapshot_retention_defaults_to_max_age" {
+  command = plan
+
+  variables {
+    setup_name            = "inttest-partition"
+    s3_bucket_name        = "test-bucket"
+    glue_catalog_db_name  = "test_db"
+    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
+    setup_id              = "mock-setup-id"
+    newrelic_account_id   = 12345678
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  assert {
+    condition     = aws_glue_catalog_table_optimizer.retention["newrelic_fed_logs_inttest_partition_log_federated"].configuration[0].retention_configuration[0].iceberg_configuration[0].snapshot_retention_period_in_days == null
+    error_message = "snapshot_retention_period_in_days must be omitted by default so Glue uses history.expire.max-snapshot-age-ms"
+  }
+
+  assert {
+    condition     = aws_glue_catalog_table.iceberg_table["newrelic_fed_logs_inttest_partition_log_federated"].open_table_format_input[0].iceberg_input[0].iceberg_table_input[0].properties["history.expire.max-snapshot-age-ms"] == "3600000"
+    error_message = "New tables must be created with history.expire.max-snapshot-age-ms = 3600000"
+  }
+
+  assert {
+    condition     = aws_glue_catalog_table_optimizer.retention["newrelic_fed_logs_inttest_partition_log_federated"].configuration[0].retention_configuration[0].iceberg_configuration[0].number_of_snapshots_to_retain == 12
+    error_message = "number_of_snapshots_to_retain must default to 12"
+  }
+
+}
+
+# A per-table max age in table_parameters reaches the create-time properties,
+# and that table's optimizer still omits the whole-day period.
+run "test_snapshot_retention_max_age_override" {
+  command = plan
+
+  variables {
+    setup_name            = "inttest-partition"
+    s3_bucket_name        = "test-bucket"
+    glue_catalog_db_name  = "test_db"
+    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
+    setup_id              = "mock-setup-id"
+    newrelic_account_id   = 12345678
+    partition_tables = {
+      "Log_fast" = {
+        table_parameters = {
+          "history.expire.max-snapshot-age-ms" = "7200000"
+        }
+      }
+    }
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  assert {
+    condition     = aws_glue_catalog_table.iceberg_table["newrelic_fed_logs_inttest_partition_log_fast"].open_table_format_input[0].iceberg_input[0].iceberg_table_input[0].properties["history.expire.max-snapshot-age-ms"] == "7200000"
+    error_message = "A per-table history.expire.max-snapshot-age-ms must reach the create-time properties"
+  }
+
+  assert {
+    condition     = aws_glue_catalog_table_optimizer.retention["newrelic_fed_logs_inttest_partition_log_fast"].configuration[0].retention_configuration[0].iceberg_configuration[0].snapshot_retention_period_in_days == null
+    error_message = "A table created with history.expire.max-snapshot-age-ms must omit snapshot_retention_period_in_days"
+  }
+
+}
+
+# 3600 is 1 h in seconds, the unit of Athena's vacuum_max_snapshot_age_seconds.
+# As milliseconds it would be 3.6 s, so the 1 h minimum rejects it.
+run "test_snapshot_retention_rejects_max_age_below_1h" {
+  command = plan
+
+  variables {
+    setup_name            = "inttest-partition"
+    s3_bucket_name        = "test-bucket"
+    glue_catalog_db_name  = "test_db"
+    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
+    setup_id              = "mock-setup-id"
+    newrelic_account_id   = 12345678
+    default_table_setting = {
+      table_parameters = {
+        "history.expire.max-snapshot-age-ms" = "3600"
+      }
+    }
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  expect_failures = [var.default_table_setting]
+}
+
+run "test_snapshot_retention_rejects_non_integer_max_age" {
+  command = plan
+
+  variables {
+    setup_name            = "inttest-partition"
+    s3_bucket_name        = "test-bucket"
+    glue_catalog_db_name  = "test_db"
+    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
+    setup_id              = "mock-setup-id"
+    newrelic_account_id   = 12345678
+    partition_tables = {
+      "Log_fast" = {
+        table_parameters = {
+          "history.expire.max-snapshot-age-ms" = "1h"
         }
       }
     }

@@ -81,9 +81,12 @@ variable "fleet_ingest_connection_description" {
 # =============================================================================
 
 variable "flink_iceberg_commit_worker_version" {
-  description = "Version of the flink-iceberg-commit-worker JAR to deploy (e.g. v1.0.0). Defaults to latest."
+  description = "Version of the flink-iceberg-commit-worker JAR to deploy. The default is the version this module release was tested with, so upgrading the module upgrades the JAR. Override it only to run a fix New Relic gives you before it is in a module release: any other version is deployed without sha256 verification, and the plan warns. \"latest\" is deprecated."
   type        = string
-  default     = "latest"
+  # Bump together with flink-jar-versions.json, which holds this version's sha256.
+  # tests/data_processing.tftest.hcl fails if the two disagree.
+  default  = "2.0.0"
+  nullable = false
 
   validation {
     condition     = can(regex("^[a-zA-Z0-9._-]+$", var.flink_iceberg_commit_worker_version))
@@ -119,6 +122,28 @@ variable "checkpoint_interval_ms" {
   description = "Flink checkpoint interval in milliseconds."
   type        = number
   default     = 60000
+}
+
+variable "commit_batch_size" {
+  description = "Number of buffered data files per table that triggers an Iceberg commit before commit_batch_timeout_ms elapses."
+  type        = number
+  default     = 100
+
+  validation {
+    condition     = var.commit_batch_size > 0 && floor(var.commit_batch_size) == var.commit_batch_size
+    error_message = "commit_batch_size must be a positive integer."
+  }
+}
+
+variable "commit_batch_timeout_ms" {
+  description = "Milliseconds after the first buffered data file before a table's batch is committed. Each commit is one Iceberg snapshot, so raising this lowers the snapshot count (and metadata.json size) at the cost of time-to-glass. Keep it well below sqs_visibility_timeout: messages are acked only after the commit succeeds."
+  type        = number
+  default     = 10000
+
+  validation {
+    condition     = var.commit_batch_timeout_ms > 0 && floor(var.commit_batch_timeout_ms) == var.commit_batch_timeout_ms
+    error_message = "commit_batch_timeout_ms must be a positive integer."
+  }
 }
 
 variable "snapshots_enabled" {

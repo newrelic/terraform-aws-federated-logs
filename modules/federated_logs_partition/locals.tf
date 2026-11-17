@@ -54,9 +54,11 @@ locals {
 
   # Parameters you always want set — user values override these
   default_iceberg_params = {
-    "format"                                     = "parquet"
-    "write.parquet.compression-codec"            = "zstd"
-    "write.target-file-size-bytes"               = "67108864" # 64 MB
+    "format"                          = "parquet"
+    "write.parquet.compression-codec" = "zstd"
+    # 32 MB: measured against 64 MB, ~41-48% less native memory per reader and
+    # ~13% more throughput. Smaller files add per-file overhead with no memory gain.
+    "write.target-file-size-bytes"               = "33554432" # 32 MB
     "write.metadata.delete-after-commit.enabled" = "true"
     "write.metadata.previous-versions-max"       = "10"
 
@@ -75,6 +77,13 @@ locals {
 
     # Case-sensitive name → field-ID mapping for data files without field IDs.
     "schema.name-mapping.default" = local.iceberg_schema_name_mapping
+
+    # Snapshot expiry age. The retention optimizer omits
+    # snapshot_retention_period_in_days, so Glue reads this property. Each run
+    # expires snapshots older than this; runs are at least 3 h apart, so a
+    # table holds 1–4 h of snapshots. Override per table in table_parameters
+    # (at least 3600000).
+    "history.expire.max-snapshot-age-ms" = "3600000" # 1 h
   }
 
   # For each table: defaults ← user params (user wins on overlap)

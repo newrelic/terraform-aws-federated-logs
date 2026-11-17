@@ -59,9 +59,12 @@ module "federated_logs" {
     retention_in_days = 30
     table_parameters = {
       "write.parquet.compression-codec"            = "zstd"
-      "write.target-file-size-bytes"               = "67108864" # 64 MB
+      "write.target-file-size-bytes"               = "33554432" # 32 MB
       "write.metadata.delete-after-commit.enabled" = "true"
       "write.metadata.previous-versions-max"       = "10"
+      # Each snapshot_retention run (at most every 3 h) expires snapshots
+      # older than this, so a table holds 1–4 h of snapshots. At least 1 h.
+      "history.expire.max-snapshot-age-ms" = "3600000" # 1 h
     }
     optimizer_configuration = {
       orphan_file_deletion = {
@@ -69,10 +72,8 @@ module "federated_logs" {
         run_rate_in_hours                    = 24
       }
       snapshot_retention = {
-        snapshot_retention_period_in_days = 1
-        number_of_snapshots_to_retain     = 1
-        clean_expired_files               = false
-        run_rate_in_hours                 = 3
+        clean_expired_files           = false
+        run_rate_in_hours             = 3
       }
       compaction = {
         strategy              = "binpack"
@@ -116,6 +117,31 @@ module "federated_logs" {
 }
 ```
 
+## Changing tables after creation
+
+These table settings apply only when the module creates a table:
+
+- `table_parameters` and the module's default Iceberg properties
+- the seed schema and the partition spec
+
+After that, Terraform ignores them: changing them in your configuration shows no plan diff and does not change the table. This keeps Terraform from overwriting changes made outside it, such as columns added since creation. A module upgrade that changes a default property doesn't change existing tables either. `optimizer_configuration` is separate and still updates existing tables.
+
+To change or remove a property on an existing table, make an Iceberg commit:
+
+- **Athena** `ALTER TABLE … SET TBLPROPERTIES`, for the [properties Athena supports](https://docs.aws.amazon.com/athena/latest/ug/querying-iceberg-creating-tables.html).
+- **PyIceberg or Spark**, for any other property:
+
+  ```python
+  from pyiceberg.catalog.glue import GlueCatalog
+
+  # Uses your default AWS credentials and region.
+  table = GlueCatalog("glue").load_table("<database>.<table>")
+  with table.transaction() as tx:
+      tx.set_properties({"write.target-file-size-bytes": "33554432"})
+  ```
+
+Removing a key from `table_parameters` never removes it from the table. Use `tx.remove_properties("<key>")`.
+
 ## Prerequisites
 
 Export your New Relic credentials as environment variables before running Terraform:
@@ -129,6 +155,14 @@ export NEW_RELIC_LICENSE_KEY="your-new-relic-license-key"  # required for data_p
 - `NEW_RELIC_LICENSE_KEY`: Your New Relic license key (used by Flink to send metrics). Required by the data_processing module only.
 
 These are read directly from the environment and are never stored in Terraform state.
+
+## Upgrades and the Flink commit worker
+
+Each release of this module pins the `flink-iceberg-commit-worker` JAR version it was tested with (the default of `flink_iceberg_commit_worker_version`) and verifies the JAR's sha256 (`modules/data_processing/flink-jar-versions.json`) before deploying it. To upgrade the commit worker, upgrade the module (`?ref=`). The first apply after a version change restarts the Flink application once (snapshot, then restore). To be notified of new releases, point Renovate or Dependabot at this module's tags.
+
+Leave `flink_iceberg_commit_worker_version` unset. To roll back, use the previous module release. Set the variable only to run a fix New Relic gives you before it is in a module release: any version other than the default is deployed without sha256 verification, and the plan warns. `"latest"` still works but is deprecated, and it no longer receives new builds.
+
+**Maintainers: moving the module to a new commit worker JAR.** In a PR to `development`, set the default of `flink_iceberg_commit_worker_version` in `modules/data_processing/variables.tf` to the new version, and replace the entry in `modules/data_processing/flink-jar-versions.json` with the new version and its sha256. `terraform test` fails if the two disagree. Compute the sha256 yourself: run `sha256sum` on the JAR downloaded from `https://nr-downloads-main.s3.amazonaws.com/pipeline-control-gateway/fed-logs/flink-iceberg-commit-worker-<version>.jar`. The published `<jar>.sha256` sidecar sits in the same bucket as the JAR, so use it only as a cross-check. Use `fix:` for a patch JAR and `feat:` for a minor or major one, and note the version change in the PR, since it ships in the next module release.
 
 ## Requirements
 

@@ -25,7 +25,16 @@ resource "aws_glue_catalog_table" "iceberg_table" {
     prevent_destroy = true
     ignore_changes = [
       # Prevent TF from fighting with Athena/Iceberg over these dynamic keys
-      parameters
+      parameters,
+      # Create-time only. Once a table exists, any diff here (e.g. a new
+      # default in default_iceberg_params) makes the provider send an
+      # in-place UpdateTable carrying the seed schema below. Glue then sets
+      # the current schema back to the 4-field seed and overwrites
+      # schema.name-mapping.default, hiding every column added since
+      # creation. Properties are merged, so removing a key here never
+      # removes it from the table either. Change properties on existing
+      # tables through an Iceberg commit (e.g. Athena ALTER TABLE) instead.
+      open_table_format_input,
     ]
   }
 
