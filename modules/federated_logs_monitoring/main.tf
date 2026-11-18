@@ -269,7 +269,7 @@ resource "newrelic_one_dashboard" "this" {
     # ── Section 1: Health Snapshot ────────────────────────────────────────
 
     widget_stacked_bar {
-      title  = "PCG Pod Health"
+      title  = "PCG Active Pod Status"
       row    = 1
       column = 7
       width  = 6
@@ -516,12 +516,11 @@ resource "newrelic_one_dashboard" "this" {
     name = "Data Storage - S3 & EventBridge"
 
     widget_line {
-      title             = "S3 Bucket Size"
-      row               = 1
-      column            = 1
-      width             = 6
-      height            = 3
-      ignore_time_range = true
+      title  = "S3 Bucket Size — daily metric"
+      row    = 1
+      column = 1
+      width  = 6
+      height = 3
 
       nrql_query {
         account_id = var.newrelic_account_id
@@ -534,12 +533,11 @@ resource "newrelic_one_dashboard" "this" {
     }
 
     widget_line {
-      title             = "S3 Object Count"
-      row               = 1
-      column            = 7
-      width             = 6
-      height            = 3
-      ignore_time_range = true
+      title  = "S3 Object Count — daily metric"
+      row    = 1
+      column = 7
+      width  = 6
+      height = 3
 
       nrql_query {
         account_id = var.newrelic_account_id
@@ -906,6 +904,32 @@ resource "newrelic_one_dashboard" "this" {
       nrql_query {
         account_id = var.newrelic_account_id
         query      = "SELECT sum(`aws.glue.Number of files compacted`) AS 'Files Compacted', sum(`aws.glue.Number of data files deleted`) AS 'Files Deleted (Snapshot Retention)', sum(`aws.glue.Number of orphan files deleted`) AS 'Orphan Files Deleted' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 7 days ago TIMESERIES AUTO"
+      }
+    }
+
+    widget_line {
+      title  = "Compaction Metrics Over Time"
+      row    = 10
+      column = 1
+      width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT sum(`aws.glue.Number of bytes compacted`) AS 'Bytes Compacted', sum(`aws.glue.Number of DPUs allocated to compaction job`) AS 'DPUs Allocated' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 7 days ago TIMESERIES AUTO"
+      }
+    }
+
+    widget_line {
+      title  = "Snapshot Retention Metrics Over Time"
+      row    = 10
+      column = 7
+      width  = 6
+      height = 3
+
+      nrql_query {
+        account_id = var.newrelic_account_id
+        query      = "SELECT sum(`aws.glue.Number of manifest files deleted`) AS 'Manifest Files Deleted', sum(`aws.glue.Number of manifest lists deleted`) AS 'Manifest Lists Deleted' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 7 days ago TIMESERIES AUTO"
       }
     }
 
