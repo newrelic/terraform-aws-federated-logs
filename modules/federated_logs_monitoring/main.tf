@@ -128,7 +128,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.glue.Iceberg table compaction failure`) + sum(`aws.glue.Iceberg table retention failure`) + sum(`aws.glue.Iceberg table orphan_file_deletion failure`) AS 'Failures' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 24 hours ago"
+        query      = "SELECT sum(`aws.glue.Iceberg table compaction failure`) + sum(`aws.glue.Iceberg table retention failure`) + sum(`aws.glue.Iceberg table orphan_file_deletion failure`) AS 'Failures' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' AND concat(`aws.glue.DATABASE_NAME`, '.', `aws.glue.TABLE_NAME`) = {{table_id}} SINCE 24 hours ago"
       }
     }
 
@@ -825,7 +825,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.glue.Iceberg table compaction success`) AS 'Success', sum(`aws.glue.Iceberg table compaction failure`) AS 'Failures' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 24 hours ago"
+        query      = "SELECT sum(`aws.glue.Iceberg table compaction success`) AS 'Success', sum(`aws.glue.Iceberg table compaction failure`) AS 'Failures' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' AND concat(`aws.glue.DATABASE_NAME`, '.', `aws.glue.TABLE_NAME`) = {{table_id}} SINCE 24 hours ago"
       }
     }
 
@@ -838,7 +838,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.glue.Iceberg table retention success`) AS 'Success', sum(`aws.glue.Iceberg table retention failure`) AS 'Failures' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 24 hours ago"
+        query      = "SELECT sum(`aws.glue.Iceberg table retention success`) AS 'Success', sum(`aws.glue.Iceberg table retention failure`) AS 'Failures' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' AND concat(`aws.glue.DATABASE_NAME`, '.', `aws.glue.TABLE_NAME`) = {{table_id}} SINCE 24 hours ago"
       }
     }
 
@@ -851,7 +851,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.glue.Iceberg table orphan_file_deletion success`) AS 'Success', sum(`aws.glue.Iceberg table orphan_file_deletion failure`) AS 'Failures' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 24 hours ago"
+        query      = "SELECT sum(`aws.glue.Iceberg table orphan_file_deletion success`) AS 'Success', sum(`aws.glue.Iceberg table orphan_file_deletion failure`) AS 'Failures' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' AND concat(`aws.glue.DATABASE_NAME`, '.', `aws.glue.TABLE_NAME`) = {{table_id}} SINCE 24 hours ago"
       }
     }
 
@@ -864,7 +864,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.glue.Iceberg table compaction failure`) AS 'Compaction', sum(`aws.glue.Iceberg table retention failure`) AS 'Snapshot Retention', sum(`aws.glue.Iceberg table orphan_file_deletion failure`) AS 'Orphan Deletion' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 7 days ago TIMESERIES AUTO"
+        query      = "SELECT sum(`aws.glue.Iceberg table compaction failure`) AS 'Compaction', sum(`aws.glue.Iceberg table retention failure`) AS 'Snapshot Retention', sum(`aws.glue.Iceberg table orphan_file_deletion failure`) AS 'Orphan Deletion' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' AND concat(`aws.glue.DATABASE_NAME`, '.', `aws.glue.TABLE_NAME`) = {{table_id}} SINCE 7 days ago TIMESERIES AUTO"
       }
     }
 
@@ -890,7 +890,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT average(`aws.glue.Duration of job (hours)`) * 3600 AS 'Duration (s)' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' AND metricName = 'aws.glue.Duration of job (hours)' SINCE 7 days ago TIMESERIES AUTO"
+        query      = "SELECT average(`aws.glue.Duration of job (hours)`) * 3600 AS 'Duration (s)' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' AND metricName = 'aws.glue.Duration of job (hours)' AND concat(`aws.glue.DATABASE_NAME`, '.', `aws.glue.TABLE_NAME`) = {{table_id}} SINCE 7 days ago TIMESERIES AUTO"
       }
     }
 
@@ -903,7 +903,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.glue.Number of files compacted`) AS 'Files Compacted', sum(`aws.glue.Number of data files deleted`) AS 'Files Deleted (Snapshot Retention)', sum(`aws.glue.Number of orphan files deleted`) AS 'Orphan Files Deleted' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 7 days ago TIMESERIES AUTO"
+        query      = "SELECT sum(`aws.glue.Number of files compacted`) AS 'Files Compacted', sum(`aws.glue.Number of data files deleted`) AS 'Files Deleted (Snapshot Retention)', sum(`aws.glue.Number of orphan files deleted`) AS 'Orphan Files Deleted' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' AND concat(`aws.glue.DATABASE_NAME`, '.', `aws.glue.TABLE_NAME`) = {{table_id}} SINCE 7 days ago TIMESERIES AUTO"
       }
     }
 
@@ -916,7 +916,7 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.glue.Number of bytes compacted`) AS 'Bytes Compacted', sum(`aws.glue.Number of DPUs allocated to compaction job`) AS 'DPUs Allocated' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 7 days ago TIMESERIES AUTO"
+        query      = "SELECT sum(`aws.glue.Number of bytes compacted`) AS 'Bytes Compacted', sum(`aws.glue.Number of DPUs allocated to compaction job`) AS 'DPUs Allocated' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' AND concat(`aws.glue.DATABASE_NAME`, '.', `aws.glue.TABLE_NAME`) = {{table_id}} SINCE 7 days ago TIMESERIES AUTO"
       }
     }
 
@@ -929,10 +929,9 @@ resource "newrelic_one_dashboard" "this" {
 
       nrql_query {
         account_id = var.newrelic_account_id
-        query      = "SELECT sum(`aws.glue.Number of manifest files deleted`) AS 'Manifest Files Deleted', sum(`aws.glue.Number of manifest lists deleted`) AS 'Manifest Lists Deleted' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' SINCE 7 days ago TIMESERIES AUTO"
+        query      = "SELECT sum(`aws.glue.Number of manifest files deleted`) AS 'Manifest Files Deleted', sum(`aws.glue.Number of manifest lists deleted`) AS 'Manifest Lists Deleted' FROM Metric WHERE `aws.glue.DATABASE_NAME` = '${var.glue_catalog_db_name}' AND concat(`aws.glue.DATABASE_NAME`, '.', `aws.glue.TABLE_NAME`) = {{table_id}} SINCE 7 days ago TIMESERIES AUTO"
       }
     }
-
   }
 }
 
