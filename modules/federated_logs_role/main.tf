@@ -112,7 +112,7 @@ resource "aws_iam_role" "reader-role" {
       Action = "sts:AssumeRole"
       Condition = {
         StringEquals = {
-          "sts:ExternalId" = local.nr_assume_role_external_id
+          "sts:ExternalId" = newrelic_aws_connection.query_connection.credential[0].assume_role[0].external_id
         }
       }
     }]
@@ -256,8 +256,7 @@ resource "newrelic_aws_connection" "query_connection" {
 
   credential {
     assume_role {
-      role_arn    = aws_iam_role.reader-role.arn
-      external_id = local.nr_assume_role_external_id
+      role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.setup_naming_prefix}-${local.nr_reader_role_suffix}"
     }
   }
 }
