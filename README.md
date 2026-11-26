@@ -164,13 +164,26 @@ Leave `flink_iceberg_commit_worker_version` unset. To roll back, use the previou
 
 **Maintainers: moving the module to a new commit worker JAR.** In a PR to `development`, set the default of `flink_iceberg_commit_worker_version` in `modules/data_processing/variables.tf` to the new version, and replace the entry in `modules/data_processing/flink-jar-versions.json` with the new version and its sha256. `terraform test` fails if the two disagree. Compute the sha256 yourself: run `sha256sum` on the JAR downloaded from `https://nr-downloads-main.s3.amazonaws.com/pipeline-control-gateway/fed-logs/flink-iceberg-commit-worker-<version>.jar`. The published `<jar>.sha256` sidecar sits in the same bucket as the JAR, so use it only as a cross-check. Use `fix:` for a patch JAR and `feat:` for a minor or major one, and note the version change in the PR, since it ships in the next module release.
 
+## Query connection external ID
+
+New Relic generates the external ID for the query connection, and the reader role trusts that value. Upgrade the module and the `newrelic` provider (`>= 3.102.2`) together: the new provider fails at plan against older module versions, which set the external ID.
+
+Setups created before this change keep the shared external ID `FederatedLogs-CrossAccount-SecureToken`, and upgrading doesn't change it. To move a setup to a generated ID, replace its query connection:
+
+```shell
+terraform state list | grep query_connection
+terraform apply -replace='<address from the command above>'
+```
+
+Terraform deletes the old connection, creates a new one, updates the reader role's trust policy, and points the setup at the new connection. Queries fail for a few seconds during the switch. This needs a New Relic backend change that lets a setup's query connection be updated; confirm with New Relic that it's available before running it.
+
 ## Requirements
 
 | Name | Version |
 |------|---------|
 | terraform | >= 1.6.0 |
 | aws | >= 6.36.0 |
-| newrelic | >= 3.91.0 |
+| newrelic | >= 3.102.2 |
 
 ## Inputs
 

@@ -235,6 +235,16 @@ run "test_role_naming_conventions" {
     condition     = can(regex("role/NRGlobalIAMRole", output.nr_reader_trust_policy_json))
     error_message = "NR reader role trust policy must allow NRGlobalIAMRole to assume it"
   }
+
+  assert {
+    condition     = jsondecode(aws_iam_role.reader-role.assume_role_policy).Statement[0].Condition.StringEquals["sts:ExternalId"] == newrelic_aws_connection.query_connection.credential[0].assume_role[0].external_id
+    error_message = "NR reader role must trust the external ID generated for the query connection"
+  }
+
+  assert {
+    condition     = newrelic_aws_connection.query_connection.credential[0].assume_role[0].role_arn == aws_iam_role.reader-role.arn
+    error_message = "Query connection role_arn must match the NR reader role's ARN"
+  }
 }
 
 # =============================================================================

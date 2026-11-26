@@ -99,7 +99,7 @@ resource "aws_iam_policy" "glue_service_policy" {
 }
 
 resource "aws_iam_role" "reader-role" {
-  name        = "${local.setup_naming_prefix}-${local.nr_reader_role_suffix}"
+  name        = local.nr_reader_role_name
   description = "Cross-account role for New Relic Query Engine to read logs"
 
   assume_role_policy = jsonencode({
@@ -256,7 +256,8 @@ resource "newrelic_aws_connection" "query_connection" {
 
   credential {
     assume_role {
-      role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.setup_naming_prefix}-${local.nr_reader_role_suffix}"
+      # Not aws_iam_role.reader-role.arn: the role's trust policy reads this connection's external ID, so that would be a cycle.
+      role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.nr_reader_role_name}"
     }
   }
 }
@@ -317,6 +318,7 @@ resource "newrelic_federated_logs_setup" "this" {
     }
   }
 
+  # The setup doesn't reference the reader role, so make it wait for the role and its policy.
   depends_on = [
     aws_iam_role.reader-role,
     aws_iam_role_policy_attachment.reader_attach,
