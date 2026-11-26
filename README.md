@@ -52,7 +52,7 @@ module "federated_logs" {
 
   # Enable snapshot tagging (creates Glue job that tags each table's current
   # snapshot daily, kept for the table's snapshot_tagging.retain_days)
-  snapshot_tagging_enabled = false
+  snapshot_tagging_enabled = true
 
   # Override default Iceberg table parameters and optimizer settings
   default_table_setting = {
