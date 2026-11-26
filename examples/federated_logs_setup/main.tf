@@ -30,13 +30,17 @@ module "federated_logs" {
         run_rate_in_hours                    = 24
       }
       snapshot_retention = {
-        clean_expired_files = true
-        run_rate_in_hours   = 3
+        number_of_snapshots_to_retain = 12
+        clean_expired_files           = true
+        run_rate_in_hours             = 3
       }
       compaction = {
         strategy              = "binpack"
         min_input_files       = 5
         delete_file_threshold = 1
+      }
+      snapshot_tagging = {
+        retain_days = 7
       }
     }
   }
@@ -53,13 +57,17 @@ module "federated_logs" {
           run_rate_in_hours                    = 24
         }
         snapshot_retention = {
-          clean_expired_files = true
-          run_rate_in_hours   = 3
+          number_of_snapshots_to_retain = 12
+          clean_expired_files           = true
+          run_rate_in_hours             = 3
         }
         compaction = {
           strategy              = "binpack"
           min_input_files       = 10
           delete_file_threshold = 2
+        }
+        snapshot_tagging = {
+          retain_days = 7
         }
       }
     },
