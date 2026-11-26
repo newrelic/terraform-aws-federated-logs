@@ -174,20 +174,21 @@ Leave `flink_iceberg_commit_worker_version` unset. To roll back, use the previou
 
 ## Inputs
 
-| Name | Description | Type | Required |
-|------|-------------|------|----------|
-| `setup_name` | A name for this federated logs setup (3–26 lowercase alphanumeric chars, hyphens allowed) | `string` | yes |
-| `fleet_entity_guid` | NGEP entity GUID of the PCG fleet (output of the data_processing module) | `string` | yes |
-| `newrelic_org_id` | New Relic organization ID | `string` | yes |
-| `newrelic_account_id` | New Relic account ID | `number` | yes |
-| `newrelic_region` | New Relic region: 'US', 'EU', or 'STAGING' | `string` | no (default: `"US"`) |
-| `region` | AWS region where resources will be created. If not set, uses the provider's configured region | `string` | no |
-| `data_retention_enabled` | Enable data retention feature (creates Glue job to delete old data based on per-table retention_in_days) | `bool` | no (default: `true`) |
-| `snapshot_tagging_enabled` | Enable snapshot tagging (creates Glue job that tags each table's current Iceberg snapshot daily at 01:00 UTC, kept for per-table snapshot_tagging.retain_days) | `bool` | no (default: `false`) |
-| `default_table_setting` | Settings for the primary federated log table (retention, table parameters, optimizer config) | `object` | no |
-| `partition_tables` | Map of additional partition tables, each can override retention, table parameters, optimizer config, routing expression, and description | `map(object)` | no |
-| `setup_description` | Optional description for the newrelic_federated_logs_setup resource | `string` | no |
-| `query_connection_description` | Optional description for the per-setup newrelic_aws_connection wrapping the reader role | `string` | no |
+| Name | Description                                                                                                                                                                                    | Type | Required |
+|------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------|----------|
+| `setup_name` | A name for this federated logs setup (3–26 lowercase alphanumeric chars, hyphens allowed)                                                                                                      | `string` | yes |
+| `fleet_entity_guid` | NGEP entity GUID of the PCG fleet (output of the data_processing module)                                                                                                                       | `string` | yes |
+| `newrelic_org_id` | New Relic organization ID                                                                                                                                                                      | `string` | yes |
+| `newrelic_account_id` | New Relic account ID                                                                                                                                                                           | `number` | yes |
+| `newrelic_region` | New Relic region: 'US', 'EU', or 'STAGING'                                                                                                                                                     | `string` | no (default: `"US"`) |
+| `region` | AWS region where resources will be created. If not set, uses the provider's configured region                                                                                                  | `string` | no |
+| `data_retention_enabled` | Enable data retention feature (creates Glue job to delete old data based on per-table retention_in_days)                                                                                       | `bool` | no (default: `true`) |
+| `snapshot_tagging_enabled` | Enable snapshot tagging (creates Glue job that tags each table's current Iceberg snapshot daily at 01:00 UTC, kept for per-table snapshot_tagging.retain_days)                                 | `bool` | no (default: `false`) |
+| `default_table_setting` | Settings for the primary federated log table (retention, table parameters, optimizer config)                                                                                                   | `object` | no |
+| `partition_tables` | Map of additional partition tables, each can override retention, table parameters, optimizer config, routing expression, and description                                                       | `map(object)` | no |
+| `setup_description` | Optional description for the newrelic_federated_logs_setup resource                                                                                                                            | `string` | no |
+| `query_connection_description` | Optional description for the per-setup newrelic_aws_connection wrapping the reader role                                                                                                        | `string` | no |
+| `force_destroy_data_bucket` | When true, allows the S3 data bucket to be deleted even when it contains objects. **This will permanently delete the data present in the setup.** Set to true only for an intentional teardown | `bool` | no (default: `false`) |
 
 ## Outputs
 
