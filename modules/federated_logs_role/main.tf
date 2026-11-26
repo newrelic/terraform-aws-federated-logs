@@ -316,4 +316,9 @@ resource "newrelic_federated_logs_setup" "this" {
       fleet_id = var.fleet_entity_guid
     }
   }
+
+  depends_on = [
+    aws_iam_role.reader-role,
+    aws_iam_role_policy_attachment.reader_attach,
+  ]
 }

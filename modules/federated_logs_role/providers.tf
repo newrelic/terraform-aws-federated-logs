@@ -11,7 +11,7 @@ terraform {
     }
     newrelic = {
       source  = "newrelic/newrelic"
-      version = ">= 3.103.0"
+      version = ">= 3.102.2"
     }
   }
 }
