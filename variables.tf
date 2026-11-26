@@ -57,7 +57,7 @@ variable "newrelic_region" {
 #     run_rate_in_hours                    = 24
 #   snapshot_retention:
 #     number_of_snapshots_to_retain        = 12
-#     clean_expired_files                  = false
+#     clean_expired_files                  = true
 #     run_rate_in_hours                    = 3
 #     (The expiry age is the table property history.expire.max-snapshot-age-ms:
 #     3600000 (1 h) by default, at least 3600000, set per table in
@@ -96,7 +96,7 @@ variable "default_table_setting" {
       }), {})
       snapshot_retention = optional(object({
         number_of_snapshots_to_retain = optional(number, 12)
-        clean_expired_files           = optional(bool, false)
+        clean_expired_files           = optional(bool, true)
         run_rate_in_hours             = optional(number, 3)
       }), {})
       compaction = optional(object({
@@ -139,7 +139,7 @@ variable "partition_tables" {
       }), {})
       snapshot_retention = optional(object({
         number_of_snapshots_to_retain = optional(number, 12)
-        clean_expired_files           = optional(bool, false)
+        clean_expired_files           = optional(bool, true)
         run_rate_in_hours             = optional(number, 3)
       }), {})
       compaction = optional(object({

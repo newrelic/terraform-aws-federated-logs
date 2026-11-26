@@ -30,7 +30,7 @@ module "federated_logs" {
         run_rate_in_hours                    = 24
       }
       snapshot_retention = {
-        clean_expired_files = false
+        clean_expired_files = true
         run_rate_in_hours   = 3
       }
       compaction = {
@@ -53,7 +53,7 @@ module "federated_logs" {
           run_rate_in_hours                    = 24
         }
         snapshot_retention = {
-          clean_expired_files = false
+          clean_expired_files = true
           run_rate_in_hours   = 3
         }
         compaction = {

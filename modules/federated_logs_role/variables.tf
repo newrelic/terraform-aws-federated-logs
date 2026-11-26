@@ -79,7 +79,7 @@ variable "default_table_setting" {
       }), {})
       snapshot_retention = optional(object({
         number_of_snapshots_to_retain = optional(number, 12)
-        clean_expired_files           = optional(bool, false)
+        clean_expired_files           = optional(bool, true)
         run_rate_in_hours             = optional(number, 3)
       }), {})
 
