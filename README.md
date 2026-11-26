@@ -170,7 +170,7 @@ Leave `flink_iceberg_commit_worker_version` unset. To roll back, use the previou
 |------|---------|
 | terraform | >= 1.6.0 |
 | aws | >= 6.36.0 |
-| newrelic | >= 3.91.0 |
+| newrelic | >= 3.102.2 |
 
 ## Inputs
 

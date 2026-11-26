@@ -6,11 +6,7 @@ locals {
   # WARNING [DO NOT CHANGE]: Cross-repo contract with the NR hub.
   # Editing this suffix will break cross-account assumption at runtime.
   nr_reader_role_suffix = "nr-query"
-
-  # WARNING [DO NOT CHANGE]: External ID that NR's query worker sends
-  # when assuming the reader role.
-  # Editing it will break cross-account assumption at runtime.
-  nr_assume_role_external_id = "FederatedLogs-CrossAccount-SecureToken"
+  nr_reader_role_name   = "${local.setup_naming_prefix}-${local.nr_reader_role_suffix}"
 
   nr_graphql_endpoint = var.newrelic_region == "EU" ? "https://api.eu.newrelic.com/graphql" : (
     var.newrelic_region == "STAGING" ? "https://staging-api.newrelic.com/graphql" : "https://api.newrelic.com/graphql"
