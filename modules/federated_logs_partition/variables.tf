@@ -55,7 +55,7 @@ variable "data_retention_enabled" {
 variable "snapshot_tagging_enabled" {
   description = "Enable snapshot tagging feature. When true, creates a Glue job that tags each table's current Iceberg snapshot daily at 01:00 UTC, keeping each tag for the table's snapshot_tagging.retain_days."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "default_table_setting" {

@@ -168,13 +168,14 @@ run "test_snapshot_tagging_disabled_creates_nothing" {
   command = plan
 
   variables {
-    setup_name             = "inttest-partition"
-    s3_bucket_name         = "test-bucket"
-    glue_catalog_db_name   = "test_db"
-    glue_service_role_arn  = "arn:aws:iam::123456789012:role/test-role"
-    setup_id               = "mock-setup-id"
-    newrelic_account_id    = 12345678
-    data_retention_enabled = false
+    setup_name               = "inttest-partition"
+    s3_bucket_name           = "test-bucket"
+    glue_catalog_db_name     = "test_db"
+    glue_service_role_arn    = "arn:aws:iam::123456789012:role/test-role"
+    setup_id                 = "mock-setup-id"
+    newrelic_account_id      = 12345678
+    data_retention_enabled   = false
+    snapshot_tagging_enabled = false
   }
 
   module {
@@ -183,12 +184,37 @@ run "test_snapshot_tagging_disabled_creates_nothing" {
 
   assert {
     condition     = length(aws_glue_job.tagging) == 0 && length(aws_glue_trigger.tagging_schedule) == 0
-    error_message = "snapshot_tagging_enabled defaults to false — expected no tagging job or trigger"
+    error_message = "snapshot_tagging_enabled = false — expected no tagging job or trigger"
   }
 
   assert {
     condition     = length(aws_s3_bucket_policy.newrelic_artifacts) == 0
     error_message = "With neither retention nor tagging enabled, no Glue read policy should be attached to the artifacts bucket (the bucket itself always exists, for the schema registry)"
+  }
+}
+
+# -----------------------------------------------------------------------------
+# TEST: Artifacts bucket always has force_destroy = true
+# -----------------------------------------------------------------------------
+run "test_artifacts_bucket_force_destroy_always_true" {
+  command = plan
+
+  variables {
+    setup_name            = "inttest-partition"
+    s3_bucket_name        = "test-bucket"
+    glue_catalog_db_name  = "test_db"
+    glue_service_role_arn = "arn:aws:iam::123456789012:role/test-role"
+    setup_id              = "mock-setup-id"
+    newrelic_account_id   = 12345678
+  }
+
+  module {
+    source = "./modules/federated_logs_partition"
+  }
+
+  assert {
+    condition     = aws_s3_bucket.newrelic_artifacts.force_destroy == true
+    error_message = "Artifacts bucket must always have force_destroy = true — it holds short-lived schema registry objects written by PCG at runtime that are not tracked in Terraform state"
   }
 }
 

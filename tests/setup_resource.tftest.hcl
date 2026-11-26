@@ -228,3 +228,44 @@ run "test_validation_accepts_middle_hyphens" {
 
   # No expect_failures = plan should succeed
 }
+
+# -----------------------------------------------------------------------------
+# TEST: force_destroy_data_bucket defaults to false
+# -----------------------------------------------------------------------------
+run "test_data_bucket_force_destroy_defaults_to_false" {
+  command = plan
+
+  variables {
+    setup_name = "inttest-destroy-01"
+  }
+
+  module {
+    source = "./modules/federated_logs_setup_resource"
+  }
+
+  assert {
+    condition     = aws_s3_bucket.this.force_destroy == false
+    error_message = "Data bucket force_destroy should default to false to protect against accidental deletion"
+  }
+}
+
+# -----------------------------------------------------------------------------
+# TEST: force_destroy_data_bucket = true propagates to the bucket
+# -----------------------------------------------------------------------------
+run "test_data_bucket_force_destroy_when_enabled" {
+  command = plan
+
+  variables {
+    setup_name                = "inttest-destroy-02"
+    force_destroy_data_bucket = true
+  }
+
+  module {
+    source = "./modules/federated_logs_setup_resource"
+  }
+
+  assert {
+    condition     = aws_s3_bucket.this.force_destroy == true
+    error_message = "Data bucket force_destroy should be true when force_destroy_data_bucket = true"
+  }
+}
