@@ -449,6 +449,11 @@ run "test_snapshot_retention_defaults_to_max_age" {
   }
 
   assert {
+    condition     = aws_glue_catalog_table_optimizer.retention["newrelic_fed_logs_inttest_partition_log_federated"].configuration[0].retention_configuration[0].iceberg_configuration[0].clean_expired_files == true
+    error_message = "clean_expired_files must default to true so expiring a snapshot deletes the files only it referenced"
+  }
+
+  assert {
     condition     = aws_glue_catalog_table_optimizer.retention["newrelic_fed_logs_inttest_partition_log_federated"].configuration[0].retention_configuration[0].iceberg_configuration[0].number_of_snapshots_to_retain == 12
     error_message = "number_of_snapshots_to_retain must default to 12"
   }

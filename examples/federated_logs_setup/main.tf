@@ -13,6 +13,10 @@ module "federated_logs" {
   # Enable data retention feature (creates Glue job to delete old data)
   data_retention_enabled = true
 
+  # Enable snapshot tagging (creates a Glue job that tags each table's current
+  # snapshot daily, keeping each tag for snapshot_tagging.retain_days)
+  snapshot_tagging_enabled = true
+
   default_table_setting = {
     retention_in_days = 30
     table_parameters = {
@@ -30,50 +34,58 @@ module "federated_logs" {
         run_rate_in_hours                    = 24
       }
       snapshot_retention = {
-        clean_expired_files = false
-        run_rate_in_hours   = 3
+        number_of_snapshots_to_retain = 12
+        clean_expired_files           = true
+        run_rate_in_hours             = 3
       }
       compaction = {
         strategy              = "binpack"
         min_input_files       = 5
         delete_file_threshold = 1
       }
+      snapshot_tagging = {
+        retain_days = 7
+      }
     }
   }
 
   partition_tables = {
     "Log_application" = {
-      retention_in_days = 5
+      retention_in_days = 180
     },
     "Log_security" = {
-      retention_in_days = 10
+      retention_in_days = 90
       optimizer_configuration = {
         orphan_file_deletion = {
           orphan_file_retention_period_in_days = 3
           run_rate_in_hours                    = 24
         }
         snapshot_retention = {
-          clean_expired_files = false
-          run_rate_in_hours   = 3
+          number_of_snapshots_to_retain = 12
+          clean_expired_files           = true
+          run_rate_in_hours             = 3
         }
         compaction = {
           strategy              = "binpack"
           min_input_files       = 10
           delete_file_threshold = 2
         }
+        snapshot_tagging = {
+          retain_days = 7
+        }
       }
     },
     "Log_audit" = {
       table_parameters = {
-        "write.target-file-size-bytes"               = "52428800" # 50 MB
-        "write.metadata.delete-after-commit.enabled" = "false"
-        "write.metadata.previous-versions-max"       = "5"
+        "write.target-file-size-bytes"               = "33554432" # 32 MB
+        "write.metadata.delete-after-commit.enabled" = "true"
+        "write.metadata.previous-versions-max"       = "10"
       }
     },
     "Log_network" = {
       table_parameters = {
         "write.parquet.page-row-limit"    = "20000"
-        "write.parquet.compression-codec" = "snappy"
+        "write.parquet.compression-codec" = "zstd"
         "write.distribution-mode"         = "hash"
       }
     }
