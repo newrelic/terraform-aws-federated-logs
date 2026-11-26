@@ -5,7 +5,7 @@
 resource "aws_s3_bucket" "newrelic_artifacts" {
   bucket        = "newrelic-fed-logs-${var.setup_name}-artifacts"
   region        = data.aws_region.current.region
-  force_destroy = var.force_destroy
+  force_destroy = true
 }
 
 # Bucket policy grants the Glue service role read access to the job
