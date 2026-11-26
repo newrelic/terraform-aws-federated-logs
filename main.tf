@@ -2,7 +2,7 @@ module "setup" {
   source        = "./modules/federated_logs_setup_resource"
   setup_name    = var.setup_name
   region        = var.region
-  force_destroy = var.force_destroy
+  force_destroy = var.force_destroy_data_bucket
 }
 
 module "role" {
@@ -41,7 +41,6 @@ module "partition" {
   region                 = var.region
   data_retention_enabled = var.data_retention_enabled
   newrelic_account_id    = var.newrelic_account_id
-  force_destroy          = var.force_destroy
 
   snapshot_tagging_enabled = var.snapshot_tagging_enabled
   pcg_writer_role_name     = module.role.pcg_writer_role_name

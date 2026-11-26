@@ -216,7 +216,7 @@ variable "e2e_validation_config" {
   }
 }
 
-variable "force_destroy" {
+variable "force_destroy_data_bucket" {
   description = "When true, allows the S3 bucket to be deleted even when it contains objects. Default false keeps the bucket protected by prevent_destroy. Set to true only for an intentional teardown."
   type        = bool
   default     = false
