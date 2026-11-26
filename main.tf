@@ -1,7 +1,8 @@
 module "setup" {
-  source     = "./modules/federated_logs_setup_resource"
-  setup_name = var.setup_name
-  region     = var.region
+  source                    = "./modules/federated_logs_setup_resource"
+  setup_name                = var.setup_name
+  region                    = var.region
+  force_destroy_data_bucket = var.force_destroy_data_bucket
 }
 
 module "role" {

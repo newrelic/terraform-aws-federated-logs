@@ -3,8 +3,9 @@
 # (schema_registry.tf). Unconditional on purpose: the schema registry
 # depends on neither retention nor tagging.
 resource "aws_s3_bucket" "newrelic_artifacts" {
-  bucket = "newrelic-fed-logs-${var.setup_name}-artifacts"
-  region = data.aws_region.current.region
+  bucket        = "newrelic-fed-logs-${var.setup_name}-artifacts"
+  region        = data.aws_region.current.region
+  force_destroy = true
 }
 
 # Bucket policy grants the Glue service role read access to the job

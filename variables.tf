@@ -81,7 +81,7 @@ variable "data_retention_enabled" {
 variable "snapshot_tagging_enabled" {
   description = "Enable snapshot tagging feature. When true, creates a Glue job that tags each table's current Iceberg snapshot daily at 01:00 UTC, keeping each tag for the table's snapshot_tagging.retain_days."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "default_table_setting" {
@@ -214,5 +214,11 @@ variable "e2e_validation_config" {
     )
     error_message = "When e2e_validation_config.enabled is true, pcg_endpoint, test_payload, and vpc_config must all be provided."
   }
+}
+
+variable "force_destroy_data_bucket" {
+  description = "When true, allows the S3 bucket to be deleted even when it contains objects. Default false keeps the bucket protected by prevent_destroy. Enabling this will permanently delete the data present in the setup. Set to true only for an intentional teardown."
+  type        = bool
+  default     = false
 }
 
