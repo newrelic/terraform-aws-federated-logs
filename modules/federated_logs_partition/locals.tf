@@ -2,7 +2,7 @@ locals {
 
   setup_naming_prefix = "newrelic_fed_logs_${var.setup_name}"
 
-  default_partition_name = "Log_Federated"
+  default_partition_name = "Log_federated"
 
   max_table_name_length = 255
 
@@ -54,9 +54,11 @@ locals {
 
   # Parameters you always want set — user values override these
   default_iceberg_params = {
-    "format"                                     = "parquet"
-    "write.parquet.compression-codec"            = "zstd"
-    "write.target-file-size-bytes"               = "67108864" # 64 MB
+    "format"                          = "parquet"
+    "write.parquet.compression-codec" = "zstd"
+    # 32 MB: measured against 64 MB, ~41-48% less native memory per reader and
+    # ~13% more throughput. Smaller files add per-file overhead with no memory gain.
+    "write.target-file-size-bytes"               = "33554432" # 32 MB
     "write.metadata.delete-after-commit.enabled" = "true"
     "write.metadata.previous-versions-max"       = "10"
 
@@ -64,7 +66,9 @@ locals {
     # and page-level predicate pushdown in standard query engines.
     "write.parquet.row-group-size-bytes" = "12582912" # 12 MB
     "write.parquet.page-size-bytes"      = "1048576"  # 1 MB
-    "write.parquet.page-version"         = "v2"
+    # Do not set write.parquet.page-version: with "v2", Glue compaction writes
+    # DataPageV2 files with RLE booleans that its own vectorized reader cannot
+    # read back, so later compaction runs on those partitions fail.
 
     # Manifest hygiene — reduces manifest count growth on high-write tables.
     "commit.manifest-merge.enabled"      = "true"
@@ -73,6 +77,13 @@ locals {
 
     # Case-sensitive name → field-ID mapping for data files without field IDs.
     "schema.name-mapping.default" = local.iceberg_schema_name_mapping
+
+    # Snapshot expiry age. The retention optimizer omits
+    # snapshot_retention_period_in_days, so Glue reads this property. Each run
+    # expires snapshots older than this; runs are at least 3 h apart, so a
+    # table holds 1–4 h of snapshots. Override per table in table_parameters
+    # (at least 3600000).
+    "history.expire.max-snapshot-age-ms" = "3600000" # 1 h
   }
 
   # For each table: defaults ← user params (user wins on overlap)
@@ -97,6 +108,11 @@ locals {
   # Data retention configuration - enabled when data_retention_enabled is true at setup level
   is_data_retention_enabled = var.data_retention_enabled
 
+  # Whether any Glue job (retention or snapshot tagging) runs a script from
+  # the artifacts bucket. Gates the Glue role's read policy on that
+  # bucket; the bucket itself is unconditional (schema registry).
+  is_any_glue_job_enabled = local.is_data_retention_enabled || local.is_snapshot_tagging_enabled
+
   # Map of table names to their retention periods (in days)
   table_retention_days = {
     for k, v in local.all_tables :
@@ -109,6 +125,16 @@ locals {
     compaction      = "Iceberg table compaction failure"
     retention       = "Iceberg table retention failure"
     orphan_deletion = "Iceberg table orphan_file_deletion failure"
+  }
+
+  # Snapshot tagging configuration - enabled when snapshot_tagging_enabled is true at setup level
+  is_snapshot_tagging_enabled = var.snapshot_tagging_enabled
+
+  # Map of table name -> {retain_days}, passed into the Glue job's --TABLE_TAG_CONFIG argument
+  table_tag_config = {
+    for k, v in local.all_tables : k => {
+      retain_days = v.optimizer_configuration.snapshot_tagging.retain_days
+    }
   }
 
 }
