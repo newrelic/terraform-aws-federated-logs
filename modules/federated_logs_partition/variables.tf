@@ -19,26 +19,43 @@ variable "glue_service_role_arn" {
   type        = string
 }
 
+variable "pcg_writer_role_name" {
+  description = "Name of the PCG writer IAM role. The module attaches an inline policy to it granting access to the schema registry's objects in the artifacts bucket."
+  type        = string
+}
+
 #──────────────────────────────────────────────────────────────
 # Optimizer configuration defaults (for both variables below):
 #   orphan_file_deletion:
 #     orphan_file_retention_period_in_days = 3
 #     run_rate_in_hours                    = 24
 #   snapshot_retention:
-#     snapshot_retention_period_in_days    = 1
-#     number_of_snapshots_to_retain        = 1
-#     clean_expired_files                  = false
+#     number_of_snapshots_to_retain        = 12
+#     clean_expired_files                  = true
 #     run_rate_in_hours                    = 3
+#     (The expiry age is the table property history.expire.max-snapshot-age-ms:
+#     3600000 (1 h) by default, at least 3600000, set per table in
+#     table_parameters. With 3 h runs a table holds 1–4 h of snapshots.)
 #   compaction:
 #     strategy                             = "binpack"
 #     min_input_files                      = 5
 #     delete_file_threshold                = 1
+#   snapshot_tagging (only used when snapshot_tagging_enabled = true):
+#     retain_days                          = 7   # one daily tag per table, each kept
+#                                                # retain_days, so ~retain_days pinned
+#                                                # snapshots per table
 #──────────────────────────────────────────────────────────────
 
 variable "data_retention_enabled" {
   description = "Enable data retention feature. When true, creates Glue job to delete old data based on per-table retention_in_days."
   type        = bool
   default     = false
+}
+
+variable "snapshot_tagging_enabled" {
+  description = "Enable snapshot tagging feature. When true, creates a Glue job that tags each table's current Iceberg snapshot daily at 01:00 UTC, keeping each tag for the table's snapshot_tagging.retain_days."
+  type        = bool
+  default     = true
 }
 
 variable "default_table_setting" {
@@ -52,10 +69,9 @@ variable "default_table_setting" {
         run_rate_in_hours                    = optional(number, 24)
       }), {})
       snapshot_retention = optional(object({
-        snapshot_retention_period_in_days = optional(number, 1)
-        number_of_snapshots_to_retain     = optional(number, 1)
-        clean_expired_files               = optional(bool, false)
-        run_rate_in_hours                 = optional(number, 3)
+        number_of_snapshots_to_retain = optional(number, 12)
+        clean_expired_files           = optional(bool, true)
+        run_rate_in_hours             = optional(number, 3)
       }), {})
 
       compaction = optional(object({
@@ -63,10 +79,25 @@ variable "default_table_setting" {
         min_input_files       = optional(number, 5)
         delete_file_threshold = optional(number, 1)
       }), {})
+      snapshot_tagging = optional(object({
+        retain_days = optional(number, 7)
+      }), {})
 
     }), {})
   })
   default = {}
+
+  validation {
+    condition     = var.default_table_setting.optimizer_configuration.snapshot_tagging.retain_days >= 1
+    error_message = "default_table_setting.optimizer_configuration.snapshot_tagging.retain_days must be at least 1."
+  }
+
+  # The minimum also catches seconds typed as milliseconds: Athena's
+  # equivalent, vacuum_max_snapshot_age_seconds, takes seconds.
+  validation {
+    condition     = try(tonumber(regex("^[0-9]+$", lookup(var.default_table_setting.table_parameters, "history.expire.max-snapshot-age-ms", "3600000"))) >= 3600000, false)
+    error_message = "default_table_setting.table_parameters[\"history.expire.max-snapshot-age-ms\"] must be a whole number of milliseconds, at least 3600000 (1 h)."
+  }
 }
 
 variable "partition_tables" {
@@ -82,15 +113,17 @@ variable "partition_tables" {
         run_rate_in_hours                    = optional(number, 24)
       }), {})
       snapshot_retention = optional(object({
-        snapshot_retention_period_in_days = optional(number, 1)
-        number_of_snapshots_to_retain     = optional(number, 1)
-        clean_expired_files               = optional(bool, false)
-        run_rate_in_hours                 = optional(number, 3)
+        number_of_snapshots_to_retain = optional(number, 12)
+        clean_expired_files           = optional(bool, true)
+        run_rate_in_hours             = optional(number, 3)
       }), {})
       compaction = optional(object({
         strategy              = optional(string, "binpack")
         min_input_files       = optional(number, 5)
         delete_file_threshold = optional(number, 1)
+      }), {})
+      snapshot_tagging = optional(object({
+        retain_days = optional(number, 7)
       }), {})
     }), {})
   }))
@@ -104,6 +137,21 @@ variable "partition_tables" {
   validation {
     condition     = alltrue([for k in keys(var.partition_tables) : startswith(k, "Log_")])
     error_message = "All partition table names must start with 'Log_' (e.g., 'Log_my_partition')."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.partition_tables : v.optimizer_configuration.snapshot_tagging.retain_days >= 1
+    ])
+    error_message = "optimizer_configuration.snapshot_tagging.retain_days must be at least 1 for every partition table."
+  }
+
+  validation {
+    condition = alltrue([
+      for k, v in var.partition_tables :
+      try(tonumber(regex("^[0-9]+$", lookup(v.table_parameters, "history.expire.max-snapshot-age-ms", "3600000"))) >= 3600000, false)
+    ])
+    error_message = "table_parameters[\"history.expire.max-snapshot-age-ms\"] must be a whole number of milliseconds, at least 3600000 (1 h), for every partition table."
   }
 }
 

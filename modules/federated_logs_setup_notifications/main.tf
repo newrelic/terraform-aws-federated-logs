@@ -63,14 +63,23 @@ resource "aws_iam_role_policy" "eventbridge_to_sqs" {
   })
 }
 
-# EventBridge rule — matches pcg parquet file creation events in this bucket
+# EventBridge rule — matches PCG-written parquet file creation events in this bucket
 # Filters by:
-#   bucket name  → only this bucket
-#   key wildcard → only files matching *pcg-*.parquet
-#   reason       → PutObject or CompleteMultipartUpload (large files >5MB use multipart)
+#   bucket name → only this bucket
+#   key         → suffix "pcg-df.parquet" (PCG's current file-naming convention,
+#                 <uuid>.pcg-df.parquet — see pipeline-control-gateway#634).
+#                 `suffix` filters are NOT subject to the 30-rules-per-bus
+#                 wildcard quota (non-adjustable), unlike the `wildcard` filter
+#                 this replaced — that's the entire reason for this rule shape.
+#                 Requires every setup's PCG image to be on a build that writes
+#                 the .pcg-df.parquet suffix; a setup still writing the legacy
+#                 pcg-00000-<uuid>.parquet prefix form will silently stop
+#                 triggering this rule. Confirm the PCG image is upgraded
+#                 fleet-wide before applying this to an existing setup.
+#   reason      → PutObject or CompleteMultipartUpload (large files >5MB use multipart)
 resource "aws_cloudwatch_event_rule" "iceberg_file_events" {
   name        = "newrelic-fed-logs-${var.setup_name}-iceberg-file-created"
-  description = "Fires when a .parquet file is created in ${var.s3_bucket_id}"
+  description = "Fires when a PCG-written .parquet file is created in ${var.s3_bucket_id}"
 
   event_pattern = jsonencode({
     source        = ["aws.s3"]
@@ -80,7 +89,7 @@ resource "aws_cloudwatch_event_rule" "iceberg_file_events" {
         name = [var.s3_bucket_id]
       }
       object = {
-        key = [{ wildcard = "*pcg-*.parquet" }]
+        key = [{ suffix = "pcg-df.parquet" }]
       }
       reason = ["PutObject", "CompleteMultipartUpload"]
     }
@@ -89,8 +98,9 @@ resource "aws_cloudwatch_event_rule" "iceberg_file_events" {
 
 # EventBridge target — route matched events to the fleet-level SQS queue.
 # The input_transformer preserves the native EventBridge envelope shape and
-# injects roleArn / setupId under "detail" so the Flink commit worker can
-# AssumeRole without an S3 HeadObject round-trip per file event.
+# injects roleArn / setupId / setupName under "detail" so the Flink commit
+# worker can AssumeRole without an S3 HeadObject round-trip per file event.
+# setupId is the entity GUID (unique); setupName is the human-readable name.
 resource "aws_cloudwatch_event_target" "iceberg_file_events_sqs" {
   rule      = aws_cloudwatch_event_rule.iceberg_file_events.name
   target_id = "sqs-target"
@@ -134,7 +144,8 @@ resource "aws_cloudwatch_event_target" "iceberg_file_events_sqs" {
           "object": { "key": <key>, "size": <size>, "etag": <etag> },
           "reason": <reason>,
           "roleArn": "${var.pcg_writer_role_arn}",
-          "setupId": "${var.setup_name}"
+          "setupId": "${var.setup_id}",
+          "setupName": "${var.setup_name}"
         }
       }
     EOT

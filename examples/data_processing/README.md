@@ -30,10 +30,13 @@ export NEW_RELIC_LICENSE_KEY="your-new-relic-license-key"
 | `data_processing_module_name` | Name for this data processing setup (3–26 lowercase alphanumeric, hyphens allowed) | `string` | yes |
 | `newrelic_org_id` | New Relic organization ID | `string` | yes |
 | `fleet_entity_guid` | NGEP entity GUID of the PCG fleet | `string` | yes |
+| `fleet_name` | Display name of the fleet, exposed as the `fleet.entity.name` Flink application property (shown in the dashboard's fleet dropdown) | `string` | no (default: `""`, omitted from the Flink app if unset) |
 | `clusters` | Map of EKS cluster configs for base role trust policy (auth via IRSA or Pod Identity) | `map(object)` | yes |
 | `parallelism` | Flink parallelism setting | `number` | no (default: `1`) |
 | `parallelism_per_kpu` | Flink parallelism per KPU | `number` | no (default: `1`) |
 | `auto_scaling_enabled` | Enable Flink auto scaling | `bool` | no (default: `true`) |
+| `commit_batch_size` | Buffered data files per table that trigger an Iceberg commit early | `number` | no (default: `100`) |
+| `commit_batch_timeout_ms` | Milliseconds after the first buffered file before a table's batch is committed. Higher means fewer snapshots but slower time-to-glass; keep well below `sqs_visibility_timeout` | `number` | no (default: `10000`) |
 | `allowed_source_account_ids` | Cross-account only: AWS account ID(s) where the `federated_logs` setup lives, allowed to send EventBridge events to the SQS queue | `list(string)` | no (default: `[]`) |
 | `e2e_validation_config` | Optional end-to-end validation Lambda, run from this account (see below) | `object` | no (default: disabled) |
 
@@ -69,6 +72,7 @@ Both require `NEW_RELIC_LICENSE_KEY` and `NEW_RELIC_API_KEY` in the runner env a
    - `data_processing_module_name` — a unique name for this fleet
    - `newrelic_org_id` — your New Relic org ID
    - `fleet_entity_guid` — the GUID of your PCG fleet entity
+   - `fleet_name` — optional; the fleet's display name, shown in the dashboard's fleet dropdown
    - `clusters` — your EKS cluster(s) with OIDC provider ARN or cluster name
 
 2. Update `providers.tf` with your AWS region and New Relic account ID.

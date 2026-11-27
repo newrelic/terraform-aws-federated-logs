@@ -248,16 +248,21 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
       property_group {
         property_group_id = "FlinkApplicationProperties"
 
-        property_map = {
+        # fleet.entity.name is merged in conditionally: AWS rejects an empty-string
+        # value here ("Member must have length greater than or equal to 1"), and
+        # fleet_name is optional/defaults to "".
+        property_map = merge({
           "aws.region" = data.aws_region.current.region
+
+          "fleet.entity.guid" = var.fleet_entity_guid
 
           "sqs.queue.url"  = aws_sqs_queue.iceberg_file_events.url
           "sqs.region"     = data.aws_region.current.region
           "sqs.batch.size" = tostring(var.sqs_batch_size)
 
           "iceberg.catalog.type"            = "glue"
-          "iceberg.commit.batch.size"       = "100"
-          "iceberg.commit.batch.timeout.ms" = "2000"
+          "iceberg.commit.batch.size"       = tostring(var.commit_batch_size)
+          "iceberg.commit.batch.timeout.ms" = tostring(var.commit_batch_timeout_ms)
 
           "commit.initial.retry.delay.ms" = "500"
           "commit.max.retries"            = "5"
@@ -274,7 +279,8 @@ resource "aws_kinesisanalyticsv2_application" "flink_iceberg_commit_worker" {
           "newrelic.license.key"          = data.external.license_key.result.license_key
           "newrelic.metrics.api.endpoint" = var.newrelic_metrics_endpoint
           "newrelic.metrics.enabled"      = tostring(var.enable_metrics)
-        }
+          }, var.fleet_name != "" ? { "fleet.entity.name" = var.fleet_name } : {}
+        )
       }
     }
 

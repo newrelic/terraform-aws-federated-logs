@@ -8,9 +8,33 @@ output "all_tables" {
   }
 }
 
+output "all_table_ids" {
+  description = "Map of tableId (database.table) to partition display name (e.g. Log_Federated) for seeding the dashboard variable dropdown."
+  value = merge(
+    {
+      for k in [substr(replace(lower("${local.setup_naming_prefix}_${local.default_partition_name}"), "/[^a-z0-9_]/", "_"), 0, local.max_table_name_length)] :
+      "${var.glue_catalog_db_name}.${k}" => local.default_partition_name
+    },
+    {
+      for sanitized_name, raw_name in local.nr_partition_names :
+      "${var.glue_catalog_db_name}.${sanitized_name}" => raw_name
+    }
+  )
+}
+
 output "retention_job_name" {
   description = "Name of the Glue retention job (if enabled)"
   value       = local.is_data_retention_enabled ? aws_glue_job.retention[0].name : null
+}
+
+output "artifacts_bucket_name" {
+  description = "Name of the S3 bucket holding non-table-data artifacts: Glue job scripts and the PCG schema registry's objects. Always available -- not gated on retention or snapshot tagging."
+  value       = aws_s3_bucket.newrelic_artifacts.bucket
+}
+
+output "tagging_job_name" {
+  description = "Name of the Glue snapshot tagging job (if enabled on any table)"
+  value       = local.is_snapshot_tagging_enabled ? aws_glue_job.tagging[0].name : null
 }
 
 output "glue_optimizer_failures_alarm_arns" {

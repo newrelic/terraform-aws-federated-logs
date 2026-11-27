@@ -235,6 +235,16 @@ run "test_role_naming_conventions" {
     condition     = can(regex("role/NRGlobalIAMRole", output.nr_reader_trust_policy_json))
     error_message = "NR reader role trust policy must allow NRGlobalIAMRole to assume it"
   }
+
+  assert {
+    condition     = jsondecode(aws_iam_role.reader-role.assume_role_policy).Statement[0].Condition.StringEquals["sts:ExternalId"] == newrelic_aws_connection.query_connection.credential[0].assume_role[0].external_id
+    error_message = "NR reader role must trust the external ID generated for the query connection"
+  }
+
+  assert {
+    condition     = newrelic_aws_connection.query_connection.credential[0].assume_role[0].role_arn == aws_iam_role.reader-role.arn
+    error_message = "Query connection role_arn must match the NR reader role's ARN"
+  }
 }
 
 # =============================================================================
@@ -295,5 +305,47 @@ run "test_module_wiring" {
   assert {
     condition     = output.glue_service_role_arn != "" && output.pcg_writer_role_arn != "" && output.nr_reader_role_arn != ""
     error_message = "All role outputs should be populated when module wiring is correct"
+  }
+}
+
+# =============================================================================
+# PCG WRITER ROLE NAME OUTPUT TEST
+# =============================================================================
+# The root module attaches the schema-registry grant to the PCG writer role by
+# name (aws_iam_role_policy.role takes a name, not an ARN).
+# =============================================================================
+
+run "setup_for_writer_role_name_test" {
+  command = plan
+
+  variables {
+    setup_name = "inttest-role-wname"
+  }
+
+  module {
+    source = "./modules/federated_logs_setup_resource"
+  }
+}
+
+run "test_pcg_writer_role_name_output_exists" {
+  command = plan
+
+  variables {
+    setup_name           = run.setup_for_writer_role_name_test.setup_name
+    s3_bucket_name       = run.setup_for_writer_role_name_test.s3_bucket_name
+    glue_catalog_db_name = run.setup_for_writer_role_name_test.glue_catalog_db_name
+    fleet_entity_guid    = var.fleet_entity_guid
+    newrelic_account_id  = var.newrelic_account_id
+    newrelic_org_id      = var.newrelic_org_id
+    newrelic_region      = var.newrelic_region
+  }
+
+  module {
+    source = "./modules/federated_logs_role"
+  }
+
+  assert {
+    condition     = output.pcg_writer_role_name == "newrelic-fed-logs-inttest-role-wname-pcg-writer"
+    error_message = "pcg_writer_role_name must be exposed (and follow {prefix}-pcg-writer) so root resources can attach policies to this role by name"
   }
 }

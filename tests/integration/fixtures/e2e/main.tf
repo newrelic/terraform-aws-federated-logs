@@ -42,6 +42,7 @@ module "partition" {
   s3_bucket_name        = module.setup.s3_bucket_name
   glue_catalog_db_name  = module.setup.glue_catalog_db_name
   glue_service_role_arn = module.role.glue_service_role_arn
+  pcg_writer_role_name  = module.role.pcg_writer_role_name
   setup_id              = module.role.setup_id
   newrelic_account_id   = var.newrelic_account_id
   default_table_setting = var.default_table_setting
